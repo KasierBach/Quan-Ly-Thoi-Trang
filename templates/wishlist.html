@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+
+{% block title %}Danh sách yêu thích - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Danh sách yêu thích</h2>
+
+    {% if wishlist_items %}
+    <div class="row">
+        {% for item in wishlist_items %}
+        <div class="col-md-4 mb-4" id="wishlist-item-{{ item.WishlistID }}">
+            <div class="card product-card h-100">
+                <div class="text-end">
+                    <button type="button" class="btn btn-danger btn-sm"
+                        onclick="removeFromWishlist({{ item.WishlistID }})">
+                        <i class="fas fa-trash-alt"></i> Xóa
+                    </button>
+                </div>
+                <img src="https://via.placeholder.com/300x300/{{ '%06x'|format(item.ProductID * 123456) }}/ffffff?text={{ item.ProductName }}"
+                    class="card-img-top product-img" alt="{{ item.ProductName }}">
+                <div class="card-body">
+                    <h5 class="card-title">{{ item.ProductName }}</h5>
+                    <p class="card-text text-muted">{{ item.CategoryName }}</p>
+                    <p class="card-text"><small class="text-muted">Đã thêm vào: {{ item.AddedDate.strftime('%d/%m/%Y')
+                            }}</small></p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-danger fw-bold">{{ "{:,.0f}".format(item.Price) }} đ</span>
+                        <div>
+                            <a href="{{ url_for('product_detail', product_id=item.ProductID) }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <button type="button" class="btn btn-sm btn-primary"
+                                onclick="addToCartFromWishlist({{ item.ProductID }})">
+                                <i class="fas fa-shopping-cart"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-heart fa-4x mb-3 text-muted"></i>
+        <h3>Danh sách yêu thích của bạn đang trống</h3>
+        <p class="text-muted">Hãy thêm sản phẩm vào danh sách yêu thích để xem sau</p>
+        <a href="{{ url_for('products') }}" class="btn btn-primary mt-3">
+            <i class="fas fa-shopping-bag me-2"></i>Khám phá sản phẩm
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Remove from wishlist
+    function removeFromWishlist(wishlistId) {
+        if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?')) {
+            fetch('{{ url_for("remove_from_wishlist") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `wishlist_id=${wishlistId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove item from DOM
+                        document.getElementById(`wishlist-item-${wishlistId}`).remove();
+
+                        // Show message
+                        alert(data.message);
+
+                        // If wishlist is empty, reload page
+                        if (document.querySelectorAll('.product-card').length === 0) {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+    }
+
+    // Add to cart from wishlist
+    function addToCartFromWishlist(productId) {
+        // Redirect to product detail page
+        window.location.href = `/product/${productId}`;
+    }
+</script>
+{% endblock %}

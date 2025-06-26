@@ -1,0 +1,363 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý tin nhắn liên hệ - Fashion Store{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px - 300px);
+    }
+    .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 9999;
+        min-width: 300px;
+        display: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Notification -->
+    <div id="notification" class="notification alert alert-success">
+        <span id="notification-message"></span>
+        <button type="button" class="btn-close" onclick="hideNotification()"></button>
+    </div>
+
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2">
+            <div class="list-group admin-sidebar mb-4">
+                <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-box me-2"></i>Sản phẩm
+                </a>
+                <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+                </a>
+                <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-comments me-2"></i>Bình luận
+                </a>
+                <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-bar me-2"></i>Báo cáo
+                </a>
+                <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+                </a>
+                <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action text-primary">
+                    <i class="fas fa-store me-2"></i>Xem cửa hàng
+                </a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Quản lý tin nhắn liên hệ</h2>
+                
+                <div class="btn-group">
+                    <a href="{{ url_for('admin_contact_messages') }}" class="btn btn-outline-primary {% if not current_status %}active{% endif %}">Tất cả</a>
+                    <a href="{{ url_for('admin_contact_messages', status='New') }}" class="btn btn-outline-primary {% if current_status == 'New' %}active{% endif %}">Mới</a>
+                    <a href="{{ url_for('admin_contact_messages', status='Processing') }}" class="btn btn-outline-primary {% if current_status == 'Processing' %}active{% endif %}">Đang xử lý</a>
+                    <a href="{{ url_for('admin_contact_messages', status='Answered') }}" class="btn btn-outline-primary {% if current_status == 'Answered' %}active{% endif %}">Đã trả lời</a>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Danh sách tin nhắn</h5>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Người gửi</th>
+                                    <th>Email</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Ngày gửi</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for message in messages %}
+                                <tr id="row-{{ message.MessageID }}">
+                                    <td>{{ message.MessageID }}</td>
+                                    <td>{{ message.Name }}</td>
+                                    <td>{{ message.Email }}</td>
+                                    <td>{{ message.Subject or 'Không có tiêu đề' }}</td>
+                                    <td>{{ message.SubmitDate.strftime('%d/%m/%Y %H:%M') }}</td>
+                                    <td>
+                                        <span class="badge status-badge {% if message.Status == 'New' %}bg-danger{% elif message.Status == 'Processing' %}bg-warning{% elif message.Status == 'Answered' %}bg-success{% else %}bg-secondary{% endif %}">
+                                            {{ message.Status }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-primary view-btn" data-message-id="{{ message.MessageID }}">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-envelope-open fa-4x mb-3 text-muted"></i>
+                        <h4>Không có tin nhắn nào</h4>
+                        {% if current_status %}
+                        <p class="text-muted">Không có tin nhắn nào với trạng thái "{{ current_status }}"</p>
+                        <a href="{{ url_for('admin_contact_messages') }}" class="btn btn-primary mt-2">Xem tất cả tin nhắn</a>
+                        {% else %}
+                        <p class="text-muted">Chưa có tin nhắn liên hệ nào từ khách hàng</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Single Modal for all messages -->
+<div class="modal fade" id="messageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Chi tiết tin nhắn</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-success" id="sendReplyBtn">Gửi trả lời</button>
+                <button type="button" class="btn btn-primary" id="updateStatusBtn">Cập nhật trạng thái</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Message data
+    const messages = {
+        {% for message in messages %}
+        {{ message.MessageID }}: {
+            id: {{ message.MessageID }},
+            name: "{{ message.Name }}",
+            email: "{{ message.Email }}",
+            subject: "{{ message.Subject or 'Không có tiêu đề' }}",
+            message: "{{ message.Message|replace('\n', '\\n')|replace('"', '\\"') }}",
+            date: "{{ message.SubmitDate.strftime('%d/%m/%Y %H:%M') }}",
+            status: "{{ message.Status }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    let currentMessageId = null;
+    let isProcessing = false;
+
+    // View button click handler
+    document.querySelectorAll('.view-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (isProcessing) return;
+            
+            const messageId = this.getAttribute('data-message-id');
+            showMessageModal(messageId);
+        });
+    });
+
+    function showMessageModal(messageId) {
+        const message = messages[messageId];
+        if (!message) return;
+
+        currentMessageId = messageId;
+
+        // Update modal content
+        document.getElementById('modalTitle').textContent = `Tin nhắn từ ${message.name}`;
+        
+        const modalBody = document.getElementById('modalBody');
+        modalBody.innerHTML = `
+            <div class="mb-3">
+                <strong>Người gửi:</strong> ${message.name}
+            </div>
+            <div class="mb-3">
+                <strong>Email:</strong> ${message.email}
+            </div>
+            <div class="mb-3">
+                <strong>Tiêu đề:</strong> ${message.subject}
+            </div>
+            <div class="mb-3">
+                <strong>Ngày gửi:</strong> ${message.date}
+            </div>
+            <div class="mb-3">
+                <strong>Trạng thái:</strong> 
+                <span class="badge ${getBadgeClass(message.status)}" id="currentStatus">${message.status}</span>
+            </div>
+            <div class="mb-3">
+                <strong>Nội dung:</strong>
+                <div class="card mt-2">
+                    <div class="card-body">
+                        ${message.message.replace(/\\n/g, '<br>')}
+                    </div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>Cập nhật trạng thái:</strong></label>
+                <select class="form-select" id="statusSelect">
+                    <option value="New" ${message.status === 'New' ? 'selected' : ''}>Mới</option>
+                    <option value="Processing" ${message.status === 'Processing' ? 'selected' : ''}>Đang xử lý</option>
+                    <option value="Answered" ${message.status === 'Answered' ? 'selected' : ''}>Đã trả lời</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label"><strong>Gửi email trả lời:</strong></label>
+                <textarea class="form-control" id="replyText" rows="5" placeholder="Nhập nội dung email trả lời..."></textarea>
+            </div>
+        `;
+
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('messageModal'));
+        modal.show();
+    }
+
+    // Update status button
+    document.getElementById('updateStatusBtn').addEventListener('click', function() {
+        if (isProcessing || !currentMessageId) return;
+        updateStatus();
+    });
+
+    // Send reply button
+    document.getElementById('sendReplyBtn').addEventListener('click', function() {
+        if (isProcessing || !currentMessageId) return;
+        sendReply();
+    });
+
+    function updateStatus() {
+        const statusSelect = document.getElementById('statusSelect');
+        const newStatus = statusSelect.value;
+        
+        if (!newStatus) {
+            alert('Vui lòng chọn trạng thái');
+            return;
+        }
+
+        isProcessing = true;
+        const btn = document.getElementById('updateStatusBtn');
+        const originalText = btn.textContent;
+        btn.textContent = 'Đang cập nhật...';
+        btn.disabled = true;
+
+        fetch('{{ url_for("admin_update_message_status") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `message_id=${currentMessageId}&status=${encodeURIComponent(newStatus)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI
+                updateMessageStatus(currentMessageId, newStatus);
+                showNotification('success', data.message);
+                
+                // Close modal after delay
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('messageModal')).hide();
+                }, 1000);
+            } else {
+                showNotification('error', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('error', 'Đã xảy ra lỗi khi cập nhật trạng thái');
+        })
+        .finally(() => {
+            isProcessing = false;
+            btn.textContent = originalText;
+            btn.disabled = false;
+        });
+    }
+
+    function sendReply() {
+        const replyText = document.getElementById('replyText').value.trim();
+        
+        if (!replyText) {
+            alert('Vui lòng nhập nội dung trả lời');
+            return;
+        }
+
+        // Set status to Answered and update
+        document.getElementById('statusSelect').value = 'Answered';
+        updateStatus();
+        
+        // Clear reply text
+        document.getElementById('replyText').value = '';
+    }
+
+    function updateMessageStatus(messageId, newStatus) {
+        // Update in memory
+        if (messages[messageId]) {
+            messages[messageId].status = newStatus;
+        }
+
+        // Update table row
+        const row = document.getElementById(`row-${messageId}`);
+        if (row) {
+            const badge = row.querySelector('.status-badge');
+            if (badge) {
+                badge.className = `badge status-badge ${getBadgeClass(newStatus)}`;
+                badge.textContent = newStatus;
+            }
+        }
+
+        // Update modal if open
+        const currentStatus = document.getElementById('currentStatus');
+        if (currentStatus) {
+            currentStatus.className = `badge ${getBadgeClass(newStatus)}`;
+            currentStatus.textContent = newStatus;
+        }
+    }
+
+    function getBadgeClass(status) {
+        switch(status) {
+            case 'New': return 'bg-danger';
+            case 'Processing': return 'bg-warning';
+            case 'Answered': return 'bg-success';
+            default: return 'bg-secondary';
+        }
+    }
+
+    function showNotification(type, message) {
+        const notification = document.getElementById('notification');
+        const messageEl = document.getElementById('notification-message');
+        
+        notification.className = `notification alert alert-${type === 'success' ? 'success' : 'danger'}`;
+        messageEl.textContent = message;
+        notification.style.display = 'block';
+        
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 3000);
+    }
+
+    window.hideNotification = function() {
+        document.getElementById('notification').style.display = 'none';
+    };
+});
+</script>
+{% endblock %}

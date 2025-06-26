@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+
+{% block title %}Thanh toán - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Thanh toán</h2>
+
+    {% if not cart %}
+    <div class="alert alert-warning">
+        <i class="fas fa-exclamation-triangle me-2"></i>Giỏ hàng của bạn đang trống. Vui lòng thêm sản phẩm vào giỏ hàng
+        để tiếp tục thanh toán.
+    </div>
+    <div class="text-center mt-4">
+        <a href="{{ url_for('products') }}" class="btn btn-primary">
+            <i class="fas fa-shopping-bag me-2"></i>Tiếp tục mua sắm
+        </a>
+    </div>
+    {% else %}
+    <form action="{{ url_for('checkout') }}" method="post">
+        <div class="row">
+            <div class="col-md-8">
+                <!-- Shipping Information -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Thông tin giao hàng</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if not session.user_id %}
+                        <div class="alert alert-info mb-4">
+                            <i class="fas fa-info-circle me-2"></i>Bạn đã có tài khoản?
+                            <a href="{{ url_for('login', next=url_for('checkout')) }}">Đăng nhập</a> hoặc
+                            <a href="{{ url_for('register') }}">Đăng ký</a> để thanh toán nhanh hơn.
+                        </div>
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <label for="shipping_address" class="form-label">Địa chỉ giao hàng <span
+                                    class="text-danger">*</span></label>
+                            <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3"
+                                required>{{ address }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Phương thức thanh toán <span class="text-danger">*</span></label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="payment_method" id="cod"
+                                    value="Thanh toán khi nhận hàng" checked>
+                                <label class="form-check-label" for="cod">
+                                    <i class="fas fa-money-bill-wave me-2"></i>Thanh toán khi nhận hàng (COD)
+                                </label>
+                            </div>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="payment_method" id="bank_transfer"
+                                    value="Chuyển khoản ngân hàng">
+                                <label class="form-check-label" for="bank_transfer">
+                                    <i class="fas fa-university me-2"></i>Chuyển khoản ngân hàng
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method" id="credit_card"
+                                    value="Thẻ tín dụng/ghi nợ">
+                                <label class="form-check-label" for="credit_card">
+                                    <i class="fas fa-credit-card me-2"></i>Thẻ tín dụng/ghi nợ
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Ghi chú đơn hàng (tùy chọn)</label>
+                            <textarea class="form-control" name="order_notes" rows="2"
+                                placeholder="Ghi chú về đơn hàng, ví dụ: thời gian hay chỉ dẫn địa điểm giao hàng chi tiết hơn."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <!-- Order Summary -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Đơn hàng của bạn</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th class="text-end">Tổng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in cart %}
+                                    <tr>
+                                        <td>
+                                            {{ item.product_name }} <span class="text-muted">x {{ item.quantity
+                                                }}</span><br>
+                                            <small class="text-muted">{{ item.color }}, {{ item.size }}</small>
+                                        </td>
+                                        <td class="text-end">{{ "{:,.0f}".format(item.price * item.quantity) }} đ</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th>Tạm tính</th>
+                                        <td class="text-end">{{ "{:,.0f}".format(total) }} đ</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Phí vận chuyển</th>
+                                        <td class="text-end">Miễn phí</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tổng cộng</th>
+                                        <td class="text-end text-danger fw-bold">{{ "{:,.0f}".format(total) }} đ</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <div class="d-grid gap-2 mt-3">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-check-circle me-2"></i>Đặt hàng
+                            </button>
+                            <a href="{{ url_for('view_cart') }}" class="btn btn-outline-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Quay lại giỏ hàng
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

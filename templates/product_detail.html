@@ -1,0 +1,1112 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.ProductName }} - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('products', category=product.CategoryID) }}">{{
+                    product.CategoryName }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ product.ProductName }}</li>
+        </ol>
+    </nav>
+
+    <div class="row g-4" style="min-height: 450px;">
+        <!-- Left image column -->
+        <div class="col-md-6 d-flex justify-content-center align-items-center" style="min-height: 100%;">
+            {% if product.ImageURL %}
+            <img id="mainImage" src="{{ url_for('static', filename=product.ImageURL) }}" class="img-fluid rounded"
+                alt="{{ product.ProductName }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+            {% else %}
+            <img id="mainImage"
+                src="https://via.placeholder.com/600x600/{{ '%06x'|format(product.ProductID * 123456) }}/ffffff?text={{ product.ProductName }}"
+                class="img-fluid rounded" alt="{{ product.ProductName }}"
+                style="max-height: 100%; max-width: 100%; object-fit: contain;">
+            {% endif %}
+        </div>
+
+        <!-- Product information column (right side) -->
+        <div class="col-md-6 d-flex flex-column justify-content-center">
+            <div>
+                <h2 class="mb-3">{{ product.ProductName }}</h2>
+                <p class="text-muted mb-2">Danh mục: {{ product.CategoryName }}</p>
+                <h3 class="text-danger mb-4">{{ "{:,.0f}".format(product.Price) }} đ</h3>
+
+                <form action="{{ url_for('add_to_cart') }}" method="post">
+                    <input type="hidden" name="product_id" value="{{ product.ProductID }}">
+
+                    <!-- Color Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Màu sắc:</label>
+                        <div class="color-options">
+                            {% for color in colors %}
+                            <span class="color-swatch"
+                                style="background-color: {% if color.name == 'Đen' %}#000000{% elif color.name == 'Trắng' %}#FFFFFF{% elif color.name == 'Đỏ' %}#FF0000{% elif color.name == 'Xanh dương' %}#0000FF{% elif color.name == 'Xanh lá' %}#00FF00{% elif color.name == 'Vàng' %}#FFFF00{% elif color.name == 'Hồng' %}#FFC0CB{% elif color.name == 'Xám' %}#808080{% elif color.name == 'Nâu' %}#A52A2A{% else %}#CCCCCC{% endif %}"
+                                data-color-id="{{ color.id }}" title="{{ color.name }}"
+                                onclick="selectColor(this)"></span>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="color_id" id="selectedColor">
+                    </div>
+
+                    <!-- Size Selection -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Kích thước:</label>
+                        <div class="size-options">
+                            {% for size in sizes %}
+                            <span class="size-option" data-size-id="{{ size.id }}" onclick="selectSize(this)">{{
+                                size.name }}</span>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="size_id" id="selectedSize">
+                    </div>
+
+                    <!-- Variant ID -->
+                    <input type="hidden" name="variant_id" id="variantId">
+
+                    <!-- Quantity -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Số lượng:</label>
+                        <div class="input-group" style="width: 150px;">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="decrementQuantity()">-</button>
+                            <input type="number" class="form-control text-center" name="quantity" id="quantity"
+                                value="1" min="1" max="10">
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="incrementQuantity()">+</button>
+                        </div>
+                        <small id="stockInfo" class="form-text text-muted mt-2">Vui lòng chọn màu sắc và kích
+                            thước</small>
+                    </div>
+
+                    <!-- Add to cart -->
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary btn-lg" id="addToCartBtn">
+                            <i class="fas fa-shopping-cart me-2"></i>Thêm vào giỏ hàng
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" onclick="buyNow()">
+                            <i class="fas fa-bolt me-2"></i>Mua ngay
+                        </button>
+                        <button type="button" class="btn btn-outline-danger" id="addToWishlistBtn">
+                            <i class="fas fa-heart me-2"></i>Thêm vào yêu thích
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Product Features -->
+                <div class="mt-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <span>Đổi trả miễn phí trong 30 ngày</span>
+                    </div>
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <span>Giao hàng toàn quốc</span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-check-circle text-success me-2"></i>
+                        <span>Thanh toán khi nhận hàng</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Information Tabs -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white border-bottom">
+                    <ul class="nav nav-tabs card-header-tabs" id="productTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active fw-bold" id="description-tab" data-bs-toggle="tab"
+                                data-bs-target="#description" type="button" role="tab" aria-controls="description"
+                                aria-selected="true">
+                                <i class="fas fa-info-circle me-2"></i>Mô tả sản phẩm
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="reviews-tab" data-bs-toggle="tab"
+                                data-bs-target="#reviews" type="button" role="tab" aria-controls="reviews"
+                                aria-selected="false">
+                                <i class="fas fa-star me-2"></i>Đánh giá (<span id="review-count">0</span>)
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link fw-bold" id="comments-tab" data-bs-toggle="tab"
+                                data-bs-target="#comments" type="button" role="tab" aria-controls="comments"
+                                aria-selected="false">
+                                <i class="fas fa-comments me-2"></i>Bình luận (<span id="comment-count">0</span>)
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body p-0">
+                    <div class="tab-content" id="productTabsContent">
+                        <!-- Description Tab -->
+                        <div class="tab-pane fade show active" id="description" role="tabpanel"
+                            aria-labelledby="description-tab">
+                            <div class="p-4">
+                                <div class="row">
+                                    <div class="col-lg-8">
+                                        <h5 class="mb-3 text-primary">
+                                            <i class="fas fa-tag me-2"></i>Thông tin sản phẩm
+                                        </h5>
+                                        <div id="product-description">
+                                            <!-- Description will be generated by JavaScript -->
+                                        </div>
+
+                                        <div class="row mt-4">
+                                            <div class="col-md-6">
+                                                <h6 class="text-success mb-3">
+                                                    <i class="fas fa-check-circle me-2"></i>Đặc điểm nổi bật
+                                                </h6>
+                                                <ul class="list-unstyled" id="product-features">
+                                                    <!-- Features will be generated by JavaScript -->
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-info mb-3">
+                                                    <i class="fas fa-heart me-2"></i>Hướng dẫn bảo quản
+                                                </h6>
+                                                <ul class="list-unstyled" id="care-instructions">
+                                                    <!-- Care instructions will be generated by JavaScript -->
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-lg-4">
+                                        <div class="bg-light rounded p-3">
+                                            <h6 class="text-dark mb-3">
+                                                <i class="fas fa-shield-alt me-2"></i>Chính sách bán hàng
+                                            </h6>
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="bg-success rounded-circle p-2 me-3">
+                                                    <i class="fas fa-undo text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>Đổi trả miễn phí</strong>
+                                                    <br><small class="text-muted">Trong vòng 30 ngày</small>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center mb-3">
+                                                <div class="bg-primary rounded-circle p-2 me-3">
+                                                    <i class="fas fa-shipping-fast text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>Giao hàng toàn quốc</strong>
+                                                    <br><small class="text-muted">Miễn phí từ 500k</small>
+                                                </div>
+                                            </div>
+                                            <div class="d-flex align-items-center">
+                                                <div class="bg-warning rounded-circle p-2 me-3">
+                                                    <i class="fas fa-money-bill text-white"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>Thanh toán COD</strong>
+                                                    <br><small class="text-muted">Thanh toán khi nhận hàng</small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reviews Tab -->
+                        <div class="tab-pane fade" id="reviews" role="tabpanel" aria-labelledby="reviews-tab">
+                            <div class="p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="mb-0 text-primary">
+                                        <i class="fas fa-star me-2"></i>Đánh giá từ khách hàng
+                                    </h5>
+                                    <button type="button" class="btn btn-gradient-primary" data-bs-toggle="modal"
+                                        data-bs-target="#reviewModal">
+                                        <i class="fas fa-edit me-2"></i>Viết đánh giá
+                                    </button>
+                                </div>
+                                <div id="reviews-container">
+                                    <div class="text-center py-5" id="loading-reviews">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">Đang tải đánh giá...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Comments Tab -->
+                        <div class="tab-pane fade" id="comments" role="tabpanel" aria-labelledby="comments-tab">
+                            <div class="p-4">
+                                <div class="d-flex justify-content-between align-items-center mb-4">
+                                    <h5 class="mb-0 text-primary">
+                                        <i class="fas fa-comments me-2"></i>Bình luận sản phẩm
+                                    </h5>
+                                    <button type="button" class="btn btn-gradient-primary" data-bs-toggle="modal"
+                                        data-bs-target="#commentModal">
+                                        <i class="fas fa-comment-dots me-2"></i>Viết bình luận
+                                    </button>
+                                </div>
+                                <div id="comments-container">
+                                    <div class="text-center py-5" id="loading-comments">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="mt-3 text-muted">Đang tải bình luận...</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div class="modal fade" id="commentModal" tabindex="-1" aria-labelledby="commentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="commentModalLabel">Bình luận sản phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if session.user_id %}
+                    <form id="comment-form">
+                        <input type="hidden" name="product_id" value="{{ product.ProductID }}">
+
+                        <div class="mb-3">
+                            <label for="comment-content" class="form-label">Nội dung bình luận</label>
+                            <textarea class="form-control" id="comment-content" name="content" rows="4"
+                                placeholder="Chia sẻ ý kiến của bạn về sản phẩm này..."></textarea>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <p>Vui lòng đăng nhập để bình luận sản phẩm</p>
+                        <a href="{{ url_for('login', next=request.path) }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    {% if session.user_id %}
+                    <button type="button" class="btn btn-primary" id="submit-comment">Gửi bình luận</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recently Viewed Products -->
+    <div class="row mt-4" id="recently-viewed-container" style="display: none;">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h4 class="mb-0">Sản phẩm đã xem gần đây</h4>
+                </div>
+                <div class="card-body">
+                    <div class="row" id="recently-viewed-products">
+                        <!-- Recently viewed products will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Review Modal -->
+    <div class="modal fade" id="reviewModal" tabindex="-1" aria-labelledby="reviewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="reviewModalLabel">Đánh giá sản phẩm</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if session.user_id %}
+                    <form id="review-form">
+                        <input type="hidden" name="product_id" value="{{ product.ProductID }}">
+
+                        <div class="mb-3">
+                            <label class="form-label">Đánh giá của bạn</label>
+                            <div class="rating">
+                                <div class="d-flex justify-content-center fs-3">
+                                    <i class="far fa-star rating-star" data-rating="1"></i>
+                                    <i class="far fa-star rating-star" data-rating="2"></i>
+                                    <i class="far fa-star rating-star" data-rating="3"></i>
+                                    <i class="far fa-star rating-star" data-rating="4"></i>
+                                    <i class="far fa-star rating-star" data-rating="5"></i>
+                                </div>
+                                <input type="hidden" name="rating" id="rating-value" value="0">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="review-comment" class="form-label">Nhận xét của bạn</label>
+                            <textarea class="form-control" id="review-comment" name="comment" rows="4"
+                                placeholder="Chia sẻ trải nghiệm của bạn với sản phẩm này"></textarea>
+                        </div>
+                    </form>
+                    {% else %}
+                    <div class="text-center py-3">
+                        <p>Vui lòng đăng nhập để đánh giá sản phẩm</p>
+                        <a href="{{ url_for('login', next=request.path) }}" class="btn btn-primary">
+                            <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    {% if session.user_id %}
+                    <button type="button" class="btn btn-primary" id="submit-review">Gửi đánh giá</button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Variants data from backend
+    const variants = {{ variants| tojson }};
+    const productId = {{ product.ProductID }};
+
+    let selectedColorId = null;
+    let selectedSizeId = null;
+
+    // Change main image
+    function changeImage(src) {
+        document.getElementById('mainImage').src = src;
+        document.querySelectorAll('.product-thumbnail').forEach(thumb => {
+            thumb.classList.remove('active');
+            if (thumb.src === src) {
+                thumb.classList.add('active');
+            }
+        });
+    }
+
+    // Select color
+    function selectColor(element) {
+        // Remove active class from all colors
+        document.querySelectorAll('.color-swatch').forEach(swatch => {
+            swatch.classList.remove('active');
+        });
+
+        // Add active class to selected color
+        element.classList.add('active');
+
+        // Set selected color ID
+        selectedColorId = element.dataset.colorId;
+        document.getElementById('selectedColor').value = selectedColorId;
+
+        // Check if we can find a variant
+        checkVariant();
+    }
+
+    // Select size
+    function selectSize(element) {
+        // Remove active class from all sizes
+        document.querySelectorAll('.size-option').forEach(option => {
+            option.classList.remove('active');
+        });
+
+        // Add active class to selected size
+        element.classList.add('active');
+
+        // Set selected size ID
+        selectedSizeId = element.dataset.sizeId;
+        document.getElementById('selectedSize').value = selectedSizeId;
+
+        // Check if we can find a variant
+        checkVariant();
+    }
+
+    // Check if a variant exists with selected color and size
+    function checkVariant() {
+        if (selectedColorId && selectedSizeId) {
+            const key = `${selectedColorId}_${selectedSizeId}`;
+            const variant = variants[key];
+
+            if (variant) {
+                // Set variant ID
+                document.getElementById('variantId').value = variant.variant_id;
+
+                // Update stock info
+                const stockInfo = document.getElementById('stockInfo');
+                if (variant.quantity > 0) {
+                    stockInfo.textContent = `Còn ${variant.quantity} sản phẩm trong kho`;
+                    stockInfo.className = 'form-text text-success mt-2';
+
+                    // Set max quantity
+                    document.getElementById('quantity').max = variant.quantity;
+
+                    // Enable add to cart button
+                    document.getElementById('addToCartBtn').disabled = false;
+                } else {
+                    stockInfo.textContent = 'Hết hàng';
+                    stockInfo.className = 'form-text text-danger mt-2';
+
+                    // Disable add to cart button
+                    document.getElementById('addToCartBtn').disabled = true;
+                }
+            } else {
+                // Variant not found
+                document.getElementById('variantId').value = '';
+                document.getElementById('stockInfo').textContent = 'Biến thể sản phẩm không tồn tại';
+                document.getElementById('stockInfo').className = 'form-text text-danger mt-2';
+                document.getElementById('addToCartBtn').disabled = true;
+            }
+        } else {
+            // Not enough selections
+            document.getElementById('variantId').value = '';
+            document.getElementById('stockInfo').textContent = 'Vui lòng chọn màu sắc và kích thước';
+            document.getElementById('stockInfo').className = 'form-text text-muted mt-2';
+            document.getElementById('addToCartBtn').disabled = true;
+        }
+    }
+
+    // Increment quantity
+    function incrementQuantity() {
+        const quantityInput = document.getElementById('quantity');
+        const currentValue = parseInt(quantityInput.value);
+        const maxValue = parseInt(quantityInput.max);
+
+        if (currentValue < maxValue) {
+            quantityInput.value = currentValue + 1;
+        }
+    }
+
+    // Decrement quantity
+    function decrementQuantity() {
+        const quantityInput = document.getElementById('quantity');
+        const currentValue = parseInt(quantityInput.value);
+
+        if (currentValue > 1) {
+            quantityInput.value = currentValue - 1;
+        }
+    }
+
+    // Cập nhật hàm buyNow() trong phần scripts
+    // Buy now function
+    function buyNow() {
+        // Check if variant is selected
+        if (!document.getElementById('variantId').value) {
+            alert('Vui lòng chọn màu sắc và kích thước');
+            return;
+        }
+
+        // Tạo form mới để gửi đến route buy_now
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{{ url_for("buy_now") }}';
+
+        // Thêm variant_id
+        const variantInput = document.createElement('input');
+        variantInput.type = 'hidden';
+        variantInput.name = 'variant_id';
+        variantInput.value = document.getElementById('variantId').value;
+        form.appendChild(variantInput);
+
+        // Thêm quantity
+        const quantityInput = document.createElement('input');
+        quantityInput.type = 'hidden';
+        quantityInput.name = 'quantity';
+        quantityInput.value = document.getElementById('quantity').value;
+        form.appendChild(quantityInput);
+
+        // Thêm form vào document và submit
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    // Initialize with disabled add to cart button
+    document.getElementById('addToCartBtn').disabled = true;
+
+    // Track product view for recently viewed products
+    function trackProductView() {
+        fetch('{{ url_for("track_product_view") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `product_id=${productId}`
+        })
+            .then(response => response.json())
+            .catch(error => {
+                console.error('Error tracking product view:', error);
+            });
+    }
+
+    // Load recently viewed products
+    function loadRecentlyViewedProducts() {
+        fetch('{{ url_for("get_recently_viewed") }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.products.length > 0) {
+                    // Filter out current product
+                    const filteredProducts = data.products.filter(product => product.product_id !== productId);
+
+                    if (filteredProducts.length > 0) {
+                        const container = document.getElementById('recently-viewed-products');
+                        container.innerHTML = '';
+
+                        filteredProducts.forEach(product => {
+                            container.innerHTML += `
+                            <div class="col-md-3 mb-3">
+                                <div class="card product-card h-100">
+                                    <img src="https://via.placeholder.com/300x300/${(product.product_id * 123456).toString(16).padStart(6, '0')}/ffffff?text=${product.product_name}" class="card-img-top product-img" alt="${product.product_name}">
+                                    <div class="card-body">
+                                        <h5 class="card-title">${product.product_name}</h5>
+                                        <p class="card-text text-muted">${product.category_name}</p>
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span class="text-danger fw-bold">${new Intl.NumberFormat('vi-VN').format(product.price)} đ</span>
+                                            <a href="/product/${product.product_id}" class="btn btn-sm btn-outline-primary">Chi tiết</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                        });
+
+                        document.getElementById('recently-viewed-container').style.display = 'block';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error loading recently viewed products:', error);
+            });
+    }
+
+    // Load product reviews
+    function loadProductReviews() {
+        const container = document.getElementById('reviews-container');
+
+        // Clear existing content first
+        container.innerHTML = '<div class="text-center py-5" id="loading-reviews"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-3 text-muted">Đang tải đánh giá...</p></div>';
+
+        fetch(`/api/get_product_reviews?product_id=${productId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Clear loading
+                container.innerHTML = '';
+
+                if (data.success) {
+                    // Update review count in tab
+                    document.getElementById('review-count').textContent = data.total_reviews || 0;
+
+                    if (data.total_reviews > 0) {
+                        let html = `
+                <div class="row g-4 mb-4">
+                    <!-- Rating Summary Card -->
+                    <div class="col-md-4">
+                        <div class="card h-100 border-0 shadow-sm bg-gradient-primary text-white">
+                            <div class="card-body text-center p-4">
+                                <div class="mb-3">
+                                    <div class="display-2 fw-bold mb-2">${data.average_rating.toFixed(1)}</div>
+                                    <div class="fs-3 mb-2">
+            `;
+
+                        // Add stars for average rating
+                        for (let i = 1; i <= 5; i++) {
+                            if (i <= Math.round(data.average_rating)) {
+                                html += '<i class="fas fa-star text-warning"></i>';
+                            } else {
+                                html += '<i class="far fa-star text-white-50"></i>';
+                            }
+                        }
+
+                        html += `
+                                    </div>
+                                    <p class="mb-0 fs-5 opacity-90">${data.total_reviews} đánh giá</p>
+                                </div>
+                                <div class="text-center">
+                                    <small class="opacity-75">Đánh giá trung bình</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Rating Breakdown -->
+                    <div class="col-md-8">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body p-4">
+                                <h6 class="card-title mb-4 text-dark">
+                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
+                                    Phân phối đánh giá
+                                </h6>
+            `;
+
+                        // Add rating breakdown
+                        for (let star = 5; star >= 1; star--) {
+                            const count = data.rating_breakdown[star] || 0;
+                            const percentage = data.total_reviews > 0 ? (count / data.total_reviews * 100) : 0;
+
+                            html += `
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="me-3 text-end" style="width: 70px;">
+                                <span class="fw-bold text-dark">${star}</span>
+                                <i class="fas fa-star text-warning ms-1"></i>
+                            </div>
+                            <div class="progress flex-grow-1 me-3" style="height: 10px;">
+                                <div class="progress-bar bg-warning" role="progressbar"
+                                    style="width: ${percentage}%;"
+                                    aria-valuenow="${percentage}"
+                                    aria-valuemin="0" aria-valuemax="100">
+                                </div>
+                            </div>
+                            <span class="fw-bold text-muted" style="width: 40px;">${count}</span>
+                        </div>
+                        `;
+                        }
+
+                        html += `
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Reviews List -->
+                <div class="reviews-list">
+                    <div class="d-flex align-items-center justify-content-between mb-4">
+                        <h6 class="mb-0 text-dark">
+                            <i class="fas fa-comments me-2 text-primary"></i>
+                            Nhận xét từ khách hàng
+                        </h6>
+                        <small class="text-muted">${data.total_reviews} đánh giá</small>
+                    </div>
+            `;
+
+                        // Add individual reviews
+                        if (data.reviews.length > 0) {
+                            data.reviews.forEach((review, index) => {
+                                html += `
+                        <div class="review-card mb-4">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body p-4">
+                                    <div class="row">
+                                        <div class="col-auto">
+                                            <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
+                                                <i class="fas fa-user"></i>
+                                            </div>
+                                        </div>
+                                        <div class="col">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold text-dark">${review.customer_name}</h6>
+                                                    <div class="rating-stars mb-2">
+                `;
+
+                                // Add stars for this review
+                                for (let i = 1; i <= 5; i++) {
+                                    if (i <= review.rating) {
+                                        html += '<i class="fas fa-star text-warning"></i>';
+                                    } else {
+                                        html += '<i class="far fa-star text-muted"></i>';
+                                    }
+                                }
+
+                                html += `
+                                                    </div>
+                                                </div>
+                                                <small class="text-muted">
+                                                    <i class="fas fa-calendar-alt me-1"></i>${review.review_date}
+                                                </small>
+                                            </div>
+                                            ${review.comment ?
+                                        `<p class="mb-0 text-dark lh-base">${review.comment}</p>` :
+                                        '<p class="mb-0 text-muted fst-italic">Khách hàng đã đánh giá nhưng không để lại nhận xét</p>'
+                                    }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                            });
+                        }
+
+                        html += `</div>`;
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                <div class="empty-state text-center py-5">
+                    <div class="mb-4">
+                        <div class="empty-icon mx-auto mb-3">
+                            <i class="far fa-star fa-4x text-muted opacity-50"></i>
+                        </div>
+                        <h5 class="text-muted mb-3">Chưa có đánh giá nào</h5>
+                        <p class="text-muted mb-4">Sản phẩm này chưa có đánh giá từ khách hàng.<br>Hãy là người đầu tiên chia sẻ trải nghiệm của bạn!</p>
+                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#reviewModal">
+                            <i class="fas fa-star me-2"></i>Viết đánh giá đầu tiên
+                        </button>
+                    </div>
+                </div>
+            `;
+                    }
+                } else {
+                    container.innerHTML = `
+            <div class="alert alert-danger border-0 shadow-sm">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
+                    <div>
+                        <h6 class="mb-1">Không thể tải đánh giá</h6>
+                        <p class="mb-0">${data.message || 'Đã xảy ra lỗi khi tải đánh giá'}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading reviews:', error);
+                container.innerHTML = `
+        <div class="alert alert-danger border-0 shadow-sm">
+            <div class="d-flex align-items-center">
+                <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
+                <div>
+                    <h6 class="mb-1">Lỗi kết nối</h6>
+                    <p class="mb-0">Không thể tải đánh giá. Vui lòng thử lại sau.</p>
+                </div>
+            </div>
+        </div>
+    `;
+            });
+    }
+
+    // Load product comments
+    function loadProductComments() {
+        const container = document.getElementById('comments-container');
+
+        // Clear existing content first
+        container.innerHTML = '<div class="text-center py-5" id="loading-comments"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-3 text-muted">Đang tải bình luận...</p></div>';
+
+        fetch(`/api/get_product_comments?product_id=${productId}`)
+            .then(response => response.json())
+            .then(data => {
+                // Clear loading
+                container.innerHTML = '';
+
+                if (data.success) {
+                    // Update comment count in tab
+                    document.getElementById('comment-count').textContent = data.comments.length || 0;
+
+                    if (data.comments.length > 0) {
+                        let html = `<div class="comments-list">`;
+
+                        // Add individual comments
+                        data.comments.forEach((comment, index) => {
+                            html += `
+                    <div class="comment-item mb-4 p-4 bg-light rounded-3 shadow-sm">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-success rounded-circle d-flex align-items-center justify-content-center me-3" 
+                                     style="width: 50px; height: 50px;">
+                                    <i class="fas fa-user text-white"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 fw-bold">${comment.customer_name}</h6>
+                                    <small class="text-muted">
+                                        <i class="fas fa-clock me-1"></i>${comment.comment_date}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                        <p class="mb-0 text-dark">${comment.content}</p>
+                        ${comment.reply ? `
+                        <div class="admin-reply mt-3 p-3 bg-white rounded-2 border-start border-primary border-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <div class="bg-primary rounded-circle d-flex align-items-center justify-content-center me-2" 
+                                     style="width: 30px; height: 30px;">
+                                    <i class="fas fa-store text-white" style="font-size: 12px;"></i>
+                                </div>
+                                <strong class="text-primary">Phản hồi từ cửa hàng</strong>
+                            </div>
+                            <p class="mb-0 text-dark">${comment.reply}</p>
+                        </div>` : ''}
+                    </div>
+                `;
+                        });
+
+                        html += `</div>`;
+                        container.innerHTML = html;
+                    } else {
+                        container.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="far fa-comments fa-4x text-muted opacity-50"></i>
+                    </div>
+                    <h5 class="text-muted">Chưa có bình luận nào</h5>
+                    <p class="text-muted mb-4">Hãy là người đầu tiên bình luận về sản phẩm này</p>
+                    <button type="button" class="btn btn-gradient-primary" data-bs-toggle="modal" data-bs-target="#commentModal">
+                        <i class="fas fa-comment-dots me-2"></i>Viết bình luận đầu tiên
+                    </button>
+                </div>
+            `;
+                    }
+                } else {
+                    container.innerHTML = `
+            <div class="alert alert-danger border-0 shadow-sm">
+                <i class="fas fa-exclamation-triangle me-2"></i>${data.message || 'Đã xảy ra lỗi khi tải bình luận'}
+            </div>
+        `;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading comments:', error);
+                container.innerHTML = `
+        <div class="alert alert-danger border-0 shadow-sm">
+            <i class="fas fa-exclamation-triangle me-2"></i>Đã xảy ra lỗi khi tải bình luận
+        </div>
+    `;
+            });
+    }
+
+    // Submit comment - chỉ bind một lần
+    const submitCommentBtn = document.getElementById('submit-comment');
+    if (submitCommentBtn && !submitCommentBtn.hasAttribute('data-bound')) {
+        submitCommentBtn.setAttribute('data-bound', 'true');
+        submitCommentBtn.addEventListener('click', function () {
+            const content = document.getElementById('comment-content').value;
+
+            if (!content.trim()) {
+                alert('Vui lòng nhập nội dung bình luận');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('content', content);
+
+            fetch('{{ url_for("add_comment") }}', {
+                method: 'POST',
+                body: formData
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        $('#commentModal').modal('hide');
+                        document.getElementById('comment-content').value = ''; // Clear form
+
+                        // Reload comments
+                        loadProductComments();
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting comment:', error);
+                    alert('Đã xảy ra lỗi khi gửi bình luận');
+                });
+        });
+    }
+
+    // Generate dynamic product description
+function generateProductDescription() {
+        const productName = "{{ product.ProductName }}";
+        const categoryName = "{{ product.CategoryName }}";
+        const price = {{ product.Price }};
+
+    // Description templates based on category and product type
+    const descriptions = {
+        'Áo nam': [
+            `${productName} là sự lựa chọn hoàn hảo cho phái mạnh hiện đại. Được thiết kế với chất liệu cao cấp và đường cắt may tinh tế, sản phẩm mang đến sự thoải mái tối đa trong mọi hoạt động. Form dáng vừa vặn, không quá rộng hay quá ôm, phù hợp với nhiều vóc dáng khác nhau.`,
+            `Chiếc áo này được chế tác từ chất liệu cotton cao cấp, mang lại cảm giác mềm mại và thoáng khí. Thiết kế hiện đại với những chi tiết tinh tế, ${productName} dễ dàng kết hợp với nhiều trang phục khác nhau, từ quần jeans casual đến quần tây lịch lãm.`,
+            `${productName} thể hiện phong cách thời trang nam tính và lịch lãm. Với chất liệu được tuyển chọn kỹ lưỡng và công nghệ may tiên tiến, sản phẩm đảm bảo độ bền cao và giữ form dáng tốt sau nhiều lần giặt.`
+        ],
+        'Áo nữ': [
+            `${productName} là biểu tượng của sự thanh lịch và nữ tính. Thiết kế tinh tế với những đường nét mềm mại, tôn lên vẻ đẹp tự nhiên của phái đẹp. Chất liệu cao cấp mang lại cảm giác thoải mái suốt cả ngày dài.`,
+            `Được thiết kế dành riêng cho phụ nữ hiện đại, ${productName} kết hợp hoàn hảo giữa phong cách và sự tiện dụng. Form dáng ôm vừa phải, tôn dáng mà vẫn đảm bảo sự thoải mái trong mọi chuyển động.`,
+            `${productName} mang đến vẻ đẹp quyến rũ và sang trọng. Với chất liệu mềm mại, thấm hút mồ hôi tốt và thiết kế thời trang, đây là lựa chọn lý tưởng cho cả công việc và cuộc sống hàng ngày.`
+        ],
+        'Quần nam': [
+            `${productName} được thiết kế với form dáng chuẩn, mang lại vẻ ngoài lịch lãm và chuyên nghiệp. Chất liệu cao cấp đảm bảo độ bền và sự thoải mái trong mọi hoạt động. Đây là item không thể thiếu trong tủ đồ của mọi quý ông.`,
+            `Chiếc quần này kết hợp hoàn hảo giữa phong cách cổ điển và xu hướng hiện đại. ${productName} có độ co giãn nhẹ, tạo cảm giác thoải mái khi vận động mà vẫn giữ được form dáng đẹp.`,
+            `${productName} thể hiện gu thẩm mỹ tinh tế của người đàn ông hiện đại. Với thiết kế tối giản nhưng không kém phần sang trọng, sản phẩm dễ dàng phối hợp với nhiều loại áo khác nhau.`
+        ],
+        'Quần nữ': [
+            `${productName} là sự kết hợp hoàn hảo giữa thời trang và tính thực dụng. Thiết kế hiện đại với đường cắt may tinh tế, tôn lên đường cong tự nhiên của cơ thể. Chất liệu cao cấp mang lại cảm giác mềm mại và thoải mái.`,
+            `Được thiết kế dành riêng cho phụ nữ năng động, ${productName} có form dáng vừa vặn, không quá ôm hay quá rộng. Sản phẩm dễ dàng kết hợp với nhiều kiểu áo khác nhau, từ áo thun casual đến áo sơ mi công sở.`,
+            `${productName} mang đến phong cách thời trang hiện đại và nữ tính. Với chất liệu co giãn nhẹ và thiết kế thông minh, sản phẩm đảm bảo sự thoải mái tối đa trong mọi hoạt động hàng ngày.`
+        ],
+        'Váy đầm': [
+            `${productName} là hiện thân của sự thanh lịch và quyến rũ. Thiết kế tinh tế với những chi tiết độc đáo, tôn lên vẻ đẹp tự nhiên của người phụ nữ. Chất liệu cao cấp mang lại cảm giác mềm mại và thoải mái.`,
+            `Chiếc váy này được thiết kế để tôn vinh vẻ đẹp nữ tính. ${productName} có form dáng ôm vừa phải, tạo silhouette hoàn hảo. Phù hợp cho nhiều dịp khác nhau, từ công việc đến những buổi hẹn hò lãng mạn.`,
+            `${productName} mang đến phong cách thời trang hiện đại và sang trọng. Với thiết kế độc đáo và chất liệu cao cấp, đây là lựa chọn hoàn hảo cho những cô gái yêu thích sự khác biệt.`
+        ]
+    };
+
+    const features = {
+        'Áo nam': [
+            'Chất liệu cotton cao cấp, thấm hút mồ hôi tốt',
+            'Form dáng chuẩn, phù hợp nhiều vóc dáng',
+            'Đường may tỉ mỉ, chắc chắn',
+            'Màu sắc bền đẹp, không phai sau nhiều lần giặt',
+            'Dễ dàng phối đồ với nhiều trang phục khác'
+        ],
+        'Áo nữ': [
+            'Chất liệu mềm mại, thoáng khí',
+            'Thiết kế nữ tính, tôn dáng',
+            'Form áo ôm vừa phải, thoải mái',
+            'Chi tiết tinh tế, sang trọng',
+            'Phù hợp cho nhiều dịp khác nhau'
+        ],
+        'Quần nam': [
+            'Chất liệu cao cấp, bền bỉ theo thời gian',
+            'Form dáng chuẩn, lịch lãm',
+            'Có độ co giãn nhẹ, thoải mái vận động',
+            'Túi may chắc chắn, tiện dụng',
+            'Dễ dàng bảo quản và giặt ủi'
+        ],
+        'Quần nữ': [
+            'Chất liệu co giãn, ôm dáng tự nhiên',
+            'Thiết kế hiện đại, thời trang',
+            'Đường cắt may tinh tế, tôn dáng',
+            'Thoải mái trong mọi hoạt động',
+            'Phối hợp dễ dàng với nhiều kiểu áo'
+        ],
+        'Váy đầm': [
+            'Chất liệu cao cấp, mềm mại',
+            'Thiết kế nữ tính, quyến rũ',
+            'Form dáng ôm vừa phải, tôn silhouette',
+            'Chi tiết tinh tế, sang trọng',
+            'Phù hợp cho nhiều dịp đặc biệt'
+        ]
+    };
+
+    const careInstructions = [
+        'Giặt máy ở nhiệt độ dưới 30°C',
+        'Không sử dụng chất tẩy mạnh',
+        'Ủi ở nhiệt độ trung bình',
+        'Phơi trong bóng râm, tránh ánh nắng trực tiếp',
+        'Bảo quản nơi khô ráo, thoáng mát'
+    ];
+
+    // Get random description based on category
+    const categoryDescriptions = descriptions[categoryName] || descriptions['Áo nam'];
+    const randomDescription = categoryDescriptions[Math.floor(Math.random() * categoryDescriptions.length)];
+
+    // Get features based on category
+    const categoryFeatures = features[categoryName] || features['Áo nam'];
+
+    // Update description
+    document.getElementById('product-description').innerHTML = `<p class="lead">${randomDescription}</p>`;
+
+    // Update features
+    const featuresHtml = categoryFeatures.map(feature =>
+        `<li class="mb-2"><i class="fas fa-star text-warning me-2"></i>${feature}</li>`
+    ).join('');
+    document.getElementById('product-features').innerHTML = featuresHtml;
+
+    // Update care instructions
+    const careHtml = careInstructions.map(instruction =>
+        `<li class="mb-2"><i class="fas fa-info-circle text-info me-2"></i>${instruction}</li>`
+    ).join('');
+    document.getElementById('care-instructions').innerHTML = careHtml;
+}
+
+    // Initialize everything when DOM is ready - chỉ chạy một lần
+    let initialized = false;
+    document.addEventListener('DOMContentLoaded', function () {
+        if (initialized) return;
+        initialized = true;
+
+        // Generate product description
+        generateProductDescription();
+
+        // Track product view
+        trackProductView();
+
+        // Load recently viewed products
+        loadRecentlyViewedProducts();
+
+        // Load product reviews
+        loadProductReviews();
+
+        // Load product comments
+        loadProductComments();
+    });
+    
+    document.getElementById('addToWishlistBtn').addEventListener('click', function () {
+        fetch('{{ url_for("add_to_wishlist") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                product_id: productId
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Đã thêm sản phẩm vào danh sách yêu thích!');
+                } else {
+                    alert(data.message || 'Có lỗi xảy ra khi thêm vào yêu thích.');
+                }
+            })
+            .catch(error => {
+                console.error('Error adding to wishlist:', error);
+                alert('Lỗi kết nối đến máy chủ.');
+            });
+    });
+
+</script>
+<style>
+    .avatar-circle {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .rating-stars i {
+        font-size: 14px;
+        margin-right: 2px;
+    }
+
+    .review-card {
+        transition: transform 0.2s ease;
+    }
+
+    .review-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .empty-state .empty-icon {
+        width: 80px;
+        height: 80px;
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .btn-gradient-primary {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        color: white;
+    }
+
+    .btn-gradient-primary:hover {
+        background: linear-gradient(45deg, #0056b3, #004085);
+        color: white;
+    }
+
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,364 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản trị - Dashboard - Fashion Store{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px - 300px);
+    }
+
+    .stats-card {
+        border-left: 4px solid;
+        transition: transform 0.3s;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .stats-card.primary {
+        border-left-color: var(--primary-color);
+    }
+
+    .stats-card.success {
+        border-left-color: #28a745;
+    }
+
+    .stats-card.info {
+        border-left-color: #17a2b8;
+    }
+
+    .stats-card.warning {
+        border-left-color: #ffc107;
+    }
+
+    /* Thêm CSS cho wrapper cuộn riêng */
+    .main-content {
+        height: calc(100vh - 56px);
+        /* trừ navbar cao ~56px */
+        overflow-y: auto;
+        /* bật scroll dọc riêng */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Bắt đầu wrapper scrollable -->
+<div class="main-content">
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-3 col-lg-2">
+                <div class="list-group admin-sidebar mb-4">
+                    <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                    </a>
+                    <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-box me-2"></i>Sản phẩm
+                    </a>
+                    <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+                    </a>
+                    <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-comments me-2"></i>Bình luận
+                    </a>
+                    <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-chart-bar me-2"></i>Báo cáo
+                    </a>
+                    <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+                    </a>
+                    <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action text-primary">
+                        <i class="fas fa-store me-2"></i>Xem cửa hàng
+                    </a>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-md-9 col-lg-10">
+                <h2 class="mb-4">Dashboard</h2>
+
+                <!-- Stats Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-6 col-lg-3 mb-4">
+                        <div class="card stats-card primary h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Doanh thu tháng này</h6>
+                                        <h3 class="mb-0">
+                                            {% set current_month_revenue = 0 %}
+                                            {% for revenue in monthly_revenue %}
+                                            {% if revenue.Year == now.year and revenue.Month == now.month %}
+                                            {% set current_month_revenue = revenue.TotalRevenue %}
+                                            {% endif %}
+                                            {% endfor %}
+                                            {{ "{:,.0f}".format(current_month_revenue) }} đ
+                                        </h3>
+                                    </div>
+                                    <div class="bg-light rounded-circle p-3">
+                                        <i class="fas fa-money-bill-wave text-primary fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-4">
+                        <div class="card stats-card success h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Đơn hàng tháng này</h6>
+                                        <h3 class="mb-0">
+                                            {% set current_month_orders = 0 %}
+                                            {% for revenue in monthly_revenue %}
+                                            {% if revenue.Year == now.year and revenue.Month == now.month %}
+                                            {% set current_month_orders = revenue.OrderCount %}
+                                            {% endif %}
+                                            {% endfor %}
+                                            {{ current_month_orders }}
+                                        </h3>
+                                    </div>
+                                    <div class="bg-light rounded-circle p-3">
+                                        <i class="fas fa-shopping-bag text-success fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-4">
+                        <div class="card stats-card info h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Sản phẩm đã bán</h6>
+                                        <h3 class="mb-0">
+                                            {% set total_sold = 0 %}
+                                            {% for product in best_selling %}
+                                            {% set total_sold = total_sold + product.TotalSold %}
+                                            {% endfor %}
+                                            {{ total_sold }}
+                                        </h3>
+                                    </div>
+                                    <div class="bg-light rounded-circle p-3">
+                                        <i class="fas fa-box-open text-info fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 col-lg-3 mb-4">
+                        <div class="card stats-card warning h-100">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <h6 class="text-muted">Danh mục sản phẩm</h6>
+                                        <h3 class="mb-0">{{ category_revenue|length }}</h3>
+                                    </div>
+                                    <div class="bg-light rounded-circle p-3">
+                                        <i class="fas fa-tags text-warning fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="row mb-4">
+                    <div class="col-lg-8 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-dark text-white py-2">
+                                <h5 class="mb-0">Doanh thu theo tháng</h5>
+                            </div>
+                            <div class="card-body p-2" style="height:300px;">
+                                <canvas id="revenueChart" height="60"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mb-4">
+                        <div class="card h-100">
+                            <div class="card-header bg-dark text-white py-2">
+                                <h5 class="mb-0">Doanh thu theo danh mục</h5>
+                            </div>
+                            <div class="card-body p-2" style="height:300px;">
+                                <canvas id="categoryChart" height="60"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Best Selling Products -->
+                <div class="card mb-4">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Sản phẩm bán chạy</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th>Danh mục</th>
+                                        <th>Đã bán</th>
+                                        <th>Doanh thu</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for product in best_selling %}
+                                    <tr>
+                                        <td>{{ product.ProductName }}</td>
+                                        <td>{{ product.CategoryName }}</td>
+                                        <td>{{ product.TotalSold }}</td>
+                                        <td>{{ "{:,.0f}".format(product.TotalRevenue|default(0)) }} đ</td>
+                                        <td>
+                                            <a href="{{ url_for('product_detail', product_id=product.ProductID) }}"
+                                                class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{{ url_for('admin_edit_product', product_id=product.ProductID) }}"
+                                                class="btn btn-sm btn-outline-secondary">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Revenue -->
+                <div class="card">
+                    <div class="card-header bg-dark text-white">
+                        <h5 class="mb-0">Doanh thu gần đây</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Năm</th>
+                                        <th>Tháng</th>
+                                        <th>Số đơn hàng</th>
+                                        <th>Doanh thu</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for revenue in monthly_revenue[:6] %}
+                                    <tr>
+                                        <td>{{ revenue.Year }}</td>
+                                        <td>{{ revenue.Month }}</td>
+                                        <td>{{ revenue.OrderCount }}</td>
+                                        <td>{{ "{:,.0f}".format(revenue.TotalRevenue) }} đ</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<!-- Kết thúc wrapper scrollable -->
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script>
+    // Dữ liệu cho biểu đồ doanh thu theo tháng
+    const months = [];
+    const revenues = [];
+
+    {% for revenue in monthly_revenue[: 12]| reverse %}
+    months.push('{{ revenue.Month }}/{{ revenue.Year }}');
+    revenues.push({{ revenue.TotalRevenue }});
+    {% endfor %}
+
+    // Dữ liệu cho biểu đồ doanh thu theo danh mục
+    const categories = [];
+    const categoryRevenues = [];
+    const backgroundColors = [
+        '#ff6b6b', '#546de5', '#2c3e50', '#f8c291', '#3dc1d3', '#f78fb3', '#7bed9f', '#e15f41'
+    ];
+
+    {% for category in category_revenue %}
+    categories.push('{{ category.CategoryName }}');
+    categoryRevenues.push({{ category.TotalRevenue }});
+    {% endfor %}
+
+    // Biểu đồ doanh thu theo tháng
+    const revenueChart = new Chart(
+        document.getElementById('revenueChart'),
+        {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Doanh thu (đ)',
+                    data: revenues,
+                    fill: false,
+                    borderColor: '#ff6b6b',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return new Intl.NumberFormat('vi-VN').format(value) + ' đ';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+
+    // Biểu đồ doanh thu theo danh mục
+    const categoryChart = new Chart(
+        document.getElementById('categoryChart'),
+        {
+            type: 'doughnut',
+            data: {
+                labels: categories,
+                datasets: [{
+                    data: categoryRevenues,
+                    backgroundColor: backgroundColors,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                label += new Intl.NumberFormat('vi-VN').format(context.raw) + ' đ';
+                                return label;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    );
+</script>
+{% endblock %}

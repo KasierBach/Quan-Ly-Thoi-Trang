@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}Xác nhận đơn hàng - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body text-center p-5">
+                    <i class="fas fa-check-circle text-success fa-5x mb-4"></i>
+                    <h2 class="mb-4">Đặt hàng thành công!</h2>
+                    <p class="lead">Cảm ơn bạn đã mua sắm tại Fashion Store.</p>
+                    <p>Đơn hàng của bạn đã được xác nhận và đang được xử lý.</p>
+                    <p>Mã đơn hàng: <strong>#{{ order.OrderID }}</strong></p>
+                    <hr class="my-4">
+
+                    <div class="text-start mb-4">
+                        <h5>Thông tin đơn hàng:</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Ngày đặt hàng:</strong> {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</p>
+                                <p><strong>Trạng thái:</strong> {{ order.Status }}</p>
+                                <p><strong>Phương thức thanh toán:</strong> {{ order.PaymentMethod }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Tổng tiền:</strong> {{ "{:,.0f}".format(order.TotalAmount) }} đ</p>
+                                <p><strong>Địa chỉ giao hàng:</strong> {{ order.ShippingAddress }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="text-start mb-4">
+                        <h5>Chi tiết đơn hàng:</h5>
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Sản phẩm</th>
+                                        <th>Màu sắc</th>
+                                        <th>Kích thước</th>
+                                        <th>Số lượng</th>
+                                        <th class="text-end">Giá</th>
+                                        <th class="text-end">Tổng</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in order_details %}
+                                    <tr>
+                                        <td>{{ item.ProductName }}</td>
+                                        <td>{{ item.ColorName }}</td>
+                                        <td>{{ item.SizeName }}</td>
+                                        <td>{{ item.Quantity }}</td>
+                                        <td class="text-end">{{ "{:,.0f}".format(item.Price) }} đ</td>
+                                        <td class="text-end">{{ "{:,.0f}".format(item.Subtotal) }} đ</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="5" class="text-end">Tổng cộng:</th>
+                                        <th class="text-end">{{ "{:,.0f}".format(order.TotalAmount) }} đ</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <a href="{{ url_for('home') }}" class="btn btn-primary">
+                            <i class="fas fa-home me-2"></i>Trang chủ
+                        </a>
+                        <a href="{{ url_for('my_account') }}" class="btn btn-outline-primary">
+                            <i class="fas fa-user me-2"></i>Tài khoản của tôi
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

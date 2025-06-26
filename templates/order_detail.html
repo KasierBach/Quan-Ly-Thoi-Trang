@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết đơn hàng #{{ order.OrderID }} - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('my_account') }}">Tài khoản của tôi</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Đơn hàng #{{ order.OrderID }}</li>
+        </ol>
+    </nav>
+
+    <div class="card mb-4">
+        <div class="card-header bg-dark text-white">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Chi tiết đơn hàng #{{ order.OrderID }}</h5>
+                <span
+                    class="badge {% if order.Status == 'Pending' %}bg-warning{% elif order.Status == 'Processing' %}bg-info{% elif order.Status == 'Shipped' %}bg-primary{% elif order.Status == 'Delivered' %}bg-success{% elif order.Status == 'Cancelled' %}bg-danger{% else %}bg-secondary{% endif %}">
+                    {{ order.Status }}
+                </span>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6>Thông tin đơn hàng</h6>
+                    <p><strong>Mã đơn hàng:</strong> #{{ order.OrderID }}</p>
+                    <p><strong>Ngày đặt hàng:</strong> {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') if order.OrderDate
+                        else 'N/A' }}</p>
+                    <p><strong>Phương thức thanh toán:</strong> {{ order.PaymentMethod or 'N/A' }}</p>
+                    <p><strong>Tổng tiền:</strong> {{ "{:,.0f}".format(order.TotalAmount|default(0, true)) }} đ</p>
+                </div>
+                <div class="col-md-6">
+                    <h6>Thông tin giao hàng</h6>
+                    <p><strong>Người nhận:</strong> {{ order.CustomerName or 'N/A' }}</p>
+                    <p><strong>Email:</strong> {{ order.CustomerEmail or 'N/A' }}</p>
+                    <p><strong>Số điện thoại:</strong> {{ order.CustomerPhone or 'Không có' }}</p>
+                    <p><strong>Địa chỉ giao hàng:</strong> {{ order.ShippingAddress or 'N/A' }}</p>
+                </div>
+            </div>
+
+            <h6>Sản phẩm đã đặt</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Sản phẩm</th>
+                            <th>Màu sắc</th>
+                            <th>Kích thước</th>
+                            <th>Giá</th>
+                            <th>Số lượng</th>
+                            <th class="text-end">Tổng</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in order_details %}
+                        <tr>
+                            <td>{{ item.ProductName or 'N/A' }}</td>
+                            <td>{{ item.ColorName or 'N/A' }}</td>
+                            <td>{{ item.SizeName or 'N/A' }}</td>
+                            <td>{{ "{:,.0f}".format(item.UnitPrice|default(0, true)) }} đ</td>
+                            <td>{{ item.Quantity|default(0, true) }}</td>
+                            <td class="text-end">{{ ((item.Quantity|default(0, true)) * (item.UnitPrice|default(0, true))) | int | string | replace(",", ".") }} đ</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if order.Status == 'Pending' %}
+    <div class="text-center mt-1">
+        <button id="cancel-order-btn" data-order-id="{{ order.OrderID }}" class="btn btn-danger btn-lg">
+            <i class="bi bi-x-circle"></i> Hủy đơn hàng
+        </button>
+    </div>
+{% endif %}
+
+<script>
+    document.getElementById('cancel-order-btn')?.addEventListener('click', function() {
+        const orderId = this.getAttribute('data-order-id');
+        if (confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
+            fetch('/cancel_order/' + orderId, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    window.location.reload(); // Tải lại trang để cập nhật trạng thái
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Đã xảy ra lỗi khi hủy đơn hàng');
+            });
+        }
+    });
+</script>
+{% endblock %}

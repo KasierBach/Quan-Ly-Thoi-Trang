@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block title %}Tài khoản của tôi - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Tài khoản của tôi</h2>
+
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">{{ customer.FullName }}</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="#profile" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                        <i class="fas fa-user me-2"></i>Thông tin cá nhân
+                    </a>
+                    <a href="#orders" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-shopping-bag me-2"></i>Đơn hàng của tôi
+                    </a>
+                    <a href="#address" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-map-marker-alt me-2"></i>Địa chỉ
+                    </a>
+                    <a href="#password" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-key me-2"></i>Đổi mật khẩu
+                    </a>
+                    <a href="#appearance" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                        <i class="fas fa-palette me-2"></i>Giao diện
+                    </a>
+                    <a href="{{ url_for('logout') }}" class="list-group-item list-group-item-action text-danger">
+                        <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="col-md-9">
+            <div class="tab-content">
+                <!-- Profile Tab -->
+                <div class="tab-pane fade show active" id="profile">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Thông tin cá nhân</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if profile_updated %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                Thông tin cá nhân đã được cập nhật thành công!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endif %}
+                            <form action="{{ url_for('update_profile') }}" method="post">
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="fullName" class="form-label">Họ và tên</label>
+                                        <input type="text" class="form-control" id="fullName" name="full_name"
+                                            value="{{ customer.FullName }}" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="email" class="form-label">Email</label>
+                                        <input type="email" class="form-control" id="email" value="{{ customer.Email }}"
+                                            readonly>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Số điện thoại</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone"
+                                        value="{{ customer.PhoneNumber or '' }}">
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Cập nhật thông tin
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Tab -->
+                <div class="tab-pane fade" id="orders">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Đơn hàng của tôi</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if orders %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Mã đơn hàng</th>
+                                            <th>Ngày đặt</th>
+                                            <th>Tổng tiền</th>
+                                            <th>Trạng thái</th>
+                                            <th>Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for order in orders %}
+                                        <tr>
+                                            <td>#{{ order.OrderID }}</td>
+                                            <td>{{ order.OrderDate.strftime('%d/%m/%Y') }}</td>
+                                            <td>{{ "{:,.0f}".format(order.TotalAmount) }} đ</td>
+                                            <td>
+                                                {% if order.Status == 'Pending' %}
+                                                <span class="badge bg-warning">Chờ xử lý</span>
+                                                {% elif order.Status == 'Processing' %}
+                                                <span class="badge bg-info">Đang xử lý</span>
+                                                {% elif order.Status == 'Shipped' %}
+                                                <span class="badge bg-primary">Đang giao</span>
+                                                {% elif order.Status == 'Delivered' %}
+                                                <span class="badge bg-success">Đã giao</span>
+                                                {% elif order.Status == 'Cancelled' %}
+                                                <span class="badge bg-danger">Đã hủy</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">{{ order.Status }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <a href="{{ url_for('order_detail_view', order_id=order.OrderID) }}"
+                                                    class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Chi tiết
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-shopping-bag fa-3x mb-3 text-muted"></i>
+                                <h5>Bạn chưa có đơn hàng nào</h5>
+                                <p class="text-muted">Hãy mua sắm và quay lại đây để xem lịch sử đơn hàng của bạn</p>
+                                <a href="{{ url_for('products') }}" class="btn btn-primary mt-2">
+                                    <i class="fas fa-shopping-bag me-2"></i>Mua sắm ngay
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Address Tab -->
+                <div class="tab-pane fade" id="address">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Địa chỉ</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if address_updated %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                Địa chỉ đã được cập nhật thành công!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endif %}
+                            <form action="{{ url_for('update_address') }}" method="post">
+                                <div class="mb-3">
+                                    <label for="address" class="form-label">Địa chỉ giao hàng mặc định</label>
+                                    <textarea class="form-control" id="address" name="address" rows="3"
+                                        required>{{ customer.Address or '' }}</textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save me-2"></i>Cập nhật địa chỉ
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Password Tab -->
+                <div class="tab-pane fade" id="password">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Đổi mật khẩu</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if password_updated %}
+                            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                Mật khẩu đã được cập nhật thành công!
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endif %}
+                            {% if password_error %}
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                {{ password_error }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"
+                                    aria-label="Close"></button>
+                            </div>
+                            {% endif %}
+                            <form action="{{ url_for('change_password') }}" method="post" id="passwordForm">
+                                <div class="mb-3">
+                                    <label for="currentPassword" class="form-label">Mật khẩu hiện tại</label>
+                                    <input type="password" class="form-control" id="currentPassword"
+                                        name="current_password" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="newPassword" class="form-label">Mật khẩu mới</label>
+                                    <input type="password" class="form-control" id="newPassword" name="new_password"
+                                        required>
+                                    <div class="form-text">Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường
+                                        và số.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="confirmPassword" class="form-label">Xác nhận mật khẩu mới</label>
+                                    <input type="password" class="form-control" id="confirmPassword"
+                                        name="confirm_password" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-key me-2"></i>Đổi mật khẩu
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Appearance Tab -->
+                <div class="tab-pane fade" id="appearance">
+                    <div class="card">
+                        <div class="card-header bg-dark text-white">
+                            <h5 class="mb-0">Giao diện</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-4">
+                                <h6>Chế độ hiển thị</h6>
+                                <div class="d-flex mt-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="darkModeToggle" {% if
+                                            customer.DarkModeEnabled %}checked{% endif %}>
+                                        <label class="form-check-label" for="darkModeToggle">
+                                            <i class="fas fa-moon me-2"></i>Chế độ tối
+                                        </label>
+                                    </div>
+                                </div>
+                                <p class="form-text mt-2">Chế độ tối giúp giảm ánh sáng xanh, tiết kiệm pin và dễ chịu
+                                    hơn cho mắt khi sử dụng vào ban đêm.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Kiểm tra mật khẩu trùng khớp
+    document.getElementById('passwordForm').addEventListener('submit', function (e) {
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmPassword = document.getElementById('confirmPassword').value;
+
+        if (newPassword !== confirmPassword) {
+            e.preventDefault();
+            alert('Mật khẩu xác nhận không khớp với mật khẩu mới!');
+        }
+
+        // Kiểm tra độ mạnh mật khẩu
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
+        if (!passwordRegex.test(newPassword)) {
+            e.preventDefault();
+            alert('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số!');
+        }
+    });
+
+    // Xử lý chế độ tối
+    document.getElementById('darkModeToggle').addEventListener('change', function () {
+        const isDarkMode = this.checked;
+
+        // Gửi yêu cầu cập nhật chế độ tối
+        fetch('{{ url_for("toggle_dark_mode") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `dark_mode=${isDarkMode ? 1 : 0}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Áp dụng chế độ tối ngay lập tức
+                    document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
+
+                    // Lưu trạng thái vào localStorage
+                    localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+                }
+            });
+    });
+</script>
+{% endblock %}

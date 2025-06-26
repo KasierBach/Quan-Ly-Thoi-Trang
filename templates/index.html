@@ -1,0 +1,486 @@
+{% extends 'base.html' %}
+
+{% block title %}Fashion Store - Trang chủ{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="container-fluid p-0">
+    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
+        <div class="carousel-indicators">
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
+            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
+        </div>
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+                <div class="position-relative overflow-hidden" style="height: 500px;">
+                    <img src="{{ url_for('static', filename='images/collection.jpg') }}" class="d-block w-100 h-100"
+                        alt="Bộ sưu tập mới"
+                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
+                    <div class="position-absolute top-0 start-0 w-100 h-100"
+                        style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));">
+                    </div>
+                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-start h-100"
+                        style="left: 8%; right: auto; text-align: left; top: 0; bottom: 0;" data-aos="fade-right">
+                        <h1 class="display-4 fw-bold mb-4"
+                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+                            Bộ sưu tập mới nhất ✨
+                        </h1>
+                        <p class="lead mb-4"
+                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 500px;">
+                            Khám phá các xu hướng thời trang mới nhất cho mùa này với những thiết kế độc đáo và chất
+                            lượng cao
+                        </p>
+                        <a href="{{ url_for('products') }}" class="btn btn-primary btn-lg px-5 py-3">
+                            <i class="fas fa-shopping-bag me-2"></i>Mua sắm ngay
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="position-relative overflow-hidden" style="height: 500px;">
+                    <img src="{{ url_for('static', filename='images/giam-gia.jpg') }}" class="d-block w-100 h-100"
+                        alt="Giảm giá" style="object-fit: cover; object-position: center; filter: brightness(0.8);">
+                    <div class="position-absolute top-0 start-0 w-100 h-100"
+                        style="background: linear-gradient(45deg, rgba(240, 147, 251, 0.3), rgba(245, 87, 108, 0.3));">
+                    </div>
+                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-center h-100 text-center"
+                        style="left: 0; right: 0; top: 0; bottom: 0;" data-aos="zoom-in">
+                        <h1 class="display-3 fw-bold mb-4"
+                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+                            Giảm giá đến <span
+                                style="color: #ff6b6b; text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">60%</span> 🔥
+                        </h1>
+                        <p class="lead mb-4"
+                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 600px;">
+                            Ưu đãi đặc biệt cho các sản phẩm hot nhất - Cơ hội không thể bỏ lỡ!
+                        </p>
+                        <a href="{{ url_for('products') }}" class="btn btn-warning btn-lg px-5 py-3 text-dark fw-bold">
+                            <i class="fas fa-fire me-2"></i>Xem ngay
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="carousel-item">
+                <div class="position-relative overflow-hidden" style="height: 500px;">
+                    <img src="{{ url_for('static', filename='images/caocap.jpg') }}" class="d-block w-100 h-100"
+                        alt="Thời trang cao cấp"
+                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
+                    <div class="position-absolute top-0 start-0 w-100 h-100"
+                        style="background: linear-gradient(45deg, rgba(44, 62, 80, 0.4), rgba(52, 73, 94, 0.4));"></div>
+                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-end h-100"
+                        style="right: 8%; left: auto; text-align: right; top: 0; bottom: 0;" data-aos="fade-left">
+                        <h1 class="display-4 fw-bold mb-4"
+                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
+                            Thời trang cao cấp 👑
+                        </h1>
+                        <p class="lead mb-4"
+                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 500px;">
+                            Các sản phẩm chất lượng cao từ các thương hiệu nổi tiếng thế giới
+                        </p>
+                        <a href="{{ url_for('products') }}" class="btn btn-outline-light btn-lg px-5 py-3">
+                            <i class="fas fa-crown me-2"></i>Khám phá
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
+            <span class="carousel-control-prev-icon"></span>
+            <span class="visually-hidden">Previous</span>
+        </button>
+        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
+            <span class="carousel-control-next-icon"></span>
+            <span class="visually-hidden">Next</span>
+        </button>
+    </div>
+</div>
+
+<!-- Features Section -->
+<section class="py-5"
+    style="background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="100">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-truck fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Giao hàng miễn phí</h4>
+                    <p class="text-muted">Miễn phí giao hàng cho đơn hàng trên 500.000đ</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="200">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-undo fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Đổi trả dễ dàng</h4>
+                    <p class="text-muted">Đổi trả sản phẩm trong vòng 30 ngày</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="300">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-lock fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Thanh toán an toàn</h4>
+                    <p class="text-muted">Thanh toán an toàn với nhiều phương thức</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="400">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-headset fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Hỗ trợ 24/7</h4>
+                    <p class="text-muted">Luôn sẵn sàng hỗ trợ khách hàng mọi lúc</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="display-5 fw-bold mb-3">
+                <i class="fas fa-tags me-3"></i>Danh mục sản phẩm
+            </h2>
+            <p class="lead text-muted">Khám phá các danh mục thời trang đa dạng của chúng tôi</p>
+        </div>
+
+        {% set image_map = {
+        'Áo nam': 'images/ao-nam.jpg',
+        'Quần nam': 'images/quan-nam.jpg',
+        'Áo nữ': 'images/ao-nu.jpg',
+        'Quần nữ': 'images/quan-nu.jpg',
+        'Váy đầm': 'images/vay-dam.jpg',
+        'Phụ kiện': 'images/phu-kien.jpg'
+        } %}
+
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
+                <div class="card category-card h-100 border-0 overflow-hidden">
+                    <div class="position-relative">
+                        <img src="{{ url_for('static', filename=image_map[category.CategoryName]) }}"
+                            class="card-img-top" alt="{{ category.CategoryName }}"
+                            style="height: 280px; object-fit: cover; transition: transform 0.5s ease;">
+                        <div class="position-absolute top-0 start-0 w-100 h-100"
+                            style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));">
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 w-100 p-4"
+                            style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
+                            <h5 class="text-white fw-bold mb-2">{{ category.CategoryName }}</h5>
+                        </div>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        <p class="card-text text-muted mb-4">
+                            {{ category.Description or 'Khám phá các sản phẩm ' + category.CategoryName + ' mới nhất của
+                            chúng tôi' }}
+                        </p>
+                        <a href="{{ url_for('products', category=category.CategoryID) }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-right me-2"></i>Xem sản phẩm
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="py-5"
+    style="background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="display-5 fw-bold mb-3">
+                <i class="fas fa-star me-3"></i>Sản phẩm nổi bật
+            </h2>
+            <p class="lead text-muted">Những sản phẩm được yêu thích nhất tại Fashion Store</p>
+        </div>
+
+        {% set image_map = {
+        'Áo sơ mi nam trắng': 'images/ao-so-mi-nam-trang.jpg',
+        'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
+        'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
+        'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
+        'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
+        'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
+        'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
+        'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg'
+        } %}
+
+        <div class="row g-4">
+            {% for product in featured_products %}
+            <div class="col-lg-3 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
+                <div class="card product-card border-0">
+                    <div class="position-relative overflow-hidden">
+                        {% set image_path = (
+                        'images/' ~ product.ImageURL if product.ImageURL
+                        else image_map.get(product.ProductName, 'images/default.jpg')
+                        ) %}
+                        <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
+                            alt="{{ product.ProductName }}">
+                        <div class="position-absolute top-0 end-0 m-3">
+                            <span class="badge bg-primary px-3 py-2">
+                                <i class="fas fa-star me-1"></i>Nổi bật
+                            </span>
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 end-0 p-3"
+                            style="background: linear-gradient(transparent, rgba(0,0,0,0.8)); opacity: 0; transition: opacity 0.3s ease;">
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-light btn-sm flex-fill">
+                                    <i class="fas fa-heart"></i>
+                                </button>
+                                <button class="btn btn-light btn-sm flex-fill">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-primary btn-sm flex-fill">
+                                    <i class="fas fa-shopping-cart"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold">{{ product.ProductName }}</h5>
+                        <p class="card-text text-muted mb-3">
+                            <i class="fas fa-tag me-1"></i>{{ product.CategoryName }}
+                        </p>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="h5 text-primary fw-bold mb-0">{{ "{:,.0f}".format(product.Price) }} đ</span>
+                            <a href="{{ url_for('product_detail', product_id=product.ProductID) }}"
+                                class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-arrow-right me-1"></i>Chi tiết
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="text-center mt-5" data-aos="fade-up">
+            <a href="{{ url_for('products') }}" class="btn btn-primary btn-lg px-5">
+                <i class="fas fa-shopping-bag me-2"></i>Xem tất cả sản phẩm
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Best Selling Products -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="display-5 fw-bold mb-3">
+                <i class="fas fa-fire me-3"></i>Sản phẩm bán chạy
+            </h2>
+            <p class="lead text-muted">Top những sản phẩm được khách hàng yêu thích nhất</p>
+        </div>
+
+        {% set image_map = {
+        'Áo sơ mi nam trắng': 'images/ao-so-mi-nam-trang.jpg',
+        'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
+        'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
+        'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
+        'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
+        'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
+        'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
+        'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg',
+        'Áo khoác nữ nhẹ': 'images/ao-khoac-nu-nhe.jpg'
+        } %}
+
+        <div class="row g-4">
+            {% for product in best_selling %}
+            <div class="col-lg-3 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
+                <div class="card product-card border-0">
+                    <div class="position-relative overflow-hidden">
+                        {% set image_path = (
+                        'images/' ~ product.ImageURL if product.ImageURL
+                        else image_map.get(product.ProductName, 'images/default.jpg')
+                        ) %}
+                        <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
+                            alt="{{ product.ProductName }}">
+                        <div class="position-absolute top-0 start-0 m-3">
+                            <span class="badge bg-danger px-3 py-2 animate-pulse">
+                                <i class="fas fa-fire me-1"></i>Hot
+                            </span>
+                        </div>
+                        <div class="position-absolute top-0 end-0 m-3">
+                            <span class="badge bg-success px-3 py-2">
+                                #{{ loop.index }}
+                            </span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <h5 class="card-title fw-bold">{{ product.ProductName }}</h5>
+                        <p class="card-text text-muted mb-2">
+                            <i class="fas fa-tag me-1"></i>{{ product.CategoryName }}
+                        </p>
+                        <div class="mb-3">
+                            <span class="badge bg-warning text-dark px-3 py-2">
+                                <i class="fas fa-shopping-cart me-1"></i>{{ "{:,.0f}".format(product.TotalSold) }} đã
+                                bán
+                            </span>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="rating">
+                                {% for i in range(5) %}
+                                <i class="fas fa-star text-warning"></i>
+                                {% endfor %}
+                                <small class="text-muted ms-1">(4.8)</small>
+                            </div>
+                            <a href="{{ url_for('product_detail', product_id=product.ProductID) }}"
+                                class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-arrow-right me-1"></i>Chi tiết
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter Section -->
+<section class="py-5" style="background: var(--primary-gradient);">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 mb-4 mb-lg-0" data-aos="fade-right">
+                <h2 class="text-white fw-bold mb-3">
+                    <i class="fas fa-envelope me-3"></i>Đăng ký nhận tin tức mới nhất
+                </h2>
+                <p class="text-white-50 lead">
+                    Nhận thông báo về sản phẩm mới, khuyến mãi đặc biệt và xu hướng thời trang mới nhất
+                </p>
+            </div>
+            <div class="col-lg-6" data-aos="fade-left">
+                <div class="newsletter-form">
+                    <div class="input-group input-group-lg">
+                        <input type="email" class="form-control" id="hero-newsletter-email"
+                            placeholder="Nhập email của bạn...">
+                        <button class="btn btn-warning text-dark fw-bold px-4" type="button" id="hero-subscribe-btn">
+                            <i class="fas fa-paper-plane me-2"></i>Đăng ký ngay
+                        </button>
+                    </div>
+                    <small class="text-white-50 mt-2 d-block">
+                        <i class="fas fa-shield-alt me-1"></i>Chúng tôi cam kết bảo mật thông tin của bạn
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Hero newsletter subscription
+    document.getElementById('hero-subscribe-btn').addEventListener('click', function () {
+        const email = document.getElementById('hero-newsletter-email').value;
+        const btn = this;
+        const originalContent = btn.innerHTML;
+
+        if (!email) {
+            alert('Vui lòng nhập email');
+            return;
+        }
+
+        // Show loading state
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+        btn.disabled = true;
+
+        fetch('{{ url_for("subscribe_newsletter") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `email=${email}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    document.getElementById('hero-newsletter-email').value = '';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Đã xảy ra lỗi khi đăng ký');
+            })
+            .finally(() => {
+                btn.innerHTML = originalContent;
+                btn.disabled = false;
+            });
+    });
+
+    // Product card hover effects
+    document.querySelectorAll('.product-card').forEach(card => {
+        const overlay = card.querySelector('.position-absolute.bottom-0');
+
+        card.addEventListener('mouseenter', function () {
+            if (overlay) {
+                overlay.style.opacity = '1';
+            }
+        });
+
+        card.addEventListener('mouseleave', function () {
+            if (overlay) {
+                overlay.style.opacity = '0';
+            }
+        });
+    });
+
+    // Category card hover effects
+    document.querySelectorAll('.category-card').forEach(card => {
+        const img = card.querySelector('.card-img-top');
+
+        card.addEventListener('mouseenter', function () {
+            if (img) {
+                img.style.transform = 'scale(1.1)';
+            }
+        });
+
+        card.addEventListener('mouseleave', function () {
+            if (img) {
+                img.style.transform = 'scale(1)';
+            }
+        });
+    });
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
+            }
+        });
+    });
+
+    // Add loading states to buttons
+    document.querySelectorAll('.btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            if (this.type === 'submit' || this.href) {
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang tải...';
+
+                // Reset after 2 seconds if still on page
+                setTimeout(() => {
+                    if (this.innerHTML.includes('fa-spinner')) {
+                        this.innerHTML = originalContent;
+                    }
+                }, 2000);
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+
+{% block title %}Fashion Store - Sản phẩm{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item active" aria-current="page">
+                {% if search_term %}
+                Tìm kiếm: "{{ search_term }}"
+                {% elif current_category %}
+                {% for category in categories %}
+                {% if category.CategoryID == current_category %}
+                {{ category.CategoryName }}
+                {% endif %}
+                {% endfor %}
+                {% else %}
+                Tất cả sản phẩm
+                {% endif %}
+            </li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <!-- Sidebar Filters -->
+        <div class="col-lg-3 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-filter me-2"></i>Bộ lọc sản phẩm
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('products') }}" method="get" id="filterForm">
+                        {% if search_term %}
+                        <input type="hidden" name="search" value="{{ search_term }}">
+                        {% endif %}
+
+                        <!-- Category Filter -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-tags me-2 text-primary"></i>Danh mục
+                            </label>
+                            <select class="form-select" name="category" onchange="this.form.submit()">
+                                <option value="">Tất cả danh mục</option>
+                                {% for category in categories %}
+                                <option value="{{ category.CategoryID }}" {% if current_category==category.CategoryID
+                                    %}selected{% endif %}>
+                                    {{ category.CategoryName }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Price Range -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-money-bill-wave me-2 text-primary"></i>Khoảng giá
+                            </label>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="max_price" placeholder="Đến"
+                                        min="0">
+                                </div>
+                            </div>
+                            <small class="text-muted">Giá từ 50,000đ - 2,000,000đ</small>
+                        </div>
+
+                        <!-- Color Filter -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-palette me-2 text-primary"></i>Màu sắc
+                            </label>
+                            <select class="form-select" name="color">
+                                <option value="">Tất cả màu sắc</option>
+                                {% for color in colors %}
+                                <option value="{{ color.ColorID }}">{{ color.ColorName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- Size Filter -->
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                <i class="fas fa-ruler me-2 text-primary"></i>Kích thước
+                            </label>
+                            <select class="form-select" name="size">
+                                <option value="">Tất cả kích thước</option>
+                                {% for size in sizes %}
+                                <option value="{{ size.SizeID }}">{{ size.SizeName }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <!-- In Stock Only -->
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="inStockOnly" name="in_stock"
+                                    value="1">
+                                <label class="form-check-label" for="inStockOnly">
+                                    <i class="fas fa-check-circle me-1 text-success"></i>Chỉ sản phẩm còn hàng
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-gradient-blue">
+                                <i class="fas fa-search me-2"></i>Áp dụng bộ lọc
+                            </button>
+                            <a href="{{ url_for('products') }}" class="btn btn-gradient-purple">
+                                <i class="fas fa-undo me-2"></i>Xóa bộ lọc
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Popular Categories -->
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-fire me-2 text-warning"></i>Danh mục phổ biến
+                    </h6>
+                </div>
+                <div class="card-body">
+                    {% for category in categories[:4] %}
+                    <a href="{{ url_for('products', category=category.CategoryID) }}"
+                        class="d-block text-decoration-none mb-2 p-2 rounded hover-shadow">
+                        <i class="fas fa-chevron-right me-2 text-primary"></i>{{ category.CategoryName }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Product List -->
+        <div class="col-lg-9">
+            <!-- Results Info -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h4 class="mb-1">
+                        {% if search_term %}
+                        Kết quả tìm kiếm: "{{ search_term }}"
+                        {% elif current_category %}
+                        {% for category in categories %}
+                        {% if category.CategoryID == current_category %}
+                        {{ category.CategoryName }}
+                        {% endif %}
+                        {% endfor %}
+                        {% else %}
+                        Tất cả sản phẩm
+                        {% endif %}
+                    </h4>
+                    <p class="text-muted mb-0">
+                        <span class="badge bg-primary">{{ products|length }}</span>
+                        sản phẩm được tìm thấy
+                    </p>
+                </div>
+                <div class="d-flex gap-2">
+                    <form method="get" id="sortForm">
+                        <select class="form-select form-select-sm" style="width: auto;" name="sort"
+                            onchange="this.form.submit()">
+                            <option value="">Sắp xếp theo</option>
+                            <option value="price_asc">Giá: Thấp đến cao</option>
+                            <option value="price_desc">Giá: Cao đến thấp</option>
+                            <option value="name_asc">Tên A-Z</option>
+                            <option value="newest">Mới nhất</option>
+                        </select>
+                        {% for key, value in request.args.items() %}
+                        {% if key != 'sort' %}
+                        <input type="hidden" name="{{ key }}" value="{{ value }}">
+                        {% endif %}
+                        {% endfor %}
+                    </form>
+                </div>
+            </div>
+
+            {% set image_map = {
+            'Áo sơ mi nam trắng': 'images/1.jpg',
+            'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
+            'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
+            'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
+            'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
+            'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
+            'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
+            'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg',
+            'Váy đầm xòe hoa': 'images/9.jpg',
+            'Váy liền thân công sở': 'images/19.jpg',
+            'Túi xách nữ công sở': 'images/22.jpg',
+            'Mũ bucket thời trang': 'images/21.jpg',
+            'Quần culottes nữ': 'images/17.jpg',
+            'Đầm maxi đi biển': 'images/20.jpg',
+            'Quần jogger nam': 'images/14.jpg',
+            'Quần legging nữ thể thao': 'images/18.jpg',
+            'Quần short nam kaki': 'images/13.jpg',
+            'Thắt lưng da nam': 'images/10.jpg',
+            'Áo khoác nữ nhẹ': 'images/16.jpg',
+            'Áo kiểu nữ công sở': 'images/15.jpg',
+            'Áo polo nam thể thao': 'images/12.jpg',
+            'Áo sơ mi nam kẻ sọc': 'images/11.jpg'
+            } %}
+
+            {% if products %}
+            <div class="row g-3">
+                {% for product in products %}
+                <div class="col-lg-4 col-md-6 mb-3">
+                    <div class="card product-card h-100">
+                        <div class="position-relative">
+                            {% set image_path = (
+                            product.ImageURL if product.ImageURL
+                            else image_map.get(product.ProductName, 'images/default.jpg')
+                            ) %}
+
+                            <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
+                                alt="{{ product.ProductName }}">
+
+                            <!-- Product Badges -->
+                            {% if loop.index <= 3 %} <div class="position-absolute top-0 start-0 m-2">
+                                <span class="badge bg-danger">
+                                    <i class="fas fa-fire me-1"></i>Hot
+                                </span>
+                        </div>
+                        {% endif %}
+
+                        <!-- Quick Actions -->
+                        <div class="position-absolute top-0 end-0 m-2">
+                            <button class="btn btn-gradient-pink btn-icon btn-sm" title="Thêm vào yêu thích">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="mb-2">
+                            <span class="badge bg-light text-dark">{{ product.CategoryName }}</span>
+                        </div>
+                        <h6 class="card-title fw-semibold mb-2">{{ product.ProductName }}</h6>
+
+                        <!-- Rating -->
+                        <div class="mb-2">
+                            <div class="d-flex align-items-center">
+                                <div class="rating">
+                                    {% for i in range(5) %}
+                                    <i class="fas fa-star text-warning"></i>
+                                    {% endfor %}
+                                </div>
+                                <small class="text-muted ms-2">(4.8)</small>
+                            </div>
+                        </div>
+
+                        <!-- Price -->
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                {% if product.Price is not none %}
+                                <span class="h6 text-primary fw-bold mb-0 price">{{ "{:,.0f}".format(product.Price)
+                                    }}đ</span>
+                                {% if loop.index <= 5 and product.Price is not none and product.Price|float %} <br>
+                                    <small class="text-muted price-old">{{ "{:,.0f}".format(product.Price|float * 1.2)
+                                        }}đ</small>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="h6 text-primary fw-bold mb-0 price">Liên hệ</span>
+                                    {% endif %}
+                            </div>
+                            <a href="{{ url_for('product_detail', product_id=product.ProductID) }}"
+                                class="btn btn-gradient-green btn-sm btn-rounded">
+                                <i class="fas fa-eye me-1"></i>Xem
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if products|length >= 12 %}
+        <nav aria-label="Product pagination" class="mt-4">
+            <ul class="pagination justify-content-center">
+                <li class="page-item">
+                    <a class="page-link" href="#" aria-label="Previous">
+                        <span aria-hidden="true">&laquo;</span>
+                    </a>
+                </li>
+                <li class="page-item active"><a class="page-link" href="#">1</a></li>
+                <li class="page-item"><a class="page-link" href="#">2</a></li>
+                <li class="page-item"><a class="page-link" href="#">3</a></li>
+                <li class="page-item">
+                    <a class="page-link" href="#" aria-label="Next">
+                        <span aria-hidden="true">&raquo;</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <!-- No Products Found -->
+        <div class="text-center py-5">
+            <div class="mb-4">
+                <i class="fas fa-search fa-4x text-muted"></i>
+            </div>
+            <h4 class="fw-bold mb-3">Không tìm thấy sản phẩm</h4>
+            <p class="text-muted mb-4">Rất tiếc, chúng tôi không tìm thấy sản phẩm nào phù hợp với tiêu chí tìm kiếm của
+                bạn.</p>
+            <div class="d-flex flex-column flex-md-row gap-3 justify-content-center">
+                <a href="{{ url_for('products') }}" class="btn btn-gradient-blue btn-pulse">
+                    <i class="fas fa-undo me-2"></i>Xem tất cả sản phẩm
+                </a>
+                <button class="btn btn-gradient-purple"
+                    onclick="document.getElementById('filterForm').reset(); document.getElementById('filterForm').submit();">
+                    <i class="fas fa-filter me-2"></i>Xóa bộ lọc
+                </button>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Wishlist functionality
+        document.querySelectorAll('[title="Thêm vào yêu thích"]').forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const icon = this.querySelector('i');
+                if (icon.classList.contains('fas')) {
+                    icon.classList.remove('fas');
+                    icon.classList.add('far');
+                    this.classList.remove('btn-danger');
+                    this.classList.add('btn-light');
+                } else {
+                    icon.classList.remove('far');
+                    icon.classList.add('fas');
+                    this.classList.remove('btn-light');
+                    this.classList.add('btn-danger');
+                }
+            });
+        });
+
+        // Filter form enhancements
+        const filterInputs = document.querySelectorAll('#filterForm input, #filterForm select');
+        filterInputs.forEach(input => {
+            if (input.type !== 'submit' && input.name !== 'category') {
+                input.addEventListener('change', function () {
+                    // Auto-submit form when filters change (except category which already has onchange)
+                    if (this.name !== 'category') {
+                        setTimeout(() => {
+                            document.getElementById('filterForm').submit();
+                        }, 300);
+                    }
+                });
+            }
+        });
+    });
+
+    // Smooth scroll to top when pagination is clicked
+    document.querySelectorAll('.pagination a').forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        });
+    });
+</script>
+{% endblock %}
