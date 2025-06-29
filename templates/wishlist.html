@@ -17,7 +17,7 @@
                         <i class="fas fa-trash-alt"></i> Xóa
                     </button>
                 </div>
-                <img src="https://via.placeholder.com/300x300/{{ '%06x'|format(item.ProductID * 123456) }}/ffffff?text={{ item.ProductName }}"
+                <img src="{{ url_for('static', filename=item.ImageURL) }}" onerror="this.onerror=null;this.src='{{ url_for('static', filename='template/images/default-product.png') }}';"
                     class="card-img-top product-img" alt="{{ item.ProductName }}">
                 <div class="card-body">
                     <h5 class="card-title">{{ item.ProductName }}</h5>

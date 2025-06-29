@@ -29,13 +29,19 @@
                                 <tr id="cart-item-{{ item.variant_id }}">
                                     <td>
                                         <div class="d-flex align-items-center">
-                                            <img src="https://via.placeholder.com/80x80/{{ '%06x'|format(item.product_id * 123456) }}/ffffff?text={{ item.product_name }}"
-                                                class="img-thumbnail me-3" style="width: 80px;"
-                                                alt="{{ item.product_name }}">
+                                            {% if item.image_url %}
+                                                <img src="{{ url_for('static', filename=item.image_url) }}"
+                                                    class="img-thumbnail me-3" style="width: 80px; height: 80px; object-fit: cover;"
+                                                    alt="{{ item.product_name }}"
+                                                    onerror="this.onerror=null;this.src='{{ url_for('static', filename='images/default-product.png') }}';">
+                                            {% else %}
+                                                <img src="https://via.placeholder.com/80x80/{{ '%06x'|format(item.product_id * 123456) }}/ffffff?text={{ item.product_name[:2] }}"
+                                                    class="img-thumbnail me-3" style="width: 80px; height: 80px; object-fit: cover;"
+                                                    alt="{{ item.product_name }}">
+                                            {% endif %}
                                             <div>
                                                 <h6 class="mb-0">{{ item.product_name }}</h6>
-                                                <small class="text-muted">Màu: {{ item.color }}, Size: {{ item.size
-                                                    }}</small>
+                                                <small class="text-muted">Màu: {{ item.color }}, Size: {{ item.size }}</small>
                                             </div>
                                         </div>
                                     </td>

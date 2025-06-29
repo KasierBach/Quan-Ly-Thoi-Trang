@@ -2,6 +2,10 @@
 
 {% block title %}Fashion Store - Trang chủ{% endblock %}
 
+{% block styles %}
+<link rel="icon" href="vecteezy_floral-luxury-logo-for-fashion-jewelry-cosmetics-store.png" type="image/png" />
+{% endblock %}
+
 {% block content %}
 <!-- Hero Section -->
 <div class="container-fluid p-0">
@@ -203,27 +207,12 @@
             <p class="lead text-muted">Những sản phẩm được yêu thích nhất tại Fashion Store</p>
         </div>
 
-        {% set image_map = {
-        'Áo sơ mi nam trắng': 'images/ao-so-mi-nam-trang.jpg',
-        'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
-        'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
-        'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
-        'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
-        'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
-        'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
-        'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg'
-        } %}
-
         <div class="row g-4">
             {% for product in featured_products %}
             <div class="col-lg-3 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                 <div class="card product-card border-0">
                     <div class="position-relative overflow-hidden">
-                        {% set image_path = (
-                        'images/' ~ product.ImageURL if product.ImageURL
-                        else image_map.get(product.ProductName, 'images/default.jpg')
-                        ) %}
-                        <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
+                        <img src="{{ url_for('static', filename=product.ImageURL) }}" class="card-img-top product-img"
                             alt="{{ product.ProductName }}">
                         <div class="position-absolute top-0 end-0 m-3">
                             <span class="badge bg-primary px-3 py-2">
@@ -281,28 +270,12 @@
             <p class="lead text-muted">Top những sản phẩm được khách hàng yêu thích nhất</p>
         </div>
 
-        {% set image_map = {
-        'Áo sơ mi nam trắng': 'images/ao-so-mi-nam-trang.jpg',
-        'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
-        'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
-        'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
-        'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
-        'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
-        'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
-        'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg',
-        'Áo khoác nữ nhẹ': 'images/ao-khoac-nu-nhe.jpg'
-        } %}
-
         <div class="row g-4">
             {% for product in best_selling %}
             <div class="col-lg-3 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                 <div class="card product-card border-0">
                     <div class="position-relative overflow-hidden">
-                        {% set image_path = (
-                        'images/' ~ product.ImageURL if product.ImageURL
-                        else image_map.get(product.ProductName, 'images/default.jpg')
-                        ) %}
-                        <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
+                        <img src="{{ url_for('static', filename=product.ImageURL) }}" class="card-img-top product-img"
                             alt="{{ product.ProductName }}">
                         <div class="position-absolute top-0 start-0 m-3">
                             <span class="badge bg-danger px-3 py-2 animate-pulse">

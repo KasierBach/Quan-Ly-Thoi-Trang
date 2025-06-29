@@ -47,7 +47,7 @@ class DecimalEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, decimal.Decimal):
             return float(o)
-        return super(DecimalEncoder, self).default(o)
+        return super(DecimalEncoder, self).default(self, o)
 
 # Hàm gửi email
 def send_email(to_email, subject, html_content):
@@ -80,7 +80,7 @@ def home():
     
     # Lấy sản phẩm nổi bật (ví dụ: 8 sản phẩm mới nhất)
     cursor.execute('''
-        SELECT TOP 8 p.ProductID, p.ProductName, p.Price, c.CategoryName,
+        SELECT TOP 8 p.ProductID, p.ProductName, p.Price, c.CategoryName, p.ImageURL,
         (SELECT TOP 1 ColorName FROM Colors cl JOIN ProductVariants pv ON cl.ColorID = pv.ColorID 
          WHERE pv.ProductID = p.ProductID) AS FirstColor
         FROM Products p
@@ -90,7 +90,18 @@ def home():
     featured_products = cursor.fetchall()
     
     # Lấy sản phẩm bán chạy
-    cursor.execute('SELECT TOP 4 * FROM vw_BestSellingProducts')
+    cursor.execute('''
+        SELECT
+        bs.ProductID,
+        bs.ProductName,
+        bs.Price,
+        bs.CategoryName,
+        bs.TotalSold,
+        p.ImageURL
+        FROM vw_BestSellingProducts bs
+        JOIN Products p ON bs.ProductID = p.ProductID
+        ORDER BY bs.TotalSold DESC
+    ''')
     best_selling = cursor.fetchall()
     
     conn.close()
@@ -231,7 +242,7 @@ def add_to_cart():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT pv.Quantity, p.ProductName, p.Price, c.ColorName, s.SizeName, p.ProductID
+        SELECT pv.Quantity, p.ProductName, p.Price, c.ColorName, s.SizeName, p.ProductID, p.ImageURL
         FROM ProductVariants pv
         JOIN Products p ON pv.ProductID = p.ProductID
         JOIN Colors c ON pv.ColorID = c.ColorID
@@ -273,7 +284,8 @@ def add_to_cart():
             'price': float(variant.Price),
             'color': variant.ColorName,
             'size': variant.SizeName,
-            'quantity': quantity
+            'quantity': quantity,
+            'image_url': variant.ImageURL
         })
     
     session['cart'] = cart
@@ -302,7 +314,7 @@ def buy_now():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('''
-        SELECT pv.Quantity, p.ProductName, p.Price, c.ColorName, s.SizeName, p.ProductID
+        SELECT pv.Quantity, p.ProductName, p.Price, c.ColorName, s.SizeName, p.ProductID, p.ImageURL
         FROM ProductVariants pv
         JOIN Products p ON pv.ProductID = p.ProductID
         JOIN Colors c ON pv.ColorID = c.ColorID
@@ -329,7 +341,8 @@ def buy_now():
         'price': float(variant.Price),
         'color': variant.ColorName,
         'size': variant.SizeName,
-        'quantity': quantity
+        'quantity': quantity,
+        'image_url': variant.ImageURL
     }]
     
     # Lưu giỏ hàng tạm thời vào session
@@ -1271,7 +1284,7 @@ def admin_order_detail(order_id):
     
     # Lấy thông tin đơn hàng
     cursor.execute('''
-        EXEC sp_GetOrderDetails @OrderID=?
+        EXEC sp_GetOrderDetails @OrderID=?p
     ''', order_id)
     
     order = cursor.fetchone()
@@ -1464,15 +1477,24 @@ def view_wishlist():
     conn = get_db_connection()
     cursor = conn.cursor()
     
-    # Get wishlist items
+    # Get wishlist items 
     cursor.execute('''
-        SELECT w.WishlistID, p.ProductID, p.ProductName, p.Price, c.CategoryName,
-        (SELECT TOP 1 ColorName FROM Colors cl JOIN ProductVariants pv ON cl.ColorID = pv.ColorID 
-         WHERE pv.ProductID = p.ProductID) AS FirstColor,
-        w.AddedDate
+        SELECT
+          w.WishlistID,
+          p.ProductID,
+          p.ProductName,
+          p.Price,
+          c.CategoryName,
+          (SELECT TOP 1 ColorName
+             FROM Colors cl
+             JOIN ProductVariants pv ON cl.ColorID = pv.ColorID
+            WHERE pv.ProductID = p.ProductID
+          ) AS FirstColor,
+          p.ImageURL,                
+          w.AddedDate
         FROM Wishlist w
-        JOIN Products p ON w.ProductID = p.ProductID
-        JOIN Categories c ON p.CategoryID = c.CategoryID
+        JOIN Products p    ON w.ProductID = p.ProductID
+        JOIN Categories c  ON p.CategoryID = c.CategoryID
         WHERE w.CustomerID = ?
         ORDER BY w.AddedDate DESC
     ''', session['user_id'])
@@ -2041,7 +2063,7 @@ def admin_comments():
                c.FullName AS CustomerName, p.ProductName, p.ProductID
         FROM ProductComments pc
         JOIN Customers c ON pc.CustomerID = c.CustomerID
-        JOIN Products p ON pc.ProductID = p.ProductID
+        JOIN Products p ON pc.ProductID = pc.ProductID
     '''
     
     if filter_type == 'no_reply':
@@ -2194,6 +2216,19 @@ def cancel_order(order_id):
         return jsonify({'success': False, 'message': f'Đã xảy ra lỗi: {str(e)}'})
     finally:
         conn.close()
+
+
+@app.route('/checkout')
+def gallery():
+    # Lấy danh sách file trong thư mục static/images
+    image_dir = os.path.join(app.static_folder, 'images')
+    images = [
+        f for f in os.listdir(image_dir)
+        if os.path.isfile(os.path.join(image_dir, f))
+        and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))
+    ]
+    # Mảng images sẽ chứa ['mu-bucket.jpg', 'quan-kaki-nam-nau.jpg', …]
+    return render_template('checkout.html', images=images)
 
 if __name__ == '__main__':
     app.run(debug=True, port=5328)
