@@ -5,13 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Fashion Store{% endblock %}</title>
-    <link rel="icon" href="vecteezy_floral-luxury-logo-for-fashion-jewelry-cosmetics-store.png" type="image/png"/>
+    <link rel="icon" href="{{ url_for('static', filename='images/different-solar-system-galaxy-live.jpg') }}"
+        type="image/jpg" sizes="128x128" />
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+        rel="stylesheet">
     <!-- Custom CSS -->
     <style>
         :root {
@@ -659,11 +661,11 @@
             .product-img {
                 height: 180px;
             }
-            
+
             .navbar-brand {
                 font-size: 1.25rem;
             }
-            
+
             .card {
                 margin-bottom: 1rem;
             }
@@ -783,8 +785,13 @@
         }
 
         @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
         }
 
         /* Pulse Animation for Important Buttons */
@@ -797,10 +804,12 @@
                 transform: scale(1);
                 box-shadow: 0 0 0 0 rgba(238, 77, 45, 0.7);
             }
+
             70% {
                 transform: scale(1.05);
                 box-shadow: 0 0 0 10px rgba(238, 77, 45, 0);
             }
+
             100% {
                 transform: scale(1);
                 box-shadow: 0 0 0 0 rgba(238, 77, 45, 0);
@@ -845,7 +854,7 @@
                         </a>
                     </li>
                 </ul>
-                
+
                 <!-- Search Bar -->
                 <form class="d-flex me-3 search-bar" action="{{ url_for('products') }}" method="get">
                     <input class="form-control" type="search" name="search" placeholder="Tìm kiếm sản phẩm...">
@@ -853,7 +862,7 @@
                         <i class="fas fa-search"></i>
                     </button>
                 </form>
-                
+
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ url_for('view_cart') }}">
@@ -875,19 +884,19 @@
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('my_account') }}">
-                                <i class="fas fa-user-circle me-2"></i>Tài khoản của tôi
-                            </a></li>
+                                    <i class="fas fa-user-circle me-2"></i>Tài khoản của tôi
+                                </a></li>
                             {% if session.is_admin %}
                             <li><a class="dropdown-item" href="{{ url_for('admin_dashboard') }}">
-                                <i class="fas fa-cog me-2"></i>Quản trị
-                            </a></li>
+                                    <i class="fas fa-cog me-2"></i>Quản trị
+                                </a></li>
                             {% endif %}
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('logout') }}">
-                                <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                            </a></li>
+                                    <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                                </a></li>
                         </ul>
                     </li>
                     {% else %}
@@ -919,7 +928,8 @@
         {% if messages %}
         {% for category, message in messages %}
         <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show">
-            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' or category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+            <i
+                class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' or category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -941,7 +951,8 @@
                     <h5 class="mb-3">
                         <i class="fas fa-store me-2"></i>Fashion Store
                     </h5>
-                    <p class="mb-3">Cửa hàng thời trang trực tuyến hàng đầu với các sản phẩm chất lượng cao và dịch vụ khách hàng tuyệt vời.</p>
+                    <p class="mb-3">Cửa hàng thời trang trực tuyến hàng đầu với các sản phẩm chất lượng cao và dịch vụ
+                        khách hàng tuyệt vời.</p>
                     <p>Ở cửa hàng này, bạn sẽ thấy được những sản phẩm thời trang tuyệt vời nhất.</p>
                 </div>
                 <div class="col-md-4 mb-4">
@@ -950,28 +961,28 @@
                     </h5>
                     <ul class="list-unstyled">
                         <li class="mb-2"><a href="{{ url_for('home') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Trang chủ
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Trang chủ
+                            </a></li>
                         <li class="mb-2"><a href="{{ url_for('products') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Sản phẩm
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Sản phẩm
+                            </a></li>
                         <li class="mb-2"><a href="{{ url_for('contact') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Liên hệ
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Liên hệ
+                            </a></li>
                         {% if session.user_id %}
                         <li class="mb-2"><a href="{{ url_for('view_wishlist') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Danh sách yêu thích
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Danh sách yêu thích
+                            </a></li>
                         <li class="mb-2"><a href="{{ url_for('my_account') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Tài khoản của tôi
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Tài khoản của tôi
+                            </a></li>
                         {% else %}
                         <li class="mb-2"><a href="{{ url_for('login') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Đăng nhập
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Đăng nhập
+                            </a></li>
                         <li class="mb-2"><a href="{{ url_for('register') }}">
-                            <i class="fas fa-chevron-right me-2"></i>Đăng ký
-                        </a></li>
+                                <i class="fas fa-chevron-right me-2"></i>Đăng ký
+                            </a></li>
                         {% endif %}
                     </ul>
                 </div>
@@ -984,7 +995,7 @@
                         <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
                         <p><i class="fas fa-envelope me-2"></i> siushop420@fashionstore.com</p>
                     </address>
-                    
+
                     <div class="mb-3">
                         <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
                         <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
@@ -994,16 +1005,44 @@
 
                     <!-- Newsletter Subscription -->
                     <div>
-                        <h6 class="mb-2">
-                            <i class="fas fa-bell me-2"></i>Đăng ký nhận bản tin
-                        </h6>
-                        <div class="input-group mb-2">
-                            <input type="email" class="form-control" id="newsletter-email" placeholder="Email của bạn">
-                            <button class="btn btn-primary" type="button" id="subscribe-btn">
-                                <i class="fas fa-paper-plane"></i>
-                            </button>
+                        <div class="card shadow-lg border-0 newsletter-card"
+                            style="background: linear-gradient(135deg, #fffbe7 0%, #ffe3e3 100%); border-radius: 20px; overflow: hidden;">
+                            <div class="card-body p-4 position-relative">
+                                <div class="position-absolute top-0 end-0 pe-3 pt-3"
+                                    style="opacity:0.15; font-size:3rem; pointer-events:none;">
+                                    <i class="fas fa-envelope-open-text text-warning"></i>
+                                </div>
+                                <h6 class="fw-bold mb-3 text-primary" style="letter-spacing:1px;">
+                                    <i class="fas fa-bell me-2 text-warning"></i>Nhận Ưu Đãi Đặc Biệt
+                                </h6>
+                                <form class="d-flex align-items-center gap-2 mb-2" id="newsletter-form"
+                                    onsubmit="return false;">
+                                    <div class="input-group flex-nowrap">
+                                        <input type="email" class="form-control rounded-start-pill shadow-none border-0"
+                                            id="newsletter-email" placeholder="Nhập email của bạn" required
+                                            style="background:rgba(255,255,255,0.85); min-width:0;">
+                                        <button type="button" class="btn btn-gradient-pink rounded-end-pill px-4"
+                                            id="subscribe-btn" style="box-shadow:0 2px 8px rgba(240,147,251,0.15);">
+                                            <i class="fas fa-paper-plane me-1"></i>Đăng ký
+                                        </button>
+                                    </div>
+                                </form>
+                                <small class="text-muted d-block mt-2" style="font-size: 0.97em;">
+                                    <i class="fas fa-gift me-1 text-success"></i>
+                                    Đăng ký để nhận thông tin khuyến mãi, ưu đãi và xu hướng mới nhất mỗi tuần!
+                                </small>
+                                <div class="d-flex gap-2 mt-3">
+                                    <span class="badge bg-warning text-dark fw-normal px-3 py-2"
+                                        style="font-size:0.92em; border-radius: 12px;">
+                                        <i class="fas fa-percent me-1"></i>Giảm giá độc quyền
+                                    </span>
+                                    <span class="badge bg-success px-3 py-2"
+                                        style="font-size:0.92em; border-radius: 12px;">
+                                        <i class="fas fa-truck-fast me-1"></i>Miễn phí vận chuyển
+                                    </span>
+                                </div>
+                            </div>
                         </div>
-                        <small class="text-muted">Nhận thông tin về sản phẩm mới và khuyến mãi</small>
                     </div>
                 </div>
             </div>
@@ -1105,12 +1144,12 @@
                 document.getElementById('darkIcon').style.display = 'none';
                 document.getElementById('lightIcon').style.display = 'inline';
             } else {
-            {% endif %}
+                {% endif %}
                 // Default: show correct icon based on initial theme
                 const currentTheme = document.documentElement.getAttribute('data-bs-theme');
                 document.getElementById('darkIcon').style.display = currentTheme === 'dark' ? 'inline' : 'none';
                 document.getElementById('lightIcon').style.display = currentTheme === 'light' ? 'inline' : 'none';
-            {% if not session.user_id %}
+                {% if not session.user_id %}
             }
             {% endif %}
         });
