@@ -3,7 +3,9 @@
 {% block title %}Fashion Store - Trang chủ{% endblock %}
 
 {% block styles %}
-<link rel="icon" href="vecteezy_floral-luxury-logo-for-fashion-jewelry-cosmetics-store.png" type="image/png" />
+<link rel="icon"
+    href="{{ url_for('static', filename='images/logo.jpg') }}"
+    type="image/jpg" />
 {% endblock %}
 
 {% block content %}
