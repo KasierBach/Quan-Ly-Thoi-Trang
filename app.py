@@ -2231,4 +2231,4 @@ def gallery():
     return render_template('checkout.html', images=images)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5328)
+    app.run(debug=True, port=4000, host='0.0.0.0')
