@@ -1,27 +1,28 @@
 FROM python:3.11-slim
 
-# Cài các thư viện hệ thống và driver SQL Server
-RUN apt-get update && apt-get install -y \
+# Cài gói hệ thống cần thiết (KHÔNG có libssl1.1 vì đã bị loại bỏ)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg2 \
     curl \
     apt-transport-https \
     unixodbc \
     unixodbc-dev \
-    libunwind8 \
-    libssl1.1
+    libunwind8
 
-# Cài Microsoft ODBC Driver 17 for SQL Server
+# Thêm repo của Microsoft để cài driver SQL Server
 RUN curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - && \
     curl https://packages.microsoft.com/config/debian/10/prod.list > /etc/apt/sources.list.d/mssql-release.list && \
     apt-get update && ACCEPT_EULA=Y apt-get install -y msodbcsql17
 
-# Tạo thư mục làm việc và copy mã nguồn
+# Tạo thư mục làm việc
 WORKDIR /app
+
+# Copy mã nguồn vào container
 COPY . /app
 
-# Cài các thư viện Python
+# Cài thư viện Python
 RUN pip install --upgrade pip
 RUN pip install -r requirements.txt
 
-# Chạy app Flask
+# Chạy ứng dụng Flask
 CMD ["python", "app.py"]
