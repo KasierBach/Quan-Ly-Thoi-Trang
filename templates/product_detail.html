@@ -34,7 +34,7 @@
                 <p class="text-muted mb-2">Danh mục: {{ product.CategoryName }}</p>
                 <h3 class="text-danger mb-4">{{ "{:,.0f}".format(product.Price) }} đ</h3>
 
-                <form action="{{ url_for('add_to_cart') }}" method="post">
+                <form action="{{ url_for('add_to_cart') }}" method="post" onsubmit="return validateVariantSelection();"></form>
                     <input type="hidden" name="product_id" value="{{ product.ProductID }}">
 
                     <!-- Color Selection -->
@@ -45,7 +45,8 @@
                             <span class="color-swatch"
                                 style="background-color: {% if color.name == 'Đen' %}#000000{% elif color.name == 'Trắng' %}#FFFFFF{% elif color.name == 'Đỏ' %}#FF0000{% elif color.name == 'Xanh dương' %}#0000FF{% elif color.name == 'Xanh lá' %}#00FF00{% elif color.name == 'Vàng' %}#FFFF00{% elif color.name == 'Hồng' %}#FFC0CB{% elif color.name == 'Xám' %}#808080{% elif color.name == 'Nâu' %}#A52A2A{% else %}#CCCCCC{% endif %}"
                                 data-color-id="{{ color.id }}" title="{{ color.name }}"
-                                onclick="selectColor(this)"></span>
+                                tabindex="0" role="button" aria-label="{{ color.name }}"
+                                onclick="selectColor(this)" onkeydown="if(event.key==='Enter'||event.key===' '){selectColor(this);}"></span>
                             {% endfor %}
                         </div>
                         <input type="hidden" name="color_id" id="selectedColor">
@@ -56,7 +57,8 @@
                         <label class="form-label fw-bold">Kích thước:</label>
                         <div class="size-options">
                             {% for size in sizes %}
-                            <span class="size-option" data-size-id="{{ size.id }}" onclick="selectSize(this)">{{
+                            <span class="size-option" data-size-id="{{ size.id }}" tabindex="0" role="button" aria-label="{{ size.name }}"
+                                onclick="selectSize(this)" onkeydown="if(event.key==='Enter'||event.key===' '){selectSize(this);}">{{
                                 size.name }}</span>
                             {% endfor %}
                         </div>
@@ -71,11 +73,11 @@
                         <label class="form-label fw-bold">Số lượng:</label>
                         <div class="input-group" style="width: 150px;">
                             <button class="btn btn-outline-secondary" type="button"
-                                onclick="decrementQuantity()">-</button>
+                                onclick="decrementQuantity()" tabindex="0" aria-label="Giảm số lượng">-</button>
                             <input type="number" class="form-control text-center" name="quantity" id="quantity"
                                 value="1" min="1" max="10">
                             <button class="btn btn-outline-secondary" type="button"
-                                onclick="incrementQuantity()">+</button>
+                                onclick="incrementQuantity()" tabindex="0" aria-label="Tăng số lượng">+</button>
                         </div>
                         <small id="stockInfo" class="form-text text-muted mt-2">Vui lòng chọn màu sắc và kích
                             thước</small>
@@ -86,7 +88,7 @@
                         <button type="submit" class="btn btn-primary btn-lg" id="addToCartBtn">
                             <i class="fas fa-shopping-cart me-2"></i>Thêm vào giỏ hàng
                         </button>
-                        <button type="button" class="btn btn-outline-primary" onclick="buyNow()">
+                        <button type="button" class="btn btn-outline-primary" onclick="buyNow()" id="buyNowBtn">
                             <i class="fas fa-bolt me-2"></i>Mua ngay
                         </button>
                         <button type="button" class="btn btn-outline-danger" id="addToWishlistBtn">
@@ -223,7 +225,7 @@
                                         <i class="fas fa-star me-2"></i>Đánh giá từ khách hàng
                                     </h5>
                                     <button type="button" class="btn btn-gradient-primary" data-bs-toggle="modal"
-                                        data-bs-target="#reviewModal">
+                                        data-bs-target="#reviewModal" id="openReviewModalBtn">
                                         <i class="fas fa-edit me-2"></i>Viết đánh giá
                                     </button>
                                 </div>
@@ -246,7 +248,7 @@
                                         <i class="fas fa-comments me-2"></i>Bình luận sản phẩm
                                     </h5>
                                     <button type="button" class="btn btn-gradient-primary" data-bs-toggle="modal"
-                                        data-bs-target="#commentModal">
+                                        data-bs-target="#commentModal" id="openCommentModalBtn">
                                         <i class="fas fa-comment-dots me-2"></i>Viết bình luận
                                     </button>
                                 </div>
@@ -276,7 +278,7 @@
                 </div>
                 <div class="modal-body">
                     {% if session.user_id %}
-                    <form id="comment-form">
+                    <form id="comment-form" onsubmit="return false;">
                         <input type="hidden" name="product_id" value="{{ product.ProductID }}">
 
                         <div class="mb-3">
@@ -330,18 +332,18 @@
                 </div>
                 <div class="modal-body">
                     {% if session.user_id %}
-                    <form id="review-form">
+                    <form id="review-form" onsubmit="return false;">
                         <input type="hidden" name="product_id" value="{{ product.ProductID }}">
 
                         <div class="mb-3">
                             <label class="form-label">Đánh giá của bạn</label>
                             <div class="rating">
-                                <div class="d-flex justify-content-center fs-3">
-                                    <i class="far fa-star rating-star" data-rating="1"></i>
-                                    <i class="far fa-star rating-star" data-rating="2"></i>
-                                    <i class="far fa-star rating-star" data-rating="3"></i>
-                                    <i class="far fa-star rating-star" data-rating="4"></i>
-                                    <i class="far fa-star rating-star" data-rating="5"></i>
+                                <div class="d-flex justify-content-center fs-3" id="rating-stars">
+                                    <i class="far fa-star rating-star" data-rating="1" tabindex="0" role="button" aria-label="1 sao"></i>
+                                    <i class="far fa-star rating-star" data-rating="2" tabindex="0" role="button" aria-label="2 sao"></i>
+                                    <i class="far fa-star rating-star" data-rating="3" tabindex="0" role="button" aria-label="3 sao"></i>
+                                    <i class="far fa-star rating-star" data-rating="4" tabindex="0" role="button" aria-label="4 sao"></i>
+                                    <i class="far fa-star rating-star" data-rating="5" tabindex="0" role="button" aria-label="5 sao"></i>
                                 </div>
                                 <input type="hidden" name="rating" id="rating-value" value="0">
                             </div>
@@ -372,6 +374,47 @@
         </div>
     </div>
 </div>
+<script>
+    // Prevent form submit if variant not selected
+    function validateVariantSelection() {
+        if (!document.getElementById('variantId').value) {
+            alert('Vui lòng chọn màu sắc và kích thước');
+            return false;
+        }
+        return true;
+    }
+    // Keyboard accessibility for buy now
+    document.addEventListener('DOMContentLoaded', function () {
+        var buyNowBtn = document.getElementById('buyNowBtn');
+        if (buyNowBtn) {
+            buyNowBtn.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    buyNow();
+                }
+            });
+        }
+        // Keyboard accessibility for review/comment modal buttons
+        var openReviewModalBtn = document.getElementById('openReviewModalBtn');
+        if (openReviewModalBtn) {
+            openReviewModalBtn.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openReviewModalBtn.click();
+                }
+            });
+        }
+        var openCommentModalBtn = document.getElementById('openCommentModalBtn');
+        if (openCommentModalBtn) {
+            openCommentModalBtn.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openCommentModalBtn.click();
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}
 
 {% block scripts %}
@@ -538,7 +581,7 @@
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: `product_id=${productId}`
+            body: 'product_id=' + encodeURIComponent(productId)
         })
             .then(response => response.json())
             .catch(error => {
@@ -591,7 +634,7 @@
         const container = document.getElementById('reviews-container');
 
         // Clear existing content first
-        container.innerHTML = '<div class="text-center py-5" id="loading-reviews"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-3 text-muted">Đang tải đánh giá...</p></div>';
+        container.innerHTML = '<div class="text-center py-4" id="loading-reviews"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Loading...</span></div><p class="mt-2">Đang tải đánh giá...</p></div>';
 
         fetch(`/api/get_product_reviews?product_id=${productId}`)
             .then(response => response.json())
@@ -599,111 +642,115 @@
                 // Clear loading
                 container.innerHTML = '';
 
-                if (data.success) {
-                    // Update review count in tab
-                    document.getElementById('review-count').textContent = data.total_reviews || 0;
+                // Update review count in tab
+                document.getElementById('review-count').textContent = data.total_reviews || 0;
 
+                if (data.success) {
                     if (data.total_reviews > 0) {
                         let html = `
-                <div class="row g-4 mb-4">
-                    <!-- Rating Summary Card -->
-                    <div class="col-md-4">
-                        <div class="card h-100 border-0 shadow-sm bg-gradient-primary text-white">
-                            <div class="card-body text-center p-4">
-                                <div class="mb-3">
-                                    <div class="display-2 fw-bold mb-2">${data.average_rating.toFixed(1)}</div>
-                                    <div class="fs-3 mb-2">
-            `;
+                        <div class="mb-4">
+                            <div class="row align-items-center">
+                                <div class="col-md-4">
+                                    <div class="text-center p-4 bg-gradient-primary rounded-4 shadow border-0 mb-3 mb-md-0" style="background: linear-gradient(135deg, #f8fafc 0%, #e3e9f7 100%) !important; box-shadow: 0 4px 24px 0 rgba(0,0,0,0.08);">
+                                        <div class="d-flex justify-content-center align-items-center mb-2" style="gap: 0.5rem;">
+                                            <span class="display-3 fw-bold" style="font-size: 3.2rem; color: #ffb300; line-height: 1;">${data.average_rating.toFixed(1)}</span>
+                                            <i class="fas fa-star" style="font-size: 2.2rem; color: #ffb300; line-height: 1;"></i>
+                                        </div>
+                                        <div class="fs-5 mb-2 mt-2" style="color: #6c757d;">
+                        `;
 
                         // Add stars for average rating
                         for (let i = 1; i <= 5; i++) {
                             if (i <= Math.round(data.average_rating)) {
                                 html += '<i class="fas fa-star text-warning"></i>';
                             } else {
-                                html += '<i class="far fa-star text-white-50"></i>';
+                                html += '<i class="far fa-star text-warning"></i>';
                             }
                         }
 
                         html += `
                                     </div>
-                                    <p class="mb-0 fs-5 opacity-90">${data.total_reviews} đánh giá</p>
+                                    <p class="mb-0 text-muted">${data.total_reviews} đánh giá</p>
                                 </div>
-                                <div class="text-center">
-                                    <small class="opacity-75">Đánh giá trung bình</small>
+                            </div>
+                            <div class="col-md-8">
+                                <h5 class="mb-4" style="font-size: 1.25rem;">
+                                    <i class="fas fa-chart-bar text-primary me-2"></i>
+                                    <span style="font-size: 1.1em; font-weight: bold;">Phân phối đánh giá</span>
+                                </h5>
+                                <div class="mb-3">
+                                    <small class="text-muted" style="font-size: 1.05em;">Tỷ lệ đánh giá theo số sao</small>
+                                </div>  
+                                <div class="card border-0 shadow-sm mb-3" style="background: #f8f9fa; border: 1px solid #e0e0e0; box-shadow: 0 2px 12px 0 rgba(0,0,0,0.06), 0 1.5px 4px 0 rgba(0,0,0,0.03);">
+                                    <div class="card-body p-3">
+                                        ${(() => {
+                                            let breakdownHtml = '';
+                                            for (let star = 5; star >= 1; star--) {
+                                                const count = data.rating_breakdown[star] || 0;
+                                                const percentage = data.total_reviews > 0 ? (count / data.total_reviews * 100) : 0;
+
+                                                // Choose icon for each star level
+                                                let icon = '';
+                                                if (star === 5) {
+                                                    icon = '<i class="fas fa-crown text-warning me-1"></i>';
+                                                } else if (star === 4) {
+                                                    icon = '<i class="fas fa-smile-beam text-success me-1"></i>';
+                                                } else if (star === 3) {
+                                                    icon = '<i class="fas fa-meh text-info me-1"></i>';
+                                                } else if (star === 2) {
+                                                    icon = '<i class="fas fa-frown text-secondary me-1"></i>';
+                                                } else {
+                                                    icon = '<i class="fas fa-angry text-danger me-1"></i>';
+                                                }
+
+                                                breakdownHtml += `
+                                                <div class="d-flex align-items-center mb-2" style="min-width: 240px;">
+                                                    <span class="me-2 d-flex align-items-center justify-content-end" style="width: 90px;">
+                                                        ${icon}
+                                                        <span style="min-width: 18px; text-align: right; display: inline-block;">${star}</span>
+                                                        <i class="fas fa-star text-warning ms-1"></i>
+                                                    </span>
+                                                    <div class="progress flex-grow-1 me-1" style="height: 8px; min-width: 80px; margin-right: 10px;">
+                                                        <div class="progress-bar bg-warning" role="progressbar"
+                                                            style="width: ${percentage}%;"
+                                                            aria-valuenow="${percentage}"
+                                                            aria-valuemin="0" aria-valuemax="100">
+                                                        </div>
+                                                    </div>
+                                                    <span class="text-end" style="width: 40px; min-width: 40px; display: inline-block; font-variant-numeric: tabular-nums; color: #333;">${count}</span>
+                                                </div>
+                                                `;
+                                            }
+                                            return breakdownHtml;
+                                        })()}
+                                    </div>
+                                </div>
+                            </div>
+                                </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Rating Breakdown -->
-                    <div class="col-md-8">
-                        <div class="card h-100 border-0 shadow-sm">
-                            <div class="card-body p-4">
-                                <h6 class="card-title mb-4 text-dark">
-                                    <i class="fas fa-chart-bar me-2 text-primary"></i>
-                                    Phân phối đánh giá
-                                </h6>
-            `;
-
-                        // Add rating breakdown
-                        for (let star = 5; star >= 1; star--) {
-                            const count = data.rating_breakdown[star] || 0;
-                            const percentage = data.total_reviews > 0 ? (count / data.total_reviews * 100) : 0;
-
-                            html += `
-                        <div class="d-flex align-items-center mb-3">
-                            <div class="me-3 text-end" style="width: 70px;">
-                                <span class="fw-bold text-dark">${star}</span>
-                                <i class="fas fa-star text-warning ms-1"></i>
-                            </div>
-                            <div class="progress flex-grow-1 me-3" style="height: 10px;">
-                                <div class="progress-bar bg-warning" role="progressbar"
-                                    style="width: ${percentage}%;"
-                                    aria-valuenow="${percentage}"
-                                    aria-valuemin="0" aria-valuemax="100">
-                                </div>
-                            </div>
-                            <span class="fw-bold text-muted" style="width: 40px;">${count}</span>
-                        </div>
-                        `;
-                        }
-
-                        html += `
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Reviews List -->
-                <div class="reviews-list">
-                    <div class="d-flex align-items-center justify-content-between mb-4">
-                        <h6 class="mb-0 text-dark">
-                            <i class="fas fa-comments me-2 text-primary"></i>
-                            Nhận xét từ khách hàng
-                        </h6>
-                        <small class="text-muted">${data.total_reviews} đánh giá</small>
-                    </div>
-            `;
+                    <hr>
+                    <h5 class="mb-3">Đánh giá từ khách hàng</h5>
+                `;
 
                         // Add individual reviews
                         if (data.reviews.length > 0) {
-                            data.reviews.forEach((review, index) => {
+                            data.reviews.forEach(review => {
                                 html += `
-                        <div class="review-card mb-4">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body p-4">
-                                    <div class="row">
-                                        <div class="col-auto">
-                                            <div class="avatar-circle bg-primary text-white d-flex align-items-center justify-content-center">
-                                                <i class="fas fa-user"></i>
+                            <div class="card mb-3 review-card shadow-sm">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-circle bg-gradient-primary text-white fw-bold me-3" style="font-size: 1.2rem;">
+                                                <span>${review.customer_name ? review.customer_name.charAt(0).toUpperCase() : "?"}</span>
                                             </div>
-                                        </div>
-                                        <div class="col">
-                                            <div class="d-flex justify-content-between align-items-start mb-2">
-                                                <div>
-                                                    <h6 class="mb-1 fw-bold text-dark">${review.customer_name}</h6>
-                                                    <div class="rating-stars mb-2">
-                `;
+                                            <div>
+                                                <h6 class="card-title mb-1 fw-bold">${review.customer_name || "Ẩn danh"}</h6>
+                                                <div class="rating-stars mb-1">
+                                `;
 
                                 // Add stars for this review
                                 for (let i = 1; i <= 5; i++) {
@@ -715,72 +762,144 @@
                                 }
 
                                 html += `
-                                                    </div>
                                                 </div>
-                                                <small class="text-muted">
-                                                    <i class="fas fa-calendar-alt me-1"></i>${review.review_date}
-                                                </small>
+                                                <small class="text-muted">${review.review_date}</small>
                                             </div>
-                                            ${review.comment ?
-                                        `<p class="mb-0 text-dark lh-base">${review.comment}</p>` :
-                                        '<p class="mb-0 text-muted fst-italic">Khách hàng đã đánh giá nhưng không để lại nhận xét</p>'
-                                    }
                                         </div>
+                                        <div class="text-end">
+                                            ${review.verified_purchase ? `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Đã mua hàng</span>` : ""}
+                                            <!-- Add a like button and report button to the right -->
+                                            <div class="d-flex flex-column align-items-end gap-2 mt-2">
+                                                <button type="button" class="btn btn-sm btn-outline-secondary" title="Hữu ích" onclick="alert('Cảm ơn bạn đã đánh giá!')">
+                                                    <i class="fas fa-thumbs-up"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-danger" title="Báo cáo đánh giá" onclick="alert('Cảm ơn bạn đã báo cáo!')">
+                                                    <i class="fas fa-flag"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    ${review.comment ? `<p class="card-text mt-2">${review.comment}</p>` : '<p class="card-text text-muted"><em>Không có nhận xét</em></p>'}
+                                    <div class="d-flex flex-wrap gap-3 mt-3">
+                                        ${review.size_name ? `<span class="badge bg-light text-dark border"><i class="fas fa-ruler-combined me-1"></i>Size: ${review.size_name}</span>` : ""}
+                                        ${review.color_name ? `<span class="badge bg-light text-dark border"><i class="fas fa-palette me-1"></i>Màu: ${review.color_name}</span>` : ""}
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    `;
+                        `;
                             });
                         }
 
-                        html += `</div>`;
                         container.innerHTML = html;
                     } else {
                         container.innerHTML = `
-                <div class="empty-state text-center py-5">
-                    <div class="mb-4">
-                        <div class="empty-icon mx-auto mb-3">
-                            <i class="far fa-star fa-4x text-muted opacity-50"></i>
-                        </div>
-                        <h5 class="text-muted mb-3">Chưa có đánh giá nào</h5>
-                        <p class="text-muted mb-4">Sản phẩm này chưa có đánh giá từ khách hàng.<br>Hãy là người đầu tiên chia sẻ trải nghiệm của bạn!</p>
-                        <button type="button" class="btn btn-primary btn-lg" data-bs-toggle="modal" data-bs-target="#reviewModal">
-                            <i class="fas fa-star me-2"></i>Viết đánh giá đầu tiên
-                        </button>
+                    <div class="text-center py-5">
+                        <i class="far fa-star fa-3x mb-3 text-muted"></i>
+                        <h5>Chưa có đánh giá nào</h5>
+                        <p class="text-muted">Hãy là người đầu tiên đánh giá sản phẩm này</p>
                     </div>
-                </div>
-            `;
+                `;
                     }
                 } else {
                     container.innerHTML = `
-            <div class="alert alert-danger border-0 shadow-sm">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
-                    <div>
-                        <h6 class="mb-1">Không thể tải đánh giá</h6>
-                        <p class="mb-0">${data.message || 'Đã xảy ra lỗi khi tải đánh giá'}</p>
-                    </div>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle me-2"></i>${data.message || 'Đã xảy ra lỗi khi tải đánh giá'}
                 </div>
-            </div>
-        `;
+            `;
                 }
             })
             .catch(error => {
                 console.error('Error loading reviews:', error);
                 container.innerHTML = `
-        <div class="alert alert-danger border-0 shadow-sm">
-            <div class="d-flex align-items-center">
-                <i class="fas fa-exclamation-triangle me-3 fa-2x"></i>
-                <div>
-                    <h6 class="mb-1">Lỗi kết nối</h6>
-                    <p class="mb-0">Không thể tải đánh giá. Vui lòng thử lại sau.</p>
-                </div>
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-circle me-2"></i>Đã xảy ra lỗi khi tải đánh giá
             </div>
-        </div>
-    `;
+        `;
             });
     }
+
+    // Handle rating stars in review form
+    document.querySelectorAll('.rating-star').forEach(star => {
+        star.addEventListener('mouseover', function () {
+            const rating = parseInt(this.dataset.rating);
+
+            document.querySelectorAll('.rating-star').forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.remove('far');
+                    s.classList.add('fas');
+                } else {
+                    s.classList.remove('fas');
+                    s.classList.add('far');
+                }
+            });
+        });
+
+        star.addEventListener('mouseout', function () {
+            const currentRating = parseInt(document.getElementById('rating-value').value);
+
+            document.querySelectorAll('.rating-star').forEach((s, index) => {
+                if (index < currentRating) {
+                    s.classList.remove('far');
+                    s.classList.add('fas');
+                } else {
+                    s.classList.remove('fas');
+                    s.classList.add('far');
+                }
+            });
+        });
+
+        star.addEventListener('click', function () {
+            const rating = parseInt(this.dataset.rating);
+            document.getElementById('rating-value').value = rating;
+
+            document.querySelectorAll('.rating-star').forEach((s, index) => {
+                if (index < rating) {
+                    s.classList.remove('far');
+                    s.classList.add('fas');
+                } else {
+                    s.classList.remove('fas');
+                    s.classList.add('far');
+                }
+            });
+        });
+    });
+
+    // Submit review
+    document.getElementById('submit-review').addEventListener('click', function () {
+        const rating = document.getElementById('rating-value').value;
+        const comment = document.getElementById('review-comment').value;
+
+        if (rating === '0') {
+            alert('Vui lòng chọn số sao đánh giá');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        formData.append('rating', rating);
+        formData.append('comment', comment);
+
+        fetch('{{ url_for("add_review") }}', {
+            method: 'POST',
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    $('#reviewModal').modal('hide');
+
+                    // Reload reviews
+                    loadProductReviews();
+                } else {
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting review:', error);
+                alert('Đã xảy ra lỗi khi gửi đánh giá');
+            });
+    });
 
     // Load product comments
     function loadProductComments() {

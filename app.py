@@ -2,7 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, flash, ses
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import pyodbc
-import os
 from datetime import datetime
 import decimal
 import json
@@ -28,7 +27,7 @@ connection_string = f'mssql+pyodbc://{username}:{password}@{server}/{database}?d
 app.config['SQLALCHEMY_DATABASE_URI'] = connection_string
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Cấu hình email (thay đổi theo thông tin của bạn)
+# Cấu hình email
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_HOST_USER = 'your_email@gmail.com'  # Thay đổi email của bạn
@@ -2063,7 +2062,7 @@ def admin_comments():
                c.FullName AS CustomerName, p.ProductName, p.ProductID
         FROM ProductComments pc
         JOIN Customers c ON pc.CustomerID = c.CustomerID
-        JOIN Products p ON pc.ProductID = pc.ProductID
+        JOIN Products p ON pc.ProductID = p.ProductID
     '''
     
     if filter_type == 'no_reply':
@@ -2217,18 +2216,5 @@ def cancel_order(order_id):
     finally:
         conn.close()
 
-
-@app.route('/checkout')
-def gallery():
-    # Lấy danh sách file trong thư mục static/images
-    image_dir = os.path.join(app.static_folder, 'images')
-    images = [
-        f for f in os.listdir(image_dir)
-        if os.path.isfile(os.path.join(image_dir, f))
-        and f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))
-    ]
-    # Mảng images sẽ chứa ['mu-bucket.jpg', 'quan-kaki-nam-nau.jpg', …]
-    return render_template('checkout.html', images=images)
-
 if __name__ == '__main__':
-    app.run(debug=True, port=4000, host='0.0.0.0')
+    app.run(debug=True, port=4000, host='0.0.0.0')  
