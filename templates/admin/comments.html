@@ -7,7 +7,7 @@
     .admin-sidebar {
         min-height: calc(100vh - 56px - 300px);
     }
-
+    
     .notification {
         position: fixed;
         top: 20px;
@@ -18,12 +18,12 @@
         transform: translateX(100%);
         transition: all 0.3s ease;
     }
-
+    
     .notification.show {
         opacity: 1;
         transform: translateX(0);
     }
-
+    
     .processing {
         opacity: 0.6;
         pointer-events: none;
@@ -37,45 +37,48 @@
         <!-- Sidebar -->
         <div class="col-md-3 col-lg-2">
             <div class="list-group admin-sidebar mb-4">
-                <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_dashboard' %}active{% endif %}">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Dashboard</span>
                 </a>
-                <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-box me-2"></i>Sản phẩm
+                <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_products' %}active{% endif %}">
+                    <i class="fas fa-box"></i>
+                    <span>Sản phẩm</span>
                 </a>
-                <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+                <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_orders' %}active{% endif %}">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Đơn hàng</span>
                 </a>
-                <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action active">
-                    <i class="fas fa-comments me-2"></i>Bình luận
+                <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_comments' %}active{% endif %}">
+                    <i class="fas fa-comments"></i>
+                    <span>Bình luận</span>
                 </a>
-                <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-bar me-2"></i>Báo cáo
+                <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_reports' %}active{% endif %}">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Báo cáo</span>
                 </a>
-                <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+                <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin_contact_messages' %}active{% endif %}">
+                    <i class="fas fa-envelope"></i>
+                    <span>Tin nhắn liên hệ</span>
                 </a>
-                <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action text-primary">
-                    <i class="fas fa-store me-2"></i>Xem cửa hàng
+                <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action d-flex align-items-center gap-2 text-primary">
+                    <i class="fas fa-store"></i>
+                    <span>Xem cửa hàng</span>
                 </a>
             </div>
         </div>
-
+        
         <!-- Main Content -->
         <div class="col-md-9 col-lg-10">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>Quản lý bình luận sản phẩm</h2>
-
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+                <h2 class="mb-0">Quản lý bình luận sản phẩm</h2>
                 <div class="btn-group">
-                    <a href="{{ url_for('admin_comments') }}"
-                        class="btn btn-outline-primary {% if not filter %}active{% endif %}">Tất cả</a>
-                    <a href="{{ url_for('admin_comments', filter='no_reply') }}"
-                        class="btn btn-outline-primary {% if filter == 'no_reply' %}active{% endif %}">Chưa trả lời</a>
-                    <a href="{{ url_for('admin_comments', filter='replied') }}"
-                        class="btn btn-outline-primary {% if filter == 'replied' %}active{% endif %}">Đã trả lời</a>
+                    <a href="{{ url_for('admin_comments') }}" class="btn btn-outline-primary {% if not filter %}active{% endif %}">Tất cả</a>
+                    <a href="{{ url_for('admin_comments', filter='no_reply') }}" class="btn btn-outline-primary {% if filter == 'no_reply' %}active{% endif %}">Chưa trả lời</a>
+                    <a href="{{ url_for('admin_comments', filter='replied') }}" class="btn btn-outline-primary {% if filter == 'replied' %}active{% endif %}">Đã trả lời</a>
                 </div>
             </div>
-
+            
             <div class="card">
                 <div class="card-header bg-dark text-white">
                     <h5 class="mb-0">Danh sách bình luận</h5>
@@ -83,16 +86,17 @@
                 <div class="card-body">
                     {% if comments %}
                     <div class="table-responsive">
-                        <table class="table table-hover">
+                        <table class="table table-hover align-middle">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Sản phẩm</th>
-                                    <th>Khách hàng</th>
-                                    <th>Nội dung</th>
-                                    <th>Ngày bình luận</th>
-                                    <th>Trạng thái</th>
-                                    <th>Thao tác</th>
+                                    <th style="width: 50px;">ID</th>
+                                    <th style="min-width: 160px;">Sản phẩm</th>
+                                    <th style="min-width: 120px;">Khách hàng</th>
+                                    <th style="min-width: 200px;">Nội dung</th>
+                                    <th style="width: 140px;">Ngày bình luận</th>
+                                    <th style="width: 110px;">Trạng thái</th>
+                                    <th style="min-width: 180px;">Phản hồi admin</th>
+                                    <th style="width: 90px;">Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -100,30 +104,41 @@
                                 <tr id="comment-row-{{ comment.CommentID }}">
                                     <td>{{ comment.CommentID }}</td>
                                     <td>
-                                        <a href="{{ url_for('product_detail', product_id=comment.ProductID) }}"
-                                            target="_blank">
+                                        <a href="{{ url_for('product_detail', product_id=comment.ProductID) }}" target="_blank" class="text-decoration-underline">
                                             {{ comment.ProductName }}
                                         </a>
                                     </td>
                                     <td>{{ comment.CustomerName }}</td>
-                                    <td>{{ comment.Content|truncate(50) }}</td>
+                                    <td style="white-space: pre-line;">{{ comment.Content|truncate(50) }}</td>
                                     <td>{{ comment.CommentDate.strftime('%d/%m/%Y %H:%M') }}</td>
                                     <td>
-                                        <span id="status-{{ comment.CommentID }}"
-                                            class="badge {% if comment.AdminReply %}bg-success{% else %}bg-warning{% endif %}">
+                                        <span id="status-{{ comment.CommentID }}" class="badge {% if comment.AdminReply %}bg-success{% else %}bg-warning{% endif %}">
                                             {% if comment.AdminReply %}Đã trả lời{% else %}Chưa trả lời{% endif %}
                                         </span>
                                     </td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-primary"
-                                            onclick="viewComment({{ comment.CommentID }})">
-                                            <i class="fas fa-eye"></i>
-                                        </button>
-                                        <button type="button" id="visibility-btn-{{ comment.CommentID }}"
-                                            class="btn btn-sm btn-danger"
-                                            onclick="toggleVisibility({{ comment.CommentID }}, {{ 0 if comment.IsVisible else 1 }})">
-                                            <i class="fas fa-{{ 'eye-slash' if comment.IsVisible else 'eye' }}"></i>
-                                        </button>
+                                        {% if comment.AdminReply %}
+                                            <div>
+                                                <span class="text-success fw-bold">{{ comment.AdminReply|truncate(40) }}</span>
+                                                <div class="text-muted small">
+                                                    <em>
+                                                        {{ comment.ReplyDate.strftime('%d/%m/%Y %H:%M') if comment.ReplyDate else '' }}
+                                                    </em>
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <span class="text-muted">Chưa phản hồi</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="d-flex gap-1">
+                                            <button type="button" class="btn btn-sm btn-primary" title="Xem chi tiết" onclick="viewComment({{ comment.CommentID }})">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button type="button" id="visibility-btn-{{ comment.CommentID }}" class="btn btn-sm btn-danger" title="{{ 'Ẩn' if comment.IsVisible else 'Hiển thị' }}" onclick="toggleVisibility({{ comment.CommentID }}, {{ 0 if comment.IsVisible else 1 }})">
+                                                <i class="fas fa-{{ 'eye-slash' if comment.IsVisible else 'eye' }}"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -161,8 +176,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-primary" id="replyBtn" onclick="replyComment()">Gửi phản
-                    hồi</button>
+                <button type="button" class="btn btn-primary" id="replyBtn" onclick="replyComment()">Gửi phản hồi</button>
             </div>
         </div>
     </div>
@@ -174,38 +188,38 @@
 </div>
 
 <script>
-    // Comment data for modal
-    const commentsData = {
+// Comment data for modal
+const commentsData = {
     {% for comment in comments %}
-    "{{ comment.CommentID }}": {
+    {{ comment.CommentID }}: {
         id: {{ comment.CommentID }},
-        productName: {{ comment.ProductName | tojson }},
+        productName: "{{ comment.ProductName }}",
         productId: {{ comment.ProductID }},
-        customerName: {{ comment.CustomerName | tojson }},
-        content: {{ comment.Content | tojson }},
-        commentDate: {{ comment.CommentDate.strftime('%d/%m/%Y %H:%M') | tojson }},
-        adminReply: {{ (comment.AdminReply if comment.AdminReply else '') | tojson }},
-        replyDate: {{ (comment.ReplyDate.strftime('%d/%m/%Y %H:%M') if comment.ReplyDate else '') | tojson }},
+        customerName: "{{ comment.CustomerName }}",
+        content: `{{ comment.Content|replace('\n', '\\n')|replace('"', '\\"') }}`,
+        commentDate: "{{ comment.CommentDate.strftime('%d/%m/%Y %H:%M') }}",
+        adminReply: `{{ comment.AdminReply|replace('\n', '\\n')|replace('"', '\\"') if comment.AdminReply else '' }}`,
+        replyDate: "{{ comment.ReplyDate.strftime('%d/%m/%Y %H:%M') if comment.ReplyDate else '' }}",
         isVisible: {{ 'true' if comment.IsVisible else 'false' }}
     }{% if not loop.last %},{% endif %}
     {% endfor %}
 };
 
-    let currentCommentId = null;
-    let isProcessing = false;
+let currentCommentId = null;
+let isProcessing = false;
 
-    // View comment details
-    function viewComment(commentId) {
-        if (isProcessing) return;
-
-        const comment = commentsData[commentId];
-        if (!comment) return;
-
-        currentCommentId = commentId;
-
-        document.getElementById('commentModalTitle').textContent = `Bình luận từ ${comment.customerName}`;
-
-        let modalContent = `
+// View comment details
+function viewComment(commentId) {
+    if (isProcessing) return;
+    
+    const comment = commentsData[commentId];
+    if (!comment) return;
+    
+    currentCommentId = commentId;
+    
+    document.getElementById('commentModalTitle').textContent = `Bình luận từ ${comment.customerName}`;
+    
+    let modalContent = `
         <div class="mb-3">
             <strong>Sản phẩm:</strong> 
             <a href="/product/${comment.productId}" target="_blank">${comment.productName}</a>
@@ -223,9 +237,9 @@
             </div>
         </div>
     `;
-
-        if (comment.adminReply) {
-            modalContent += `
+    
+    if (comment.adminReply) {
+        modalContent += `
             <div class="mb-3">
                 <strong>Phản hồi của admin:</strong>
                 <div class="card mt-2 bg-light">
@@ -238,139 +252,151 @@
                 </div>
             </div>
         `;
-        }
-
-        modalContent += `
+    }
+    
+    modalContent += `
         <div class="mb-3">
             <label class="form-label"><strong>Trả lời bình luận:</strong></label>
             <textarea class="form-control" id="replyTextarea" rows="4">${comment.adminReply}</textarea>
         </div>
     `;
+    
+    document.getElementById('commentModalBody').innerHTML = modalContent;
+    
+    const modal = new bootstrap.Modal(document.getElementById('commentModal'));
+    modal.show();
+}
 
-        document.getElementById('commentModalBody').innerHTML = modalContent;
+ // Reply to comment
+function replyComment() {
+    if (isProcessing || !currentCommentId) return;
 
-        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
-        modal.show();
+    const reply = document.getElementById('replyTextarea').value.trim();
+    if (!reply) {
+        showNotification('Vui lòng nhập nội dung phản hồi', 'warning');
+        return;
     }
 
-    // Reply to comment
-    function replyComment() {
-        if (isProcessing || !currentCommentId) return;
+    isProcessing = true;
+    document.getElementById('replyBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
 
-        const reply = document.getElementById('replyTextarea').value.trim();
-        if (!reply) {
-            showNotification('Vui lòng nhập nội dung phản hồi', 'warning');
-            return;
+    fetch('{{ url_for("admin_reply_comment") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `comment_id=${currentCommentId}&reply=${encodeURIComponent(reply)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update comment data
+            commentsData[currentCommentId].adminReply = reply;
+            commentsData[currentCommentId].replyDate = new Date().toLocaleString('vi-VN');
+
+            // Update status badge
+            const statusBadge = document.getElementById(`status-${currentCommentId}`);
+            statusBadge.className = 'badge bg-success';
+            statusBadge.textContent = 'Đã trả lời';
+
+            // Highlight the comment row to show it's updated
+            const row = document.getElementById(`comment-row-${currentCommentId}`);
+            row.classList.add('table-success');
+            row.style.transition = 'background 0.5s';
+            setTimeout(() => {
+                row.classList.remove('table-success');
+            }, 2000);
+
+            // Update reply section in modal immediately
+            const modalBody = document.getElementById('commentModalBody');
+            const textareaGroup = modalBody.querySelector('.mb-3:last-child');
+            if (textareaGroup) {
+                textareaGroup.innerHTML = `
+                    <strong>Phản hồi của admin:</strong>
+                    <div class="card mt-2 bg-light border-success border-2">
+                        <div class="card-body">
+                            <span class="text-success fw-bold">${reply}</span>
+                            <div class="text-muted mt-2 small">
+                                <em>Trả lời lúc: ${commentsData[currentCommentId].replyDate}</em>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+            showNotification(data.message, 'success');
+        } else {
+            showNotification(data.message, 'danger');
         }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Đã xảy ra lỗi khi gửi phản hồi', 'danger');
+    })
+    .finally(() => {
+        isProcessing = false;
+        document.getElementById('replyBtn').innerHTML = 'Gửi phản hồi';
+    });
+}
 
-        isProcessing = true;
-        document.getElementById('replyBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+// Toggle comment visibility
+function toggleVisibility(commentId, visible) {
+    if (isProcessing) return;
+    
+    const action = visible ? 'hiển thị' : 'ẩn';
+    if (!confirm(`Bạn có chắc chắn muốn ${action} bình luận này?`)) return;
+    
+    isProcessing = true;
+    const btn = document.getElementById(`visibility-btn-${commentId}`);
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    
+    fetch('{{ url_for("admin_toggle_comment_visibility") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `comment_id=${commentId}&visible=${visible}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Update button icon
+            const newIcon = visible ? 'eye-slash' : 'eye';
+            btn.innerHTML = `<i class="fas fa-${newIcon}"></i>`;
+            btn.setAttribute('onclick', `toggleVisibility(${commentId}, ${visible ? 0 : 1})`);
+            
+            // Update comment data
+            commentsData[commentId].isVisible = visible;
+            
+            showNotification(data.message, 'success');
+        } else {
+            btn.innerHTML = originalContent;
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        btn.innerHTML = originalContent;
+        showNotification('Đã xảy ra lỗi khi thay đổi trạng thái bình luận', 'danger');
+    })
+    .finally(() => {
+        isProcessing = false;
+    });
+}
 
-        fetch('{{ url_for("admin_reply_comment") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `comment_id=${currentCommentId}&reply=${encodeURIComponent(reply)}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update comment data
-                    commentsData[currentCommentId].adminReply = reply;
-                    commentsData[currentCommentId].replyDate = new Date().toLocaleString('vi-VN');
-
-                    // Update status badge
-                    const statusBadge = document.getElementById(`status-${currentCommentId}`);
-                    statusBadge.className = 'badge bg-success';
-                    statusBadge.textContent = 'Đã trả lời';
-
-                    showNotification(data.message, 'success');
-
-                    // Close modal
-                    const modal = bootstrap.Modal.getInstance(document.getElementById('commentModal'));
-                    modal.hide();
-                } else {
-                    showNotification(data.message, 'danger');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Đã xảy ra lỗi khi gửi phản hồi', 'danger');
-            })
-            .finally(() => {
-                isProcessing = false;
-                document.getElementById('replyBtn').innerHTML = 'Gửi phản hồi';
-            });
-    }
-
-    // Toggle comment visibility
-    function toggleVisibility(commentId, visible) {
-        if (isProcessing) return;
-
-        const action = visible ? 'hiển thị' : 'ẩn';
-        if (!confirm(`Bạn có chắc chắn muốn ${action} bình luận này?`)) return;
-
-        isProcessing = true;
-        const btn = document.getElementById(`visibility-btn-${commentId}`);
-        const originalContent = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-        fetch('{{ url_for("admin_toggle_comment_visibility") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `comment_id=${commentId}&visible=${visible}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update comment data
-                    commentsData[commentId].isVisible = !!visible;
-
-                    // Hide the row if comment is hidden, otherwise update button/icon
-                    const row = document.getElementById(`comment-row-${commentId}`);
-                    if (!visible && row) {
-                        row.style.display = 'none';
-                    } else {
-                        // Update button icon and onclick for the new state
-                        const newVisible = !!visible;
-                        const newIcon = newVisible ? 'eye-slash' : 'eye';
-                        btn.innerHTML = `<i class="fas fa-${newIcon}"></i>`;
-                        btn.setAttribute('onclick', `toggleVisibility(${commentId}, ${newVisible ? 0 : 1})`);
-                    }
-
-                    showNotification(data.message, 'success');
-                } else {
-                    btn.innerHTML = originalContent;
-                    showNotification(data.message, 'danger');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                btn.innerHTML = originalContent;
-                showNotification('Đã xảy ra lỗi khi thay đổi trạng thái bình luận', 'danger');
-            })
-            .finally(() => {
-                isProcessing = false;
-            });
-    }
-
-    // Show notification
-    function showNotification(message, type = 'success') {
-        const notification = document.getElementById('notification');
-        const messageEl = document.getElementById('notificationMessage');
-
-        notification.className = `notification alert alert-${type} show`;
-        messageEl.textContent = message;
-
-        // Force reflow to restart animation if needed
-        void notification.offsetWidth;
-
-        setTimeout(() => {
-            notification.classList.remove('show');
-        }, 3000);
-    }
+// Show notification
+function showNotification(message, type = 'success') {
+    const notification = document.getElementById('notification');
+    const messageEl = document.getElementById('notificationMessage');
+    
+    notification.className = `notification alert alert-${type}`;
+    messageEl.textContent = message;
+    notification.classList.add('show');
+    
+    setTimeout(() => {
+        notification.classList.remove('show');
+    }, 3000);
+}
 </script>
 {% endblock %}
