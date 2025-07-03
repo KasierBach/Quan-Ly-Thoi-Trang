@@ -394,149 +394,148 @@
 {% if cart %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const subtotalAmount = {{ total }}
-    };
-    let shippingFee = 0;
-    let discountAmount = 0;
+        const subtotalAmount = {{ total }};
+        let shippingFee = 0;
+        let discountAmount = 0;
 
-    // Handle shipping method change
-    const shippingMethods = document.querySelectorAll('input[name="shipping_method"]');
-    shippingMethods.forEach(method => {
-        method.addEventListener('change', function () {
-            shippingFee = parseInt(this.dataset.fee);
-            updateOrderTotal();
+        // Handle shipping method change
+        const shippingMethods = document.querySelectorAll('input[name="shipping_method"]');
+        shippingMethods.forEach(method => {
+            method.addEventListener('change', function () {
+                shippingFee = parseInt(this.dataset.fee);
+                updateOrderTotal();
 
-            const feeElement = document.getElementById('shipping-fee');
-            if (shippingFee === 0) {
-                feeElement.innerHTML = '<span class="text-success">Miễn phí</span>';
-            } else {
-                feeElement.textContent = new Intl.NumberFormat('vi-VN').format(shippingFee) + 'đ';
-            }
-        });
-    });
-
-    // Handle discount code
-    document.getElementById('applyDiscountBtn').addEventListener('click', function () {
-        const discountCode = document.getElementById('discount_code').value.trim();
-        const messageDiv = document.getElementById('discountMessage');
-
-        if (!discountCode) {
-            showDiscountMessage('Vui lòng nhập mã giảm giá', 'danger');
-            return;
-        }
-
-        // Show loading
-        this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
-        this.disabled = true;
-
-        // Simulate API call
-        setTimeout(() => {
-            // Mock discount codes
-            const discountCodes = {
-                'WELCOME10': { type: 'percent', value: 10, min_order: 200000 },
-                'SAVE50K': { type: 'fixed', value: 50000, min_order: 500000 },
-                'FREESHIP': { type: 'shipping', value: 0, min_order: 0 },
-                'VIP20': { type: 'percent', value: 20, min_order: 1000000 }
-            };
-
-            const discount = discountCodes[discountCode.toUpperCase()];
-
-            if (discount) {
-                if (subtotalAmount >= discount.min_order) {
-                    if (discount.type === 'percent') {
-                        discountAmount = Math.floor(subtotalAmount * discount.value / 100);
-                    } else if (discount.type === 'fixed') {
-                        discountAmount = discount.value;
-                    } else if (discount.type === 'shipping') {
-                        // Free shipping
-                        shippingFee = 0;
-                        document.getElementById('shipping-fee').innerHTML = '<span class="text-success">Miễn phí (mã giảm giá)</span>';
-                        // Reset shipping methods
-                        document.getElementById('standard').checked = true;
-                    }
-
-                    showDiscountMessage(`Áp dụng mã giảm giá thành công! Giảm ${new Intl.NumberFormat('vi-VN').format(discountAmount)}đ`, 'success');
-
-                    // Show discount row
-                    const discountRow = document.getElementById('discount-row');
-                    discountRow.style.display = 'flex';
-                    document.getElementById('discount-amount').textContent = '-' + new Intl.NumberFormat('vi-VN').format(discountAmount) + 'đ';
-
-                    updateOrderTotal();
-
-                    // Disable input and button
-                    document.getElementById('discount_code').disabled = true;
-                    this.innerHTML = '<i class="fas fa-check me-1"></i>Đã áp dụng';
-                    this.classList.remove('btn-outline-success');
-                    this.classList.add('btn-success');
+                const feeElement = document.getElementById('shipping-fee');
+                if (shippingFee === 0) {
+                    feeElement.innerHTML = '<span class="text-success">Miễn phí</span>';
                 } else {
-                    showDiscountMessage(`Đơn hàng tối thiểu ${new Intl.NumberFormat('vi-VN').format(discount.min_order)}đ để sử dụng mã này`, 'warning');
+                    feeElement.textContent = new Intl.NumberFormat('vi-VN').format(shippingFee) + 'đ';
+                }
+            });
+        });
+
+        // Handle discount code
+        document.getElementById('applyDiscountBtn').addEventListener('click', function () {
+            const discountCode = document.getElementById('discount_code').value.trim();
+            const messageDiv = document.getElementById('discountMessage');
+
+            if (!discountCode) {
+                showDiscountMessage('Vui lòng nhập mã giảm giá', 'danger');
+                return;
+            }
+
+            // Show loading
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Đang xử lý...';
+            this.disabled = true;
+
+            // Simulate API call
+            setTimeout(() => {
+                // Mock discount codes
+                const discountCodes = {
+                    'WELCOME10': { type: 'percent', value: 10, min_order: 200000 },
+                    'SAVE50K': { type: 'fixed', value: 50000, min_order: 500000 },
+                    'FREESHIP': { type: 'shipping', value: 0, min_order: 0 },
+                    'VIP20': { type: 'percent', value: 20, min_order: 1000000 }
+                };
+
+                const discount = discountCodes[discountCode.toUpperCase()];
+
+                if (discount) {
+                    if (subtotalAmount >= discount.min_order) {
+                        if (discount.type === 'percent') {
+                            discountAmount = Math.floor(subtotalAmount * discount.value / 100);
+                        } else if (discount.type === 'fixed') {
+                            discountAmount = discount.value;
+                        } else if (discount.type === 'shipping') {
+                            // Free shipping
+                            shippingFee = 0;
+                            document.getElementById('shipping-fee').innerHTML = '<span class="text-success">Miễn phí (mã giảm giá)</span>';
+                            // Reset shipping methods
+                            document.getElementById('standard').checked = true;
+                        }
+
+                        showDiscountMessage(`Áp dụng mã giảm giá thành công! Giảm ${new Intl.NumberFormat('vi-VN').format(discountAmount)}đ`, 'success');
+
+                        // Show discount row
+                        const discountRow = document.getElementById('discount-row');
+                        discountRow.style.display = 'flex';
+                        document.getElementById('discount-amount').textContent = '-' + new Intl.NumberFormat('vi-VN').format(discountAmount) + 'đ';
+
+                        updateOrderTotal();
+
+                        // Disable input and button
+                        document.getElementById('discount_code').disabled = true;
+                        this.innerHTML = '<i class="fas fa-check me-1"></i>Đã áp dụng';
+                        this.classList.remove('btn-outline-success');
+                        this.classList.add('btn-success');
+                    } else {
+                        showDiscountMessage(`Đơn hàng tối thiểu ${new Intl.NumberFormat('vi-VN').format(discount.min_order)}đ để sử dụng mã này`, 'warning');
+                        resetDiscountButton();
+                    }
+                } else {
+                    showDiscountMessage('Mã giảm giá không hợp lệ hoặc đã hết hạn', 'danger');
                     resetDiscountButton();
                 }
+            }, 1000);
+        });
+
+        function showDiscountMessage(message, type) {
+            const messageDiv = document.getElementById('discountMessage');
+            messageDiv.innerHTML = `<small class="text-${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'} me-1"></i>${message}</small>`;
+        }
+
+        function resetDiscountButton() {
+            const btn = document.getElementById('applyDiscountBtn');
+            btn.innerHTML = '<i class="fas fa-check me-1"></i>Áp dụng';
+            btn.disabled = false;
+        }
+
+        function updateOrderTotal() {
+            const total = subtotalAmount + shippingFee - discountAmount;
+            document.getElementById('total-amount').textContent = new Intl.NumberFormat('vi-VN').format(total) + 'đ';
+        }
+
+        // Form validation
+        document.getElementById('checkoutForm').addEventListener('submit', function (e) {
+            const requiredFields = ['full_name', 'phone', 'email', 'shipping_address'];
+            let isValid = true;
+
+            requiredFields.forEach(fieldName => {
+                const field = document.getElementById(fieldName);
+                if (!field.value.trim()) {
+                    field.classList.add('is-invalid');
+                    isValid = false;
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+
+            if (!isValid) {
+                e.preventDefault();
+                // Scroll to first invalid field
+                const firstInvalid = document.querySelector('.is-invalid');
+                if (firstInvalid) {
+                    firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    firstInvalid.focus();
+                }
             } else {
-                showDiscountMessage('Mã giảm giá không hợp lệ hoặc đã hết hạn', 'danger');
-                resetDiscountButton();
+                // Show loading state
+                const submitBtn = document.getElementById('placeOrderBtn');
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
+                submitBtn.disabled = true;
             }
-        }, 1000);
-    });
+        });
 
-    function showDiscountMessage(message, type) {
-        const messageDiv = document.getElementById('discountMessage');
-        messageDiv.innerHTML = `<small class="text-${type}"><i class="fas fa-${type === 'success' ? 'check-circle' : type === 'warning' ? 'exclamation-triangle' : 'times-circle'} me-1"></i>${message}</small>`;
-    }
-
-    function resetDiscountButton() {
-        const btn = document.getElementById('applyDiscountBtn');
-        btn.innerHTML = '<i class="fas fa-check me-1"></i>Áp dụng';
-        btn.disabled = false;
-    }
-
-    function updateOrderTotal() {
-        const total = subtotalAmount + shippingFee - discountAmount;
-        document.getElementById('total-amount').textContent = new Intl.NumberFormat('vi-VN').format(total) + 'đ';
-    }
-
-    // Form validation
-    document.getElementById('checkoutForm').addEventListener('submit', function (e) {
+        // Real-time validation
         const requiredFields = ['full_name', 'phone', 'email', 'shipping_address'];
-        let isValid = true;
-
         requiredFields.forEach(fieldName => {
             const field = document.getElementById(fieldName);
-            if (!field.value.trim()) {
-                field.classList.add('is-invalid');
-                isValid = false;
-            } else {
-                field.classList.remove('is-invalid');
-            }
+            field.addEventListener('input', function () {
+                if (this.value.trim()) {
+                    this.classList.remove('is-invalid');
+                }
+            });
         });
-
-        if (!isValid) {
-            e.preventDefault();
-            // Scroll to first invalid field
-            const firstInvalid = document.querySelector('.is-invalid');
-            if (firstInvalid) {
-                firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                firstInvalid.focus();
-            }
-        } else {
-            // Show loading state
-            const submitBtn = document.getElementById('placeOrderBtn');
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
-            submitBtn.disabled = true;
-        }
-    });
-
-    // Real-time validation
-    const requiredFields = ['full_name', 'phone', 'email', 'shipping_address'];
-    requiredFields.forEach(fieldName => {
-        const field = document.getElementById(fieldName);
-        field.addEventListener('input', function () {
-            if (this.value.trim()) {
-                this.classList.remove('is-invalid');
-            }
-        });
-    });
     });
 </script>
 {% endif %}
