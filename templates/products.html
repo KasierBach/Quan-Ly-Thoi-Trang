@@ -61,13 +61,13 @@
                                 <i class="fas fa-money-bill-wave me-2 text-primary"></i>Khoảng giá
                             </label>
                             <div class="row g-2">
-                                <div class="col-6">
-                                    <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0">
-                                </div>
-                                <div class="col-6">
-                                    <input type="number" class="form-control" name="max_price" placeholder="Đến"
-                                        min="0">
-                                </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0" value="{{ min_price if min_price is not none }}">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" class="form-control" name="max_price" placeholder="Đến"
+                                    min="0" value="{{ max_price if max_price is not none }}">
+                            </div>
                             </div>
                             <small class="text-muted">Giá từ 50,000đ - 2,000,000đ</small>
                         </div>
@@ -80,7 +80,7 @@
                             <select class="form-select" name="color">
                                 <option value="">Tất cả màu sắc</option>
                                 {% for color in colors %}
-                                <option value="{{ color.ColorID }}">{{ color.ColorName }}</option>
+                                <option value="{{ color.ColorID }}" {% if color_id == color.ColorID %}selected{% endif %}>{{ color.ColorName }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -93,7 +93,7 @@
                             <select class="form-select" name="size">
                                 <option value="">Tất cả kích thước</option>
                                 {% for size in sizes %}
-                                <option value="{{ size.SizeID }}">{{ size.SizeName }}</option>
+                                <option value="{{ size.SizeID }}" {% if size_id == size.SizeID %}selected{% endif %}>{{ size.SizeName }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -102,7 +102,7 @@
                         <div class="mb-3">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="inStockOnly" name="in_stock"
-                                    value="1">
+                                    value="1" {% if in_stock_only == 1 %}checked{% endif %}>
                                 <label class="form-check-label" for="inStockOnly">
                                     <i class="fas fa-check-circle me-1 text-success"></i>Chỉ sản phẩm còn hàng
                                 </label>

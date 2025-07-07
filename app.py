@@ -151,7 +151,12 @@ def products():
                           colors=colors,
                           sizes=sizes,
                           current_category=category_id,
-                          search_term=search_term)
+                          search_term=search_term,
+                          min_price=min_price,
+                          max_price=max_price,
+                          color_id=color_id,
+                          size_id=size_id,
+                          in_stock_only=in_stock_only)
 
 # Trang chi tiết sản phẩm
 @app.route('/product/<int:product_id>')
