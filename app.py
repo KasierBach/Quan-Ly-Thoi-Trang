@@ -2221,5 +2221,139 @@ def cancel_order(order_id):
     finally:
         conn.close()
 
+# Quản lý sản phẩm (thêm và xóa) - trang mới
+@app.route('/admin/products/manage', methods=['GET', 'POST'])
+def admin_manage_products():
+    if 'user_id' not in session or session.get('is_admin') != True:
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('home'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    if request.method == 'POST':
+        # Xử lý thêm sản phẩm mới
+        product_name = request.form.get('product_name')
+        description = request.form.get('description')
+        price = request.form.get('price', type=float)
+        category_id = request.form.get('category_id', type=int)
+        
+        if not product_name or not price or not category_id:
+            flash('Vui lòng điền đầy đủ thông tin sản phẩm', 'error')
+            return redirect(url_for('admin_manage_products'))
+        
+        try:
+            cursor.execute('''
+                DECLARE @ProductID INT
+                EXEC sp_AddProduct @ProductName=?, @Description=?, @Price=?, @CategoryID=?, @ProductID=@ProductID OUTPUT
+                SELECT @ProductID AS ProductID
+            ''', product_name, description, price, category_id)
+            
+            result = cursor.fetchone()
+            product_id = result.ProductID
+            
+            conn.commit()
+            flash('Thêm sản phẩm thành công!', 'success')
+            return redirect(url_for('admin_manage_products'))
+        except Exception as e:
+            conn.rollback()
+            flash(f'Đã xảy ra lỗi: {str(e)}', 'error')
+            return redirect(url_for('admin_manage_products'))
+    
+    # GET: Hiển thị danh sách sản phẩm và danh mục
+    cursor.execute('''
+        SELECT p.*, c.CategoryName,
+        (SELECT COUNT(*) FROM ProductVariants WHERE ProductID = p.ProductID) AS VariantCount,
+        (SELECT SUM(Quantity) FROM ProductVariants WHERE ProductID = p.ProductID) AS TotalStock
+        FROM Products p
+        JOIN Categories c ON p.CategoryID = c.CategoryID
+        ORDER BY p.ProductID DESC
+    ''')
+    products = cursor.fetchall()
+    
+    cursor.execute('SELECT * FROM Categories')
+    categories = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template('admin/manage_products.html', products=products, categories=categories)
+
+@app.route('/admin/products/delete/<int:product_id>', methods=['POST'])
+def admin_delete_product(product_id):
+    if 'user_id' not in session or session.get('is_admin') != True:
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('home'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Xóa các biến thể sản phẩm liên quan
+        cursor.execute('DELETE FROM ProductVariants WHERE ProductID = ?', product_id)
+        # Xóa sản phẩm
+        cursor.execute('DELETE FROM Products WHERE ProductID = ?', product_id)
+        
+        conn.commit()
+        flash('Xóa sản phẩm thành công!', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Đã xảy ra lỗi khi xóa sản phẩm: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('admin_manage_products'))
+
+# Thêm màu mới
+@app.route('/admin/colors/add', methods=['POST'])
+def admin_add_color():
+    if 'user_id' not in session or session.get('is_admin') != True:
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('home'))
+    
+    color_name = request.form.get('color_name')
+    if not color_name:
+        flash('Vui lòng nhập tên màu', 'error')
+        return redirect(request.referrer or url_for('admin_manage_products'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO Colors (ColorName) VALUES (?)', color_name)
+        conn.commit()
+        flash('Thêm màu mới thành công!', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Đã xảy ra lỗi khi thêm màu: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(request.referrer or url_for('admin_manage_products'))
+
+# Thêm kích thước mới
+@app.route('/admin/sizes/add', methods=['POST'])
+def admin_add_size():
+    if 'user_id' not in session or session.get('is_admin') != True:
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('home'))
+    
+    size_name = request.form.get('size_name')
+    if not size_name:
+        flash('Vui lòng nhập tên kích thước', 'error')
+        return redirect(request.referrer or url_for('admin_manage_products'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('INSERT INTO Sizes (SizeName) VALUES (?)', size_name)
+        conn.commit()
+        flash('Thêm kích thước mới thành công!', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Đã xảy ra lỗi khi thêm kích thước: {str(e)}', 'error')
+    finally:
+        conn.close()
+    
+    return redirect(request.referrer or url_for('admin_manage_products'))
+
 if __name__ == '__main__':
-    app.run(debug=True, port=4000, host='0.0.0.0')  
+    app.run(debug=True, port=4000, host='0.0.0.0')

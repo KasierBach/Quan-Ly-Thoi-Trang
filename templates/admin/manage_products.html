@@ -1,0 +1,242 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý sản phẩm - Fashion Store Admin{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f1f1f1;
+        cursor: pointer;
+    }
+
+    .btn-icon {
+        padding: 6px 10px;
+        font-size: 14px;
+        border-radius: 4px;
+        transition: background-color 0.3s ease;
+    }
+
+    .btn-icon:hover {
+        background-color: #e2e6ea;
+    }
+
+    .form-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
+        margin-bottom: 30px;
+    }
+
+    .form-section h4 {
+        margin-bottom: 15px;
+        color: #343a40;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 p-0">
+        <div class="list-group admin-sidebar">
+            <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Sản phẩm
+            </a>
+            <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+            </a>
+            <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Bình luận
+            </a>
+            <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar me-2"></i>Báo cáo
+            </a>
+            <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+            </a>
+            <a href="{{ url_for('admin_manage_products') }}" class="list-group-item list-group-item-action active">
+                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+            </a>
+            <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action text-primary">
+                <i class="fas fa-store me-2"></i>Xem cửa hàng
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10 main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Quản lý sản phẩm</h2>
+        </div>
+
+        <div class="form-section">
+            <form method="POST" id="addProductForm" action="{{ url_for('admin_manage_products') }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="product_name" class="form-label">Tên sản phẩm</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="price" class="form-label">Giá</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="description" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="category_id" class="form-label">Danh mục</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="" selected disabled>Chọn danh mục</option>
+                            {% for category in categories %}
+                            <option value="{{ category.CategoryID }}">{{ category.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-success">+ Thêm sản phẩm</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle table-bordered">
+                <thead class="table-light text-center">
+                    <tr>
+                        <th>ID</th>
+                        <th>Tên sản phẩm</th>
+                        <th>Danh mục</th>
+                        <th>Biến thể</th>
+                        <th>Tồn kho</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for product in products %}
+                    <tr>
+                        <td class="text-center">{{ product.ProductID }}</td>
+                        <td>{{ product.ProductName }}</td>
+                        <td>{{ product.CategoryName }}</td>
+                        <td class="text-center">{{ product.VariantCount or 0 }}</td>
+                        <td class="text-center">{{ product.TotalStock or 0 }}</td>
+                        <td class="text-center">
+                            <a href="{{ url_for('admin_edit_product', product_id=product.ProductID) }}"
+                                class="btn btn-sm btn-outline-primary btn-icon" title="Chỉnh sửa">
+                                <i class="fas fa-pen"></i>
+                            </a>
+                            <button class="btn btn-sm btn-outline-danger btn-icon btn-delete"
+                                data-product-id="{{ product.ProductID }}" title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Không có sản phẩm nào</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Products Table -->
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>ID</th>
+                    <th>Tên sản phẩm</th>
+                    <th>Danh mục</th>
+                    <th>Số biến thể</th>
+                    <th>Tổng tồn kho</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for product in products %}
+                <tr>
+                    <td>{{ product.ProductID }}</td>
+                    <td>{{ product.ProductName }}</td>
+                    <td>{{ product.CategoryName }}</td>
+                    <td>{{ product.VariantCount or 0 }}</td>
+                    <td>{{ product.TotalStock or 0 }}</td>
+                    <td>
+                        <a href="{{ url_for('admin_edit_product', product_id=product.ProductID) }}"
+                            class="btn btn-sm btn-outline-secondary btn-icon" title="Chỉnh sửa">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        <button class="btn btn-sm btn-outline-danger btn-icon btn-delete"
+                            data-product-id="{{ product.ProductID }}" title="Xóa">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center">Không có sản phẩm nào</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('addProductForm').addEventListener('submit', function (event) {
+        const name = document.getElementById('product_name').value.trim();
+        const price = parseFloat(document.getElementById('price').value);
+        const category = document.getElementById('category_id').value;
+
+        if (!name) {
+            alert('Vui lòng nhập tên sản phẩm');
+            event.preventDefault();
+            return;
+        }
+        if (isNaN(price) || price < 0) {
+            alert('Vui lòng nhập giá hợp lệ');
+            event.preventDefault();
+            return;
+        }
+        if (!category) {
+            alert('Vui lòng chọn danh mục');
+            event.preventDefault();
+            return;
+        }
+    });
+
+    // Delete confirmation
+    document.querySelectorAll('.btn-delete').forEach(button => {
+        button.addEventListener('click', function () {
+            const productId = this.getAttribute('data-product-id');
+            if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
+                // Create a form to submit POST request for deletion
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/products/delete/${productId}`;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        });
+    });
+</script>
+{% endblock %}

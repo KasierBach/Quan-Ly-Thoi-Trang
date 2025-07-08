@@ -165,7 +165,7 @@
             <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                 <div class="card category-card h-100 border-0 overflow-hidden">
                     <div class="position-relative">
-                        <img src="{{ url_for('static', filename=image_map[category.CategoryName]) }}"
+                        <img src="{{ url_for('static', filename=image_map[category.CategoryName] if category.CategoryName in image_map else 'images/default.jpg') }}"
                             class="card-img-top" alt="{{ category.CategoryName }}"
                             style="height: 280px; object-fit: cover; transition: transform 0.5s ease;">
                         <div class="position-absolute top-0 start-0 w-100 h-100"
@@ -208,8 +208,8 @@
             <div class="col-lg-3 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
                 <div class="card product-card border-0">
                     <div class="position-relative overflow-hidden">
-                        <img src="{{ url_for('static', filename=product.ImageURL) }}" class="card-img-top product-img"
-                            alt="{{ product.ProductName }}">
+                        <img src="{{ url_for('static', filename=product.ImageURL if product.ImageURL else 'images/default.jpg') }}"
+                            class="card-img-top product-img" alt="{{ product.ProductName }}">
                         <div class="position-absolute top-0 end-0 m-3">
                             <span class="badge bg-primary px-3 py-2">
                                 <i class="fas fa-star me-1"></i>Nổi bật
@@ -324,7 +324,7 @@
                     <i class="fas fa-envelope me-3" style="color: #ffb347;"></i>Đăng ký nhận tin tức mới nhất
                 </h2>
                 <p class="lead" style="color: #5a5a5a;"></p>
-                    Nhận thông báo về sản phẩm mới, khuyến mãi đặc biệt và xu hướng thời trang mới nhất
+                Nhận thông báo về sản phẩm mới, khuyến mãi đặc biệt và xu hướng thời trang mới nhất
                 </p>
             </div>
             <div class="col-lg-6" data-aos="fade-left">

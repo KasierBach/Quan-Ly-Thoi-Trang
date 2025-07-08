@@ -1,94 +1,307 @@
-<!-- templates/admin/edit_product.html -->
 {% extends 'base.html' %}
 
-{% block title %}Chỉnh sửa sản phẩm{% endblock %}
+{% block title %}Chỉnh sửa sản phẩm - Fashion Store Admin{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .form-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 6px;
+        box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
+        margin-bottom: 30px;
+    }
+
+    .form-section h4 {
+        margin-bottom: 15px;
+        color: #343a40;
+    }
+
+    .variants-table th,
+    .variants-table td {
+        vertical-align: middle;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2>Chỉnh sửa sản phẩm</h2>
-  <form action="{{ url_for('admin_edit_product', product_id=product.ProductID) }}" method="POST">
-    <div class="mb-3">
-      <label for="product_name" class="form-label">Tên sản phẩm</label>
-      <input type="text" class="form-control" id="product_name" name="product_name" value="{{ product.ProductName }}"
-        required>
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 p-0">
+        <div class="list-group admin-sidebar">
+            <a href="{{ url_for('admin_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('admin_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Sản phẩm
+            </a>
+            <a href="{{ url_for('admin_orders') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+            </a>
+            <a href="{{ url_for('admin_comments') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Bình luận
+            </a>
+            <a href="{{ url_for('admin_reports') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar me-2"></i>Báo cáo
+            </a>
+            <a href="{{ url_for('admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+            </a>
+            <a href="{{ url_for('admin_manage_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+            </a>
+            <a href="{{ url_for('admin_edit_product', product_id=product.ProductID) }}"
+                class="list-group-item list-group-item-action active">
+                <i class="fas fa-edit me-2"></i>Chỉnh sửa sản phẩm
+            </a>
+            <a href="{{ url_for('home') }}" class="list-group-item list-group-item-action text-primary">
+                <i class="fas fa-store me-2"></i>Xem cửa hàng
+            </a>
+        </div>
     </div>
-    <div class="mb-3">
-      <label for="description" class="form-label">Mô tả</label>
-      <textarea class="form-control" id="description" name="description" rows="3">{{ product.Description }}</textarea>
-    </div>
-    <div class="row">
-      <div class="col-md-4 mb-3">
-        <label for="price" class="form-label">Giá</label>
-        <input type="number" step="0.01" class="form-control" id="price" name="price" value="{{ product.Price }}"
-          required>
-      </div>
-      <div class="col-md-4 mb-3">
-        <label for="category_id" class="form-label">Danh mục</label>
-        <select class="form-select" id="category_id" name="category_id" required>
-          {% for cat in categories %}
-          <option value="{{ cat.CategoryID }}" {% if cat.CategoryID==product.CategoryID %}selected{% endif %}>{{
-            cat.CategoryName }}</option>
-          {% endfor %}
-        </select>
-      </div>
-    </div>
-    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
-    <a href="{{ url_for('admin_products') }}" class="btn btn-secondary ms-2">Hủy</a>
-    {% if product.ImageURL %}
-    <div class="mb-3">
-      <label class="form-label">Ảnh hiện tại:</label><br>
-      <img src="{{ url_for('static', filename=product.ImageURL) }}" alt="{{ product.ProductName }}"
-        style="max-width: 200px;">
-    </div>
-    {% endif %}
 
-  </form>
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10 main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Chỉnh sửa sản phẩm</h2>
+            <a href="{{ url_for('admin_manage_products') }}" class="btn btn-secondary">← Quay lại</a>
+        </div>
 
-  <hr class="my-4">
+        <div class="form-section">
+            <h4>Thông tin sản phẩm</h4>
+            <form method="POST" id="editProductForm"
+                action="{{ url_for('admin_edit_product', product_id=product.ProductID) }}">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="product_name" class="form-label">Tên sản phẩm</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name"
+                            value="{{ product.ProductName }}" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="price" class="form-label">Giá</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="price" name="price"
+                            value="{{ product.Price }}" required>
+                    </div>
+                    <div class="col-12">
+                        <label for="description" class="form-label">Mô tả</label>
+                        <textarea class="form-control" id="description" name="description"
+                            rows="3">{{ product.Description }}</textarea>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="category_id" class="form-label">Danh mục</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="" disabled>Chọn danh mục</option>
+                            {% for category in categories %}
+                            <option value="{{ category.CategoryID }}" {% if category.CategoryID==product.CategoryID
+                                %}selected{% endif %}>
+                                {{ category.CategoryName }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">💾 Cập nhật</button>
+                    </div>
+                </div>
+            </form>
+        </div>
 
-  <h4>Biến thể sản phẩm</h4>
-  <table class="table table-sm">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Màu</th>
-        <th>Kích thước</th>
-        <th>Số lượng</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for v in variants %}
-      <tr>
-        <td>{{ v.VariantID }}</td>
-        <td>{{ v.ColorName }}</td>
-        <td>{{ v.SizeName }}</td>
-        <td>{{ v.Quantity }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+        <div class="form-section">
+            <h4>Biến thể sản phẩm</h4>
+            <table class="table table-bordered variants-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Màu sắc</th>
+                        <th>Kích thước</th>
+                        <th>Số lượng</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variant in variants %}
+                    <tr>
+                        <td>{{ variant.ColorName }}</td>
+                        <td>{{ variant.SizeName }}</td>
+                        <td class="text-center">{{ variant.Quantity }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" class="text-center text-muted">Chưa có biến thể nào</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
 
-  <h5>Thêm biến thể</h5>
-  <form action="{{ url_for('admin_add_variant') }}" method="POST" class="row g-3">
-    <input type="hidden" name="product_id" value="{{ product.ProductID }}">
-    <div class="col-md-3">
-      <select class="form-select" name="color_id" required>
-        <option value="">Chọn màu</option>
-        {% for c in colors %}<option value="{{ c.ColorID }}">{{ c.ColorName }}</option>{% endfor %}
-      </select>
+            <hr>
+            <h5>➕ Thêm biến thể mới</h5>
+            <form method="POST" action="{{ url_for('admin_add_variant') }}"
+                class="row gy-2 gx-3 align-items-center mb-4">
+                <input type="hidden" name="product_id" value="{{ product.ProductID }}">
+                <div class="col-md-3">
+                    <label class="form-label">Màu sắc</label>
+                    <select class="form-select" name="color_id" required>
+                        <option value="" disabled selected>Chọn màu</option>
+                        {% for color in colors %}
+                        <option value="{{ color.ColorID }}">{{ color.ColorName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Kích thước</label>
+                    <select class="form-select" name="size_id" required>
+                        <option value="" disabled selected>Chọn size</option>
+                        {% for size in sizes %}
+                        <option value="{{ size.SizeID }}">{{ size.SizeName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Số lượng</label>
+                    <input type="number" min="0" class="form-control" name="quantity" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label invisible">Thêm</label>
+                    <button type="submit" class="btn btn-success w-100">Thêm biến thể</button>
+                </div>
+            </form>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>➕ Thêm màu mới</h6>
+                    <form method="POST" action="{{ url_for('admin_add_color') }}" class="input-group mb-3">
+                        <input type="text" class="form-control" name="color_name" placeholder="Tên màu mới" required>
+                        <button class="btn btn-outline-primary" type="submit">Thêm</button>
+                    </form>
+                </div>
+                <div class="col-md-6">
+                    <h6>➕ Thêm kích thước mới</h6>
+                    <form method="POST" action="{{ url_for('admin_add_size') }}" class="input-group mb-3">
+                        <input type="text" class="form-control" name="size_name" placeholder="Tên kích thước mới"
+                            required>
+                        <button class="btn btn-outline-primary" type="submit">Thêm</button>
+                    </form>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="col-md-3">
-      <select class="form-select" name="size_id" required>
-        <option value="">Chọn kích thước</option>
-        {% for s in sizes %}<option value="{{ s.SizeID }}">{{ s.SizeName }}</option>{% endfor %}
-      </select>
+
+    <!-- Product Variants -->
+    <div class="form-section">
+        <h4>Biến thể sản phẩm</h4>
+        <table class="table table-bordered variants-table">
+            <thead class="table-light">
+                <tr>
+                    <th>Màu sắc</th>
+                    <th>Kích thước</th>
+                    <th>Số lượng</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for variant in variants %}
+                <tr>
+                    <td>{{ variant.ColorName }}</td>
+                    <td>{{ variant.SizeName }}</td>
+                    <td>{{ variant.Quantity }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="3" class="text-center">Chưa có biến thể nào</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h5>Thêm biến thể mới</h5>
+        <form method="POST" action="{{ url_for('admin_add_variant') }}">
+            <input type="hidden" name="product_id" value="{{ product.ProductID }}">
+            <div class="row g-3 align-items-center mb-3">
+                <div class="col-auto">
+                    <label for="color_id" class="col-form-label">Màu sắc</label>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select" id="color_id" name="color_id" required>
+                        <option value="" disabled selected>Chọn màu sắc</option>
+                        {% for color in colors %}
+                        <option value="{{ color.ColorID }}">{{ color.ColorName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label for="size_id" class="col-form-label">Kích thước</label>
+                </div>
+                <div class="col-auto">
+                    <select class="form-select" id="size_id" name="size_id" required>
+                        <option value="" disabled selected>Chọn kích thước</option>
+                        {% for size in sizes %}
+                        <option value="{{ size.SizeID }}">{{ size.SizeName }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <label for="quantity" class="col-form-label">Số lượng</label>
+                </div>
+                <div class="col-auto">
+                    <input type="number" min="0" class="form-control" id="quantity" name="quantity" required>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-success">Thêm biến thể</button>
+                </div>
+            </div>
+        </form>
+
+        <hr>
+
+        <h5>Thêm màu mới</h5>
+        <form method="POST" action="{{ url_for('admin_add_color') }}" class="mb-3">
+            <div class="input-group">
+                <input type="text" class="form-control" name="color_name" placeholder="Tên màu mới" required>
+                <button type="submit" class="btn btn-primary">Thêm màu</button>
+            </div>
+        </form>
+
+        <h5>Thêm kích thước mới</h5>
+        <form method="POST" action="{{ url_for('admin_add_size') }}">
+            <div class="input-group">
+                <input type="text" class="form-control" name="size_name" placeholder="Tên kích thước mới" required>
+                <button type="submit" class="btn btn-primary">Thêm kích thước</button>
+            </div>
+        </form>
     </div>
-    <div class="col-md-2">
-      <input type="number" class="form-control" name="quantity" placeholder="Số lượng" required>
-    </div>
-    <div class="col-md-4">
-      <button type="submit" class="btn btn-success">Thêm biến thể</button>
-    </div>
-  </form>
 </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('editProductForm').addEventListener('submit', function (event) {
+        const name = document.getElementById('product_name').value.trim();
+        const price = parseFloat(document.getElementById('price').value);
+        const category = document.getElementById('category_id').value;
+
+        if (!name) {
+            alert('Vui lòng nhập tên sản phẩm');
+            event.preventDefault();
+            return;
+        }
+        if (isNaN(price) || price < 0) {
+            alert('Vui lòng nhập giá hợp lệ');
+            event.preventDefault();
+            return;
+        }
+        if (!category) {
+            alert('Vui lòng chọn danh mục');
+            event.preventDefault();
+            return;
+        }
+    });
+</script>
 {% endblock %}
