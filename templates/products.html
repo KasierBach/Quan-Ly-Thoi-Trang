@@ -61,13 +61,14 @@
                                 <i class="fas fa-money-bill-wave me-2 text-primary"></i>Khoảng giá
                             </label>
                             <div class="row g-2">
-                            <div class="col-6">
-                                <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0" value="{{ min_price if min_price is not none }}">
-                            </div>
-                            <div class="col-6">
-                                <input type="number" class="form-control" name="max_price" placeholder="Đến"
-                                    min="0" value="{{ max_price if max_price is not none }}">
-                            </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0"
+                                        value="{{ min_price if min_price is not none }}">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control" name="max_price" placeholder="Đến" min="0"
+                                        value="{{ max_price if max_price is not none }}">
+                                </div>
                             </div>
                             <small class="text-muted">Giá từ 50,000đ - 2,000,000đ</small>
                         </div>
@@ -80,7 +81,8 @@
                             <select class="form-select" name="color">
                                 <option value="">Tất cả màu sắc</option>
                                 {% for color in colors %}
-                                <option value="{{ color.ColorID }}" {% if color_id == color.ColorID %}selected{% endif %}>{{ color.ColorName }}</option>
+                                <option value="{{ color.ColorID }}" {% if color_id==color.ColorID %}selected{% endif %}>
+                                    {{ color.ColorName }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -93,7 +95,8 @@
                             <select class="form-select" name="size">
                                 <option value="">Tất cả kích thước</option>
                                 {% for size in sizes %}
-                                <option value="{{ size.SizeID }}" {% if size_id == size.SizeID %}selected{% endif %}>{{ size.SizeName }}</option>
+                                <option value="{{ size.SizeID }}" {% if size_id==size.SizeID %}selected{% endif %}>{{
+                                    size.SizeName }}</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -102,7 +105,7 @@
                         <div class="mb-3">
                             <div class="form-check">
                                 <input type="checkbox" class="form-check-input" id="inStockOnly" name="in_stock"
-                                    value="1" {% if in_stock_only == 1 %}checked{% endif %}>
+                                    value="1" {% if in_stock_only==1 %}checked{% endif %}>
                                 <label class="form-check-label" for="inStockOnly">
                                     <i class="fas fa-check-circle me-1 text-success"></i>Chỉ sản phẩm còn hàng
                                 </label>
@@ -181,31 +184,7 @@
                 </div>
             </div>
 
-            {% set image_map = {
-            'Áo sơ mi nam trắng': 'images/1.jpg',
-            'Áo thun nam đen': 'images/ao-thun-nam-den.jpg',
-            'Quần jean nam xanh': 'images/quan-jean-nam-xanh.jpg',
-            'Quần kaki nam nâu': 'images/quan-kaki-nam-nau.jpg',
-            'Áo sơ mi nữ trắng': 'images/ao-so-mi-nu-trang.jpg',
-            'Áo thun nữ hồng': 'images/ao-thun-nu-hong.jpg',
-            'Quần jean nữ xanh nhạt': 'images/quan-jean-nu-xanh-nhat.jpg',
-            'Váy đầm suông đen': 'images/vay-dam-suong-den.jpg',
-            'Váy đầm xòe hoa': 'images/9.jpg',
-            'Váy liền thân công sở': 'images/19.jpg',
-            'Túi xách nữ công sở': 'images/22.jpg',
-            'Mũ bucket thời trang': 'images/21.jpg',
-            'Quần culottes nữ': 'images/17.jpg',
-            'Đầm maxi đi biển': 'images/20.jpg',
-            'Quần jogger nam': 'images/14.jpg',
-            'Quần legging nữ thể thao': 'images/18.jpg',
-            'Quần short nam kaki': 'images/13.jpg',
-            'Thắt lưng da nam': 'images/10.jpg',
-            'Áo khoác nữ nhẹ': 'images/16.jpg',
-            'Áo kiểu nữ công sở': 'images/15.jpg',
-            'Áo polo nam thể thao': 'images/12.jpg',
-            'Áo sơ mi nam kẻ sọc': 'images/11.jpg',
-            'Quần tây đen': 'images/23.jpg'
-            } %}
+
 
             {% if products %}
             <div class="row g-3">
@@ -213,13 +192,8 @@
                 <div class="col-lg-4 col-md-6 mb-3">
                     <div class="card product-card h-100">
                         <div class="position-relative">
-                            {% set image_path = (
-                            product.ImageURL if product.ImageURL
-                            else image_map.get(product.ProductName, 'images/default.jpg')
-                            ) %}
-
-                            <img src="{{ url_for('static', filename=image_path) }}" class="card-img-top product-img"
-                                alt="{{ product.ProductName }}">
+                            <img src="{{ url_for('static', filename=product|resolve_image) }}"
+                                class="card-img-top product-img" alt="{{ product.ProductName }}">
 
                             <!-- Product Badges -->
                             {% if loop.index <= 3 %} <div class="position-absolute top-0 start-0 m-2">

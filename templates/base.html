@@ -1133,25 +1133,28 @@
 
         // Check localStorage for theme preference on page load (for non-logged in users)
         document.addEventListener('DOMContentLoaded', function () {
+            var themeApplied = false;
             {% if not session.user_id %}
-            const savedTheme = localStorage.getItem('darkMode');
+            var savedTheme = localStorage.getItem('darkMode');
             if (savedTheme === 'enabled') {
                 document.documentElement.setAttribute('data-bs-theme', 'dark');
                 document.getElementById('darkIcon').style.display = 'inline';
                 document.getElementById('lightIcon').style.display = 'none';
+                themeApplied = true;
             } else if (savedTheme === 'disabled') {
                 document.documentElement.setAttribute('data-bs-theme', 'light');
                 document.getElementById('darkIcon').style.display = 'none';
                 document.getElementById('lightIcon').style.display = 'inline';
-            } else {
-                {% endif %}
-                // Default: show correct icon based on initial theme
-                const currentTheme = document.documentElement.getAttribute('data-bs-theme');
-                document.getElementById('darkIcon').style.display = currentTheme === 'dark' ? 'inline' : 'none';
-                document.getElementById('lightIcon').style.display = currentTheme === 'light' ? 'inline' : 'none';
-                {% if not session.user_id %}
+                themeApplied = true;
             }
             {% endif %}
+
+            if (!themeApplied) {
+                // Default: show correct icon based on initial theme
+                var currentTheme = document.documentElement.getAttribute('data-bs-theme');
+                document.getElementById('darkIcon').style.display = currentTheme === 'dark' ? 'inline' : 'none';
+                document.getElementById('lightIcon').style.display = currentTheme === 'light' ? 'inline' : 'none';
+            }
         });
     </script>
     {% block scripts %}{% endblock %}

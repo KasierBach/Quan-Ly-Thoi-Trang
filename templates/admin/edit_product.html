@@ -109,6 +109,17 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="col-md-6">
+                        <label for="image_url" class="form-label">Hình ảnh (URL hoặc đường dẫn)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="image_url" name="image_url"
+                                value="{{ product.ImageURL or '' }}">
+                            <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
+                                data-bs-target="#pixabayModal">
+                                <i class="fas fa-search me-1"></i>Pixabay
+                            </button>
+                        </div>
+                    </div>
                     <div class="col-12">
                         <button type="submit" class="btn btn-primary">💾 Cập nhật</button>
                     </div>
@@ -280,6 +291,36 @@
 </div>
 {% endblock %}
 
+<!-- Pixabay Modal -->
+<div class="modal fade" id="pixabayModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tìm kiếm ảnh trên Pixabay</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control" id="pixabayQuery" value="{{ product.ProductName }}"
+                        placeholder="Nhập từ khóa...">
+                    <button class="btn btn-primary" type="button" id="btnSearchPixabay">
+                        <i class="fas fa-search"></i> Tìm
+                    </button>
+                </div>
+                <div id="pixabayResults" class="row g-2">
+                    <div class="text-center text-muted py-5">
+                        <i class="fas fa-image fa-3x mb-3"></i>
+                        <p>Nhập từ khóa và tìm kiếm để xem ảnh</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% block scripts %}
 <script>
     document.getElementById('editProductForm').addEventListener('submit', function (event) {
@@ -303,5 +344,105 @@
             return;
         }
     });
-</script>
-{% endblock %}
+
+    // Pixabay Integration
+    const btnSearchPixabay = document.getElementById('btnSearchPixabay');
+    const pixabayQuery = document.getElementById('pixabayQuery');
+    const pixabayResults = document.getElementById('pixabayResults');
+    const imageUrlInput = document.getElementById('image_url');
+    // Initialize modal properly
+    let pixabayModal;
+
+    document.getElementById('pixabayModal').addEventListener('shown.bs.modal', function () {
+        pixabayModal = bootstrap.Modal.getInstance(document.getElementById('pixabayModal'));
+        pixabayQuery.focus();
+    });
+
+    btnSearchPixabay.addEventListener('click', searchPixabay);
+    pixabayQuery.addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') searchPixabay();
+    });
+
+    function searchPixabay() {
+        const query = pixabayQuery.value.trim();
+        if (!query) return;
+
+        pixabayResults.innerHTML = '<div class="text-center w-100 py-5"><div class="spinner-border text-primary" role="status"></div></div>';
+
+        fetch(`/admin/api/search_pixabay?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    displayPixabayResults(data.hits);
+                } else {
+                    pixabayResults.innerHTML = `<div class="text-center text-danger w-100 py-5">${data.message}</div>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                pixabayResults.innerHTML = '<div class="text-center text-danger w-100 py-5">Đã xảy ra lỗi khi tìm kiếm</div>';
+            });
+    }
+
+    function displayPixabayResults(hits) {
+        pixabayResults.innerHTML = '';
+        if (hits.length === 0) {
+            pixabayResults.innerHTML = '<div class="text-center text-muted w-100 py-5">Không tìm thấy ảnh nào</div>';
+            return;
+        }
+
+        hits.forEach(hit => {
+            const col = document.createElement('div');
+            col.className = 'col-6 col-md-4 col-lg-3';
+            col.innerHTML = `
+                <div class="card h-100 cursor-pointer shadow-sm" onclick="selectPixabayImage('${hit.webformatURL}')" style="cursor: pointer;">
+                    <img src="${hit.previewURL}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${hit.tags}">
+                </div>
+            `;
+            pixabayResults.appendChild(col);
+        });
+    }
+
+    window.selectPixabayImage = function (url) {
+        if (!confirm('Bạn có muốn sử dụng ảnh này cho sản phẩm?')) return;
+
+        // Show loading
+        const originalText = btnSearchPixabay.innerHTML;
+        btnSearchPixabay.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"></div> Đang tải...';
+        btnSearchPixabay.disabled = true;
+
+        fetch('/admin/api/save_pixabay_image', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image_url: url,
+                product_id: {{ product.ProductID }}
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                imageUrlInput.value = data.path;
+
+                // Hide modal using bootstrap API
+                const modalEl = document.getElementById('pixabayModal');
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+
+                alert('Đã cập nhật ảnh sản phẩm!');
+            } else {
+                alert('Lỗi: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Đã xảy ra lỗi khi lưu ảnh');
+        })
+        .finally(() => {
+            btnSearchPixabay.innerHTML = originalText;
+            btnSearchPixabay.disabled = false;
+        });
+    };
+    {% endblock %}

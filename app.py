@@ -11,6 +11,13 @@ import uuid
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import requests
+import unicodedata
+import os
+
+# --- Cấu hình Pixabay ---
+PIXABAY_API_KEY = '50476586-5521aa05792328277ee09bd80'
+PIXABAY_ENDPOINT = 'https://pixabay.com/api/'
 
 app = Flask(__name__)
 app.secret_key = 'fashion_store_secret_key'
@@ -69,6 +76,60 @@ def send_email(to_email, subject, html_content):
         return False
 
 # Trang chủ
+# Helper function for slugify
+def slugify(text):
+    if not text:
+        return ''
+    text = unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
+    text = re.sub(r'[^\w\s-]', '', text).strip().lower()
+    return re.sub(r'[-\s]+', '-', text)
+
+# Template filter to resolve image path
+@app.template_filter('resolve_image')
+def resolve_image(obj):
+    # Default image
+    default_image = 'images/default.jpg'
+    
+    if not obj:
+        return default_image
+        
+    # Check if object is a dict
+    is_dict = isinstance(obj, dict)
+    
+    # 1. Check direct ImageURL
+    image_url = obj.get('ImageURL') if is_dict else getattr(obj, 'ImageURL', None)
+    if image_url:
+        return image_url
+        
+    # 2. Check by ID
+    obj_id = obj.get('ProductID') if is_dict else getattr(obj, 'ProductID', None)
+    if not obj_id:
+         # Try category ID
+         obj_id = obj.get('CategoryID') if is_dict else getattr(obj, 'CategoryID', None)
+         
+    if obj_id:
+        filename = f"images/{obj_id}.jpg"
+        filepath = os.path.join(app.root_path, 'static', filename)
+        if os.path.exists(filepath):
+            return filename
+
+    # 3. Check by Name (Slug)
+    name = obj.get('ProductName') if is_dict else getattr(obj, 'ProductName', None)
+    if not name:
+        name = obj.get('CategoryName') if is_dict else getattr(obj, 'CategoryName', None)
+        
+    if name:
+        slug = slugify(name)
+        # Try exact slug match
+        filename = f"images/{slug}.jpg"
+        filepath = os.path.join(app.root_path, 'static', filename)
+        if os.path.exists(filepath):
+            return filename
+            
+        # Try common variations if needed (optional)
+        
+    return default_image
+
 @app.route('/')
 def home():
     # Lấy danh sách danh mục
@@ -221,16 +282,27 @@ def product_detail(product_id):
     for row in raw_breakdown:
         rating_breakdown[row[0]] = row[1]  # row[0] = Rating, row[1] = Count
 
+    # Get average rating and total reviews
+    cursor.execute("""
+    SELECT AVG(CAST(Rating AS FLOAT)) AS AverageRating, COUNT(*) AS TotalReviews
+    FROM Reviews
+    WHERE ProductID = ?
+    """, (product_id,))
+    rating_data = cursor.fetchone()
+    average_rating = rating_data.AverageRating if rating_data and rating_data.AverageRating else 0
+    total_reviews = rating_data.TotalReviews if rating_data else 0
 
     conn.close()
 
-    return render_template('product_detail.html', 
+    return render_template('product_detail.html',
                           product=product,
-                          original_price=product.Price * decimal.Decimal('1.2'),
+                          original_price=float(product.Price * decimal.Decimal('1.2')),
                           colors=list(colors.values()),
                           sizes=list(sizes.values()),
                           variants=variants_map,
-                          rating_breakdown=rating_breakdown)
+                          rating_breakdown=rating_breakdown,
+                          average_rating=float(average_rating),
+                          total_reviews=int(total_reviews))
 
 # Thêm vào giỏ hàng
 @app.route('/add_to_cart', methods=['POST'])
@@ -955,34 +1027,6 @@ def reset_password(token):
     conn.close()
     return render_template('reset_password.html', token=token)
 
-# Trang chi tiết đơn hàng
-@app.route('/order/<int:order_id>')
-def order_detail(order_id):
-    if 'user_id' not in session:
-        return redirect(url_for('login'))
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Lấy thông tin đơn hàng
-    cursor.execute('''
-        EXEC sp_GetOrderDetails @OrderID=?
-    ''', order_id)
-    
-    order = cursor.fetchone()
-    
-    # Lấy chi tiết đơn hàng
-    order_details = []
-    if cursor.nextset():
-        order_details = cursor.fetchall()
-    
-    conn.close()
-    
-    if not order or order.CustomerID != session['user_id']:
-        flash('Đơn hàng không tồn tại hoặc bạn không có quyền xem', 'error')
-        return redirect(url_for('my_account'))
-    
-    return render_template('order_detail.html', order=order, order_details=order_details)
 
 # API lấy biến thể sản phẩm
 @app.route('/api/get_variant', methods=['POST'])
@@ -1148,11 +1192,13 @@ def admin_edit_product(product_id):
         
         try:
             # Cập nhật thông tin sản phẩm
+            image_url = request.form.get('image_url', '').strip()
+            
             cursor.execute('''
                 UPDATE Products
-                SET ProductName = ?, Description = ?, Price = ?, CategoryID = ?
+                SET ProductName = ?, Description = ?, Price = ?, CategoryID = ?, ImageURL = ?
                 WHERE ProductID = ?
-            ''', product_name, description, price, category_id, product_id)
+            ''', product_name, description, price, category_id, image_url, product_id)
             
             conn.commit()
             flash('Cập nhật sản phẩm thành công!', 'success')
@@ -1288,7 +1334,7 @@ def admin_order_detail(order_id):
     
     # Lấy thông tin đơn hàng
     cursor.execute('''
-        EXEC sp_GetOrderDetails @OrderID=?p
+        EXEC sp_GetOrderDetails @OrderID=?
     ''', order_id)
     
     order = cursor.fetchone()
@@ -1350,7 +1396,7 @@ def admin_reports():
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
     if not start_date:
-        start_date = (datetime.now().replace(day=1)).strftime('%Y-%m-%d')
+        start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
     if not end_date:
         end_date = datetime.now().strftime('%Y-%m-%d')
     
@@ -1381,24 +1427,29 @@ def admin_reports():
     dates = []
     revenues = []
     for row in daily_revenue:
-        if hasattr(row, 'OrderDate') and row.OrderDate:
-            dates.append(row.OrderDate.strftime('%d/%m/%Y'))
+        # Use getattr for safety, though direct access row.OrderDate usually works
+        order_date = getattr(row, 'OrderDate', None)
+        daily_rev = getattr(row, 'DailyRevenue', 0)
+        
+        if order_date:
+            dates.append(order_date.strftime('%d/%m/%Y'))
         else:
             dates.append('')
-        if hasattr(row, 'DailyRevenue') and row.DailyRevenue is not None:
-            revenues.append(float(row.DailyRevenue))
+            
+        if daily_rev is not None:
+            revenues.append(float(daily_rev))
         else:
             revenues.append(0.0)
 
     category_names = []
     category_revenues = []
     for row in category_revenue:
-        if hasattr(row, 'CategoryName') and row.CategoryName:
-            category_names.append(row.CategoryName)
-        else:
-            category_names.append('')
-        if hasattr(row, 'CategoryRevenue') and row.CategoryRevenue is not None:
-            category_revenues.append(float(row.CategoryRevenue))
+        cat_name = getattr(row, 'CategoryName', '')
+        cat_rev = getattr(row, 'CategoryRevenue', 0)
+        
+        category_names.append(cat_name)
+        if cat_rev is not None:
+            category_revenues.append(float(cat_rev))
         else:
             category_revenues.append(0.0)
     
@@ -1605,12 +1656,75 @@ def add_review():
                 'date': datetime.now().strftime('%d/%m/%Y')
             }
         })
-        
     except Exception as e:
         conn.rollback()
-        return jsonify({'success': False, 'message': f'Đã xảy ra lỗi: {str(e)}'})
+        return jsonify({'success': False, 'message': str(e)})
     finally:
         conn.close()
+
+# API tìm kiếm ảnh Pixabay
+@app.route('/admin/api/search_pixabay', methods=['GET'])
+def admin_search_pixabay():
+    if 'user_id' not in session or session.get('is_admin') != True:
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    query = request.args.get('q', '')
+    if not query:
+        return jsonify({'success': False, 'message': 'Query is required'})
+        
+    try:
+        params = {
+            'key': PIXABAY_API_KEY, 
+            'q': query,
+            'image_type': 'photo',
+            'per_page': 20,
+            'safesearch': 'true'
+        }
+        resp = requests.get(PIXABAY_ENDPOINT, params=params, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        return jsonify({'success': True, 'hits': data.get('hits', [])})
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
+# API lưu ảnh từ Pixabay
+@app.route('/admin/api/save_pixabay_image', methods=['POST'])
+def admin_save_pixabay_image():
+    if 'user_id' not in session or session.get('is_admin') != True:
+        return jsonify({'success': False, 'message': 'Unauthorized'})
+    
+    data = request.json
+    image_url = data.get('image_url')
+    product_id = data.get('product_id')
+    
+    if not image_url or not product_id:
+        return jsonify({'success': False, 'message': 'Missing data'})
+        
+    try:
+        # Tạo thư mục nếu chưa tồn tại
+        import os
+        IMAGE_FOLDER = os.path.join(app.root_path, 'static', 'images')
+        if not os.path.exists(IMAGE_FOLDER):
+            os.makedirs(IMAGE_FOLDER, exist_ok=True)
+            
+        # Tên file
+        filename = f"{product_id}.jpg"
+        filepath = os.path.join(IMAGE_FOLDER, filename)
+        
+        # Tải ảnh
+        r = requests.get(image_url, timeout=10)
+        r.raise_for_status()
+        with open(filepath, 'wb') as f:
+            f.write(r.content)
+            
+        # Đường dẫn tương đối
+        relative_path = f"images/{filename}"
+        
+        return jsonify({'success': True, 'path': relative_path})
+        
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)})
+
 
 # Thêm các route mới cho bình luận sản phẩm sau route add_review
 
@@ -1862,7 +1976,7 @@ def get_recently_viewed():
     
     # Get products
     cursor.execute(f'''
-        SELECT p.ProductID, p.ProductName, p.Price, c.CategoryName
+        SELECT p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName
         FROM Products p
         JOIN Categories c ON p.CategoryID = c.CategoryID
         WHERE p.ProductID IN ({product_ids_str})
@@ -1880,6 +1994,7 @@ def get_recently_viewed():
                     'product_id': product.ProductID,
                     'product_name': product.ProductName,
                     'price': float(product.Price),
+                    'image_url': product.ImageURL,
                     'category_name': product.CategoryName
                 })
                 break
@@ -2022,9 +2137,9 @@ def admin_update_message_status_json():
         cursor.close()
         conn.close()
         
-# Đổi tên hàm thành order_detail_view để không trùng
+# Trang chi tiết đơn hàng
 @app.route('/order/<int:order_id>')
-def order_detail_view(order_id):
+def order_detail(order_id):
     if 'user_id' not in session:
         return redirect(url_for('login'))
 
@@ -2115,36 +2230,6 @@ def admin_toggle_comment_visibility():
     finally:
         conn.close()
 
-# Cập nhật route admin_update_message_status để trả về JSON
-@app.route('/admin/update_message_status', methods=['POST'])
-def admin_update_message_status():
-    if 'user_id' not in session or session.get('is_admin') != True:
-        return jsonify({'success': False, 'message': 'Bạn không có quyền truy cập trang này'})
-    
-    message_id = request.form.get('message_id', type=int)
-    new_status = request.form.get('status')
-    
-    if not message_id or not new_status:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    try:
-        cursor.execute('''
-            UPDATE ContactMessages
-            SET Status = ?
-            WHERE MessageID = ?
-        ''', new_status, message_id)
-        
-        conn.commit()
-        return jsonify({'success': True, 'message': 'Cập nhật trạng thái thành công'})
-        
-    except Exception as e:
-        conn.rollback()
-        return jsonify({'success': False, 'message': f'Đã xảy ra lỗi: {str(e)}'})
-    finally:
-        conn.close()
 
 # Hủy đơn hàng
 @app.route('/cancel_order/<int:order_id>', methods=['POST'])
@@ -2348,7 +2433,7 @@ def admin_add_size():
         conn.commit()
         flash('Thêm kích thước mới thành công!', 'success')
     except Exception as e:
-        conn.rollback()
+        conn.rollback() 
         flash(f'Đã xảy ra lỗi khi thêm kích thước: {str(e)}', 'error')
     finally:
         conn.close()

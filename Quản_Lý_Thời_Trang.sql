@@ -1200,3 +1200,6 @@ EXEC sp_UpdateOrderStatus @NewOrderID, 'Processing';
 */
 
 SELECT ProductID, ImageURL FROM Products WHERE ProductID = 5;
+
+SELECT OrderID, OrderDate, TotalAmount, Status 
+FROM Orders;
