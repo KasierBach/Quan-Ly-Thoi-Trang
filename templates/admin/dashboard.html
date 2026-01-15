@@ -276,27 +276,41 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script type="text/template" id="revenue-data">
+    [
+        {% for revenue in monthly_revenue[: 12]| reverse %}
+        {
+            "Month": {{ revenue.Month }},
+            "Year": {{ revenue.Year }},
+            "TotalRevenue": {{ revenue.TotalRevenue }}
+        }{{ "," if not loop.last }}
+        {% endfor %}
+    ]
+</script>
+<script type="text/template" id="category-data">
+    [
+        {% for category in category_revenue %}
+        {
+            "CategoryName": "{{ category.CategoryName }}",
+            "TotalRevenue": {{ category.TotalRevenue }}
+        }{{ "," if not loop.last }}
+        {% endfor %}
+    ]
+</script>
 <script>
-    // Dữ liệu cho biểu đồ doanh thu theo tháng
-    const months = [];
-    const revenues = [];
+    // Data for revenue chart
+    const revenueData = JSON.parse(document.getElementById('revenue-data').textContent);
+    const months = revenueData.map(item => `${item.Month}/${item.Year}`);
+    const revenues = revenueData.map(item => item.TotalRevenue);
 
-    {% for revenue in monthly_revenue[: 12]| reverse %}
-    months.push('{{ revenue.Month }}/{{ revenue.Year }}');
-    revenues.push({{ revenue.TotalRevenue }});
-    {% endfor %}
+    // Data for category chart
+    const categoryData = JSON.parse(document.getElementById('category-data').textContent);
+    const categories = categoryData.map(item => item.CategoryName);
+    const categoryRevenues = categoryData.map(item => item.TotalRevenue);
 
-    // Dữ liệu cho biểu đồ doanh thu theo danh mục
-    const categories = [];
-    const categoryRevenues = [];
     const backgroundColors = [
         '#ff6b6b', '#546de5', '#2c3e50', '#f8c291', '#3dc1d3', '#f78fb3', '#7bed9f', '#e15f41'
     ];
-
-    {% for category in category_revenue %}
-    categories.push('{{ category.CategoryName }}');
-    categoryRevenues.push({{ category.TotalRevenue }});
-    {% endfor %}
 
     // Biểu đồ doanh thu theo tháng
     const revenueChart = new Chart(

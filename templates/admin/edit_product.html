@@ -418,31 +418,37 @@
             },
             body: JSON.stringify({
                 image_url: url,
-                product_id: {{ product.ProductID }}
+                product_id: productConfig.productId
             })
         })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                imageUrlInput.value = data.path;
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    imageUrlInput.value = data.path;
 
-                // Hide modal using bootstrap API
-                const modalEl = document.getElementById('pixabayModal');
-                const modal = bootstrap.Modal.getInstance(modalEl);
-                if (modal) modal.hide();
+                    // Hide modal using bootstrap API
+                    const modalEl = document.getElementById('pixabayModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
 
-                alert('Đã cập nhật ảnh sản phẩm!');
-            } else {
-                alert('Lỗi: ' + data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('Đã xảy ra lỗi khi lưu ảnh');
-        })
-        .finally(() => {
-            btnSearchPixabay.innerHTML = originalText;
-            btnSearchPixabay.disabled = false;
-        });
+                    alert('Đã cập nhật ảnh sản phẩm!');
+                } else {
+                    alert('Lỗi: ' + data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Đã xảy ra lỗi khi lưu ảnh');
+            })
+            .finally(() => {
+                btnSearchPixabay.innerHTML = originalText;
+                btnSearchPixabay.disabled = false;
+            });
     };
-    {% endblock %}
+</script>
+<script type="text/template" id="product-config">
+    {
+        "productId": {{ product.ProductID }}
+    }
+</script>
+{% endblock %}

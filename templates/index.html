@@ -340,7 +340,14 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="text/template" id="index-config">
+    {
+        "subscribeUrl": "{{ url_for('subscribe_newsletter') }}"
+    }
+</script>
 <script>
+    const indexConfig = JSON.parse(document.getElementById('index-config').textContent);
+
     // Hero newsletter subscription
     document.getElementById('hero-subscribe-btn').addEventListener('click', function () {
         const email = document.getElementById('hero-newsletter-email').value;
@@ -356,7 +363,7 @@
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
         btn.disabled = true;
 
-        fetch('{{ url_for("subscribe_newsletter") }}', {
+        fetch(indexConfig.subscribeUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

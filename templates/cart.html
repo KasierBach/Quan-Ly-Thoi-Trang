@@ -43,20 +43,23 @@
                                     <td>{{ "{:,.0f}".format(item.price) }} đ</td>
                                     <td>
                                         <div class="input-group" style="width: 120px;">
-                                            <button class="btn btn-sm btn-outline-secondary" type="button"
-                                                onclick="updateQuantity({{ item.variant_id }}, -1)">-</button>
-                                            <input type="number" class="form-control form-control-sm text-center"
+                                            <button class="btn btn-sm btn-outline-secondary update-qty-btn"
+                                                type="button" data-variant-id="{{ item.variant_id }}"
+                                                data-change="-1">-</button>
+                                            <input type="number"
+                                                class="form-control form-control-sm text-center qty-input"
                                                 value="{{ item.quantity }}" min="1" id="quantity-{{ item.variant_id }}"
-                                                onchange="updateQuantity({{ item.variant_id }}, 0)">
-                                            <button class="btn btn-sm btn-outline-secondary" type="button"
-                                                onclick="updateQuantity({{ item.variant_id }}, 1)">+</button>
+                                                data-variant-id="{{ item.variant_id }}">
+                                            <button class="btn btn-sm btn-outline-secondary update-qty-btn"
+                                                type="button" data-variant-id="{{ item.variant_id }}"
+                                                data-change="1">+</button>
                                         </div>
                                     </td>
                                     <td id="subtotal-{{ item.variant_id }}">{{ "{:,.0f}".format(item.price *
                                         item.quantity) }} đ</td>
                                     <td>
-                                        <button type="button" class="btn btn-sm btn-outline-danger"
-                                            onclick="removeItem({{ item.variant_id }})">
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn"
+                                            data-variant-id="{{ item.variant_id }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -116,7 +119,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="text/template" id="cart-config">
+    {
+        "updateUrl": "{{ url_for('update_cart') }}",
+        "removeUrl": "{{ url_for('remove_from_cart') }}"
+    }
+</script>
 <script>
+    const cartConfig = JSON.parse(document.getElementById('cart-config').textContent);
+
     // Cập nhật số lượng sản phẩm trong giỏ hàng
     function updateQuantity(variantId, change) {
         const quantityInput = document.getElementById(`quantity-${variantId}`);
@@ -135,7 +146,7 @@
         }
 
         // Gửi yêu cầu AJAX để cập nhật giỏ hàng
-        fetch('{{ url_for("update_cart") }}', {
+        fetch(cartConfig.updateUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
@@ -167,7 +178,7 @@
     function removeItem(variantId) {
         if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?')) {
             // Send AJAX request to remove item
-            fetch('{{ url_for("remove_from_cart") }}', {
+            fetch(cartConfig.removeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -202,5 +213,32 @@
     function formatCurrency(amount) {
         return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(amount) + ' đ';
     }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Event delegation for cart actions
+        document.body.addEventListener('click', function (e) {
+            const updateBtn = e.target.closest('.update-qty-btn');
+            if (updateBtn) {
+                const variantId = updateBtn.getAttribute('data-variant-id');
+                const change = parseInt(updateBtn.getAttribute('data-change'));
+                updateQuantity(variantId, change);
+                return;
+            }
+
+            const removeBtn = e.target.closest('.remove-item-btn');
+            if (removeBtn) {
+                const variantId = removeBtn.getAttribute('data-variant-id');
+                removeItem(variantId);
+                return;
+            }
+        });
+
+        document.body.addEventListener('change', function (e) {
+            if (e.target.classList.contains('qty-input')) {
+                const variantId = e.target.getAttribute('data-variant-id');
+                updateQuantity(variantId, 0);
+            }
+        });
+    });
 </script>
 {% endblock %}

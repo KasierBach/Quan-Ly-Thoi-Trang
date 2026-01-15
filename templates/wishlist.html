@@ -12,8 +12,8 @@
         <div class="col-md-4 mb-4" id="wishlist-item-{{ item.WishlistID }}">
             <div class="card product-card h-100">
                 <div class="text-end">
-                    <button type="button" class="btn btn-danger btn-sm"
-                        onclick="removeFromWishlist({{ item.WishlistID }})">
+                    <button type="button" class="btn btn-danger btn-sm remove-wishlist-btn"
+                        data-wishlist-id="{{ item.WishlistID }}">
                         <i class="fas fa-trash-alt"></i> Xóa
                     </button>
                 </div>
@@ -31,8 +31,8 @@
                                 class="btn btn-sm btn-outline-primary">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-primary"
-                                onclick="addToCartFromWishlist({{ item.ProductID }})">
+                            <button type="button" class="btn btn-sm btn-primary add-to-cart-btn"
+                                data-product-id="{{ item.ProductID }}">
                                 <i class="fas fa-shopping-cart"></i>
                             </button>
                         </div>
@@ -56,11 +56,38 @@
 {% endblock %}
 
 {% block scripts %}
+<script type="text/template" id="wishlist-config">
+    {
+        "removeUrl": "{{ url_for('remove_from_wishlist') }}",
+        "addToCartUrl": "{{ url_for('add_to_cart') }}"
+    }
+</script>
 <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Event delegation for buttons
+        document.body.addEventListener('click', function (e) {
+            const removeBtn = e.target.closest('.remove-wishlist-btn');
+            if (removeBtn) {
+                const wishlistId = removeBtn.getAttribute('data-wishlist-id');
+                removeFromWishlist(wishlistId);
+                return;
+            }
+
+            const addBtn = e.target.closest('.add-to-cart-btn');
+            if (addBtn) {
+                const productId = addBtn.getAttribute('data-product-id');
+                addToCartFromWishlist(productId);
+                return;
+            }
+        });
+    });
+
+    const wishlistConfig = JSON.parse(document.getElementById('wishlist-config').textContent);
+
     // Remove from wishlist
     function removeFromWishlist(wishlistId) {
         if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?')) {
-            fetch('{{ url_for("remove_from_wishlist") }}', {
+            fetch(wishlistConfig.removeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',

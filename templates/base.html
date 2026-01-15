@@ -1060,7 +1060,16 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <!-- Custom JS -->
+    <script type="text/template" id="base-data">
+        {
+            "isLoggedIn": {{ 'true' if session.user_id else 'false' }},
+            "subscribeUrl": "{{ url_for('subscribe_newsletter') }}"
+        }
+    </script>
     <script>
+        const baseData = JSON.parse(document.getElementById('base-data').textContent);
+        const isUserLoggedIn = baseData.isLoggedIn;
+
         // Auto-hide flash messages after 5 seconds
         setTimeout(function () {
             $('.alert').alert('close');
@@ -1081,7 +1090,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
 
-            fetch('{{ url_for("subscribe_newsletter") }}', {
+            fetch(baseData.subscribeUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
@@ -1116,38 +1125,39 @@
             document.getElementById('darkIcon').style.display = newTheme === 'dark' ? 'inline' : 'none';
             document.getElementById('lightIcon').style.display = newTheme === 'light' ? 'inline' : 'none';
 
-            // Save preference if logged in
-            {% if session.user_id %}
-            fetch('/toggle_dark_mode', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                },
-                body: `dark_mode=${newTheme === 'dark' ? 1 : 0}`
-            });
-            {% else %}
-            // Save to localStorage for non-logged in users
-            localStorage.setItem('darkMode', newTheme === 'dark' ? 'enabled' : 'disabled');
-            {% endif %}
+            // Save preference
+            if (isUserLoggedIn) {
+                fetch('/toggle_dark_mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `dark_mode=${newTheme === 'dark' ? 1 : 0}`
+                });
+            } else {
+                // Save to localStorage for non-logged in users
+                localStorage.setItem('darkMode', newTheme === 'dark' ? 'enabled' : 'disabled');
+            }
         });
 
         // Check localStorage for theme preference on page load (for non-logged in users)
         document.addEventListener('DOMContentLoaded', function () {
             var themeApplied = false;
-            {% if not session.user_id %}
-            var savedTheme = localStorage.getItem('darkMode');
-            if (savedTheme === 'enabled') {
-                document.documentElement.setAttribute('data-bs-theme', 'dark');
-                document.getElementById('darkIcon').style.display = 'inline';
-                document.getElementById('lightIcon').style.display = 'none';
-                themeApplied = true;
-            } else if (savedTheme === 'disabled') {
-                document.documentElement.setAttribute('data-bs-theme', 'light');
-                document.getElementById('darkIcon').style.display = 'none';
-                document.getElementById('lightIcon').style.display = 'inline';
-                themeApplied = true;
+
+            if (!isUserLoggedIn) {
+                var savedTheme = localStorage.getItem('darkMode');
+                if (savedTheme === 'enabled') {
+                    document.documentElement.setAttribute('data-bs-theme', 'dark');
+                    document.getElementById('darkIcon').style.display = 'inline';
+                    document.getElementById('lightIcon').style.display = 'none';
+                    themeApplied = true;
+                } else if (savedTheme === 'disabled') {
+                    document.documentElement.setAttribute('data-bs-theme', 'light');
+                    document.getElementById('darkIcon').style.display = 'none';
+                    document.getElementById('lightIcon').style.display = 'inline';
+                    themeApplied = true;
+                }
             }
-            {% endif %}
 
             if (!themeApplied) {
                 // Default: show correct icon based on initial theme

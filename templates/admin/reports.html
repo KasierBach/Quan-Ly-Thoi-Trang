@@ -737,7 +737,8 @@
                                             <td>
                                                 {% if daily_revenue|length > 0 %}
                                                 {% set avg_revenue = total_revenue / daily_revenue|length %}
-                                                {% set performance = (day.DailyRevenue / avg_revenue) * 100 if avg_revenue != 0 else 0 %}
+                                                {% set performance = (day.DailyRevenue / avg_revenue) * 100 if
+                                                avg_revenue != 0 else 0 %}
                                                 {% if performance > 120 %}
                                                 <span class="performance-badge performance-excellent">Xuất sắc</span>
                                                 {% elif performance > 80 %}
@@ -779,7 +780,7 @@
                             '#98D8C8', '#F7DC6F'] %}
                             <div class="col-md-6 col-lg-4 mb-3">
                                 <div class="category-item"
-                                    style="border-left-color: {{ colors[loop.index0 % colors|length] }}">
+                                    data-border-color="{{ colors[loop.index0 % colors|length] }}">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
@@ -799,7 +800,8 @@
                                     </div>
                                     <div class="progress mt-2" style="height: 6px;">
                                         <div class="progress-bar"
-                                            style="width: {% if total_revenue > 0 %}{{ (category.CategoryRevenue / total_revenue) * 100 }}{% else %}0{% endif %}%; background-color: {{ colors[loop.index0 % colors|length] }}">
+                                            data-width="{% if total_revenue > 0 %}{{ (category.CategoryRevenue / total_revenue) * 100 }}{% else %}0{% endif %}"
+                                            data-bg-color="{{ colors[loop.index0 % colors|length] }}">
                                         </div>
                                     </div>
                                 </div>
@@ -862,14 +864,40 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script type="text/template" id="csv-data">
+    [
+        {% for day in daily_revenue %}
+        {
+            "date": "{{ day.OrderDate.strftime('%d/%m/%Y') }}",
+            "count": {{ day.OrderCount }},
+            "revenue": {{ day.DailyRevenue }}
+        }{{ "," if not loop.last }}
+        {% endfor %}
+    ]
+</script>
 <script
     src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script type="text/template" id="chart-data">
+    {
+        "dailyLabels": {{ dates|safe }},
+        "dailyData": {{ revenues|safe }},
+        "categoryLabels": {{ category_names|safe }},
+        "categoryData": {{ category_revenues|safe }}
+    }
+</script>
+<script type="text/template" id="report-config">
+    {
+        "startDate": "{{ start_date }}",
+        "endDate": "{{ end_date }}"
+    }
+</script>
 <script>
     // Dữ liệu cho biểu đồ
-    const dailyLabels = {{ dates| safe }};
-    const dailyData = {{ revenues| safe }};
-    const categoryLabels = {{ category_names| safe }};
-    const categoryData = {{ category_revenues| safe }};
+    const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+    const dailyLabels = chartData.dailyLabels;
+    const dailyData = chartData.dailyData;
+    const categoryLabels = chartData.categoryLabels;
+    const categoryData = chartData.categoryData;
 
     // Màu sắc cho biểu đồ
     const chartColors = [
@@ -1031,15 +1059,18 @@
         csvContent += "Ngày,Số đơn hàng,Doanh thu\n";
 
         // Thêm dữ liệu từ daily_revenue
-        {% for day in daily_revenue %}
-        csvContent += "{{ day.OrderDate.strftime('%d/%m/%Y') }},{{ day.OrderCount }},{{ day.DailyRevenue }}\n";
-        {% endfor %}
+        // Thêm dữ liệu từ daily_revenue
+        const csvData = JSON.parse(document.getElementById('csv-data').textContent);
+        csvData.forEach(day => {
+            csvContent += `${day.date},${day.count},${day.revenue}\n`;
+        });
 
         // Tạo và download file
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "bao_cao_doanh_thu_{{ start_date }}_{{ end_date }}.csv");
+        const reportConfig = JSON.parse(document.getElementById('report-config').textContent);
+        link.setAttribute("download", `bao_cao_doanh_thu_${reportConfig.startDate}_${reportConfig.endDate}.csv`);
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1100,6 +1131,15 @@
 
         document.querySelectorAll('.animate__animated').forEach(el => {
             observer.observe(el);
+        });
+
+        // Apply dynamic styles from data attributes to avoid syntax errors
+        document.querySelectorAll('.category-item[data-border-color]').forEach(el => {
+            el.style.borderLeftColor = el.getAttribute('data-border-color');
+        });
+        document.querySelectorAll('.progress-bar[data-width]').forEach(el => {
+            el.style.width = el.getAttribute('data-width') + '%';
+            el.style.backgroundColor = el.getAttribute('data-bg-color');
         });
     });
 

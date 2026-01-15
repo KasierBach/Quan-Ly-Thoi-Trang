@@ -417,13 +417,29 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="application/json" id="variants-data">
-    {{ variants|tojson }}
+    "productId": {{ product.ProductID }}
+    }
 </script>
 <script>
     // Variants data from backend
-    const productVariants = JSON.parse(document.getElementById('variants-data').textContent);
-    const productId = Number("{{ product.ProductID }}");
+    const variantsData = JSON.parse(document.getElementById('variants-data').textContent);
+    const productVariants = variantsData; // variantsData is the array, wait. The previous content was variants|tojson which is an array.
+    // I need to wrap it differently or just parse the product ID separately? 
+    // The previous content was just `{{ variants|tojson }}`.
+    // If I change the JSON structure, it might break.
+    // Let's create a separate data block for productId if I want to be safe, or just wrap `variants` in an object.
+    
+    // Easier: Add a new data block for product metadata
+</script>
+<script type="text/template" id="product-meta">
+    {
+        "id": {{ product.ProductID }}
+    }
+</script>
+<script>
+    // productVariants is already declared above from variants-data
+    const productMeta = JSON.parse(document.getElementById('product-meta').textContent);
+    const productId = productMeta.id;
 
     // Apply colors from data attribute
     document.addEventListener('DOMContentLoaded', function () {
