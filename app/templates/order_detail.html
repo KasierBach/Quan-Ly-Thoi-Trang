@@ -1,0 +1,379 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết đơn hàng #{{ order.OrderID }} - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Trang chủ</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('auth.my_account') }}">Tài khoản của tôi</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Đơn hàng #{{ order.OrderID }}</li>
+        </ol>
+    </nav>
+
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <h5 class="card-title mb-4">Trạng thái đơn hàng</h5>
+                    <div class="position-relative m-4">
+                        <div class="progress" style="height: 2px;">
+                            <div class="progress-bar bg-success" role="progressbar"
+                                style="width: {% if order.Status == 'Pending' %}25%{% elif order.Status == 'Processing' %}50%{% elif order.Status == 'Shipped' %}75%{% elif order.Status == 'Delivered' %}100%{% else %}0%{% endif %};"
+                                aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
+                        </div>
+                        <div class="position-absolute top-0 start-0 translate-middle btn btn-sm btn-{% if order.Status in ['Pending', 'Processing', 'Shipped', 'Delivered'] %}success{% else %}secondary{% endif %} rounded-pill"
+                            style="width: 2rem; height:2rem;">1</div>
+                        <div class="position-absolute top-0 start-25 translate-middle btn btn-sm btn-{% if order.Status in ['Processing', 'Shipped', 'Delivered'] %}success{% else %}secondary{% endif %} rounded-pill"
+                            style="width: 2rem; height:2rem; left: 25%;">2</div>
+                        <div class="position-absolute top-0 start-50 translate-middle btn btn-sm btn-{% if order.Status in ['Shipped', 'Delivered'] %}success{% else %}secondary{% endif %} rounded-pill"
+                            style="width: 2rem; height:2rem; left: 50%;">3</div>
+                        <div class="position-absolute top-0 start-75 translate-middle btn btn-sm btn-{% if order.Status == 'Delivered' %}success{% else %}secondary{% endif %} rounded-pill"
+                            style="width: 2rem; height:2rem; left: 75%;">4</div>
+                        <div class="position-absolute top-0 start-100 translate-middle btn btn-sm btn-{% if order.Status == 'Delivered' %}success{% else %}secondary{% endif %} rounded-pill"
+                            style="width: 2rem; height:2rem; left: 100%;">5</div>
+
+                        <div class="d-flex justify-content-between mt-2">
+                            <span class="text-muted small">Đặt hàng</span>
+                            <span class="text-muted small">Xác nhận</span>
+                            <span class="text-muted small">Đóng gói</span>
+                            <span class="text-muted small">Vận chuyển</span>
+                            <span class="text-muted small">Giao hàng</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-box-open text-primary me-2"></i>Chi tiết đơn hàng</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Phân loại</th>
+                                    <th>Đơn giá</th>
+                                    <th>Số lượng</th>
+                                    <th class="text-end">Thành tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order_details %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="bg-light rounded p-2 me-3"
+                                                style="width: 50px; height: 50px; display: flex; align-items: center; justify-content: center;">
+                                                <i class="fas fa-tshirt text-secondary"></i>
+                                            </div>
+                                            <div>
+                                                <span class="fw-bold">{{ item.ProductName }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <small class="d-block text-muted">Màu: {{ item.ColorName }}</small>
+                                        <small class="d-block text-muted">Size: {{ item.SizeName }}</small>
+                                    </td>
+                                    <td>{{ "{:,.0f}".format(item.UnitPrice|default(0, true)) }} ₫</td>
+                                    <td>x{{ item.Quantity }}</td>
+                                    <td class="text-end fw-bold">{{ ((item.Quantity|default(0, true)) *
+                                        (item.UnitPrice|default(0, true))) | int | string | replace(",", ".") }} ₫</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="4" class="text-end">Tổng tiền hàng:</td>
+                                    <td class="text-end">{{ "{:,.0f}".format(order.TotalAmount) }} ₫</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end">Phí vận chuyển:</td>
+                                    <td class="text-end">0 ₫</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="4" class="text-end fw-bold">Tổng thanh toán:</td>
+                                    <td class="text-end fw-bold text-danger fs-5">{{ "{:,.0f}".format(order.TotalAmount)
+                                        }} ₫</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shipping Info & Map -->
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-truck text-primary me-2"></i>Thông tin vận chuyển</h5>
+                    <span class="badge bg-primary">Express Standard</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="row g-0">
+                        <div class="col-lg-4 border-end">
+                            <div class="p-4">
+                                <h6 class="fw-bold mb-3">Đơn vị vận chuyển: SPX Express</h6>
+                                <p class="mb-1"><i class="fas fa-barcode me-2 text-muted"></i>Mã vận đơn: <span
+                                        class="fw-bold text-dark">SPX{{ order.OrderID }}VN</span></p>
+                                <p class="mb-3"><i class="fas fa-phone-alt me-2 text-muted"></i>Liên hệ Shipper:
+                                    090.123.4567</p>
+
+                                <!-- Timeline -->
+                                <div class="timeline mt-4 border-start ps-3 ms-2 position-relative"
+                                    style="border-left: 2px solid #e9ecef;">
+                                    {% if order.Status == 'Delivered' %}
+                                    <div class="timeline-item mb-3 position-relative">
+                                        <span
+                                            class="position-absolute top-0 start-0 translate-middle bg-success rounded-circle"
+                                            style="width: 12px; height: 12px; left: -1px;"></span>
+                                        <p class="mb-0 fw-bold text-success">Giao hàng thành công</p>
+                                        <small class="text-muted">{{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }} (Mô
+                                            phỏng)</small>
+                                    </div>
+                                    {% endif %}
+                                    {% if order.Status in ['Shipped', 'Delivered'] %}
+                                    <div class="timeline-item mb-3 position-relative">
+                                        <span
+                                            class="position-absolute top-0 start-0 translate-middle bg-primary rounded-circle"
+                                            style="width: 12px; height: 12px; left: -1px;"></span>
+                                        <p class="mb-0 fw-bold">Đơn hàng đang được giao đến bạn</p>
+                                        <small class="text-muted">Shipper đang trên đường giao hàng</small>
+                                    </div>
+                                    <div class="timeline-item mb-3 position-relative">
+                                        <span
+                                            class="position-absolute top-0 start-0 translate-middle bg-secondary rounded-circle"
+                                            style="width: 10px; height: 10px; left: -1px;"></span>
+                                        <p class="mb-0">Đơn hàng đã rời kho phân loại</p>
+                                        <small class="text-muted">Kho SOC TP.HCM</small>
+                                    </div>
+                                    {% endif %}
+                                    <div class="timeline-item mb-3 position-relative">
+                                        <span
+                                            class="position-absolute top-0 start-0 translate-middle bg-secondary rounded-circle"
+                                            style="width: 10px; height: 10px; left: -1px;"></span>
+                                        <p class="mb-0">Đơn hàng đã được xác nhận</p>
+                                        <small class="text-muted">{{ order.OrderDate.strftime('%d/%m/%Y %H:%M')
+                                            }}</small>
+                                    </div>
+                                    <div class="timeline-item position-relative">
+                                        <span
+                                            class="position-absolute top-0 start-0 translate-middle bg-secondary rounded-circle"
+                                            style="width: 10px; height: 10px; left: -1px;"></span>
+                                        <p class="mb-0">Đặt hàng thành công</p>
+                                        <small class="text-muted">{{ order.OrderDate.strftime('%d/%m/%Y %H:%M')
+                                            }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-8">
+                            <!-- Real Interactive Map with Leaflet -->
+                            <div id="shipping-map" class="w-100" style="height: 500px;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4 border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0"><i class="fas fa-map-marker-alt text-danger me-2"></i>Địa chỉ nhận hàng</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="fw-bold">{{ order.CustomerName }}</h6>
+                    <p class="mb-1 text-muted">{{ order.CustomerPhone }}</p>
+                    <p class="mb-0 text-muted">{{ order.ShippingAddress }}</p>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h6 class="fw-bold mb-3">Hỗ trợ</h6>
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-outline-primary"><i class="fas fa-headset me-2"></i>Liên hệ CSKH</button>
+                        <button class="btn btn-outline-secondary"><i class="fas fa-question-circle me-2"></i>Trung tâm
+                            trợ giúp</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if order.Status == 'Pending' %}
+    <div class="text-center mt-1">
+        <button id="cancel-order-btn" data-order-id="{{ order.OrderID }}" class="btn btn-danger btn-lg">
+            <i class="bi bi-x-circle"></i> Hủy đơn hàng
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+            // Initialize Map
+            const map = L.map('shipping-map').setView([10.7769, 106.7009], 13); // Default Center (HCMC)
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Define Icons
+            const truckIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/713/713311.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 16],
+                popupAnchor: [0, -10]
+            });
+
+            const houseIcon = L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/25/25694.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32],
+                popupAnchor: [0, -32]
+            });
+
+            // Fixed Warehouse Position (Mock)
+            const warehousePos = [10.8231, 106.6297]; // Go Vap Data Center / Warehouse
+
+            // Default Customer Position (HCMC Center) - used as fallback
+            let customerPos = [10.7769, 106.7009];
+            let addressFound = false;
+
+            const customerAddress = "{{ order.ShippingAddress | replace('\n', ', ') }}";
+
+            // Function to attempt geocoding
+            async function getCoordinates(address) {
+                try {
+                    // Add 'Vietnam' to context if missing to improve accuracy
+                    const query = address + (address.toLowerCase().includes('vietnam') ? '' : ', Vietnam');
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                    const data = await response.json();
+                    if (data && data.length > 0) {
+                        return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
+                    }
+                } catch (e) {
+                    console.error("Geocoding failed", e);
+                }
+                return null;
+            }
+
+            // 1. Try to Geocode Customer Address
+            if (customerAddress && customerAddress.trim() !== '') {
+                const coords = await getCoordinates(customerAddress);
+                if (coords) {
+                    customerPos = coords;
+                    addressFound = true;
+                }
+            }
+
+            // 2. Add Markers
+            L.marker(warehousePos).addTo(map)
+                .bindPopup('<b>Kho Phân Loại</b><br>Đơn hàng đang được xử lý');
+
+            const customerMarker = L.marker(customerPos, { icon: houseIcon }).addTo(map)
+                .bindPopup(`<b>Địa chỉ nhận hàng</b><br>${customerAddress || 'Hồ Chí Minh'}`);
+
+            if (addressFound) {
+                customerMarker.openPopup();
+            }
+
+            // 3. Draw Route
+            const routerUrl = `https://router.project-osrm.org/route/v1/driving/${warehousePos[1]},${warehousePos[0]};${customerPos[1]},${customerPos[0]}?overview=full&geometries=geojson`;
+
+            try {
+                const response = await fetch(routerUrl);
+                const data = await response.json();
+
+                if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                    const route = data.routes[0];
+
+                    // Draw polyline
+                    const routeLayer = L.geoJSON(route.geometry, {
+                        style: { color: '#0d6efd', weight: 6, opacity: 0.8 }
+                    }).addTo(map);
+
+                    // Fit bounds
+                    map.fitBounds(routeLayer.getBounds(), { padding: [50, 50] });
+
+                    // Add Info Popup
+                    const distance = (route.distance / 1000).toFixed(1);
+                    const duration = Math.round(route.duration / 60);
+
+                    L.popup()
+                        .setLatLng([
+                            (warehousePos[0] + customerPos[0]) / 2,
+                            (warehousePos[1] + customerPos[1]) / 2
+                        ])
+                        .setContent(`<div class="text-center badge bg-white text-dark border shadow-sm p-2">
+                                    <i class="fas fa-route text-primary"></i>
+                                    <b>${distance} km</b> - ${duration} phút
+                                </div>`)
+                        .openOn(map);
+
+                    // Simulate Truck for 'Shipped' status
+                    {% if order.Status == 'Shipped' %}
+                    // Find a point ~60% along the path
+                    const coordinates = route.geometry.coordinates;
+                    const midIndex = Math.floor(coordinates.length * 0.6);
+                    // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
+                    const truckLoc = [coordinates[midIndex][1], coordinates[midIndex][0]];
+
+                    L.marker(truckLoc, { icon: truckIcon, zIndexOffset: 1000 }).addTo(map)
+                        .bindPopup('<b>Shipper đang giao</b><br>Đã rời kho phân loại').openPopup();
+                    {% endif %}
+
+                } else {
+                    throw new Error("No route found");
+                }
+            } catch (err) {
+                console.error(err);
+                // Fallback: Straight Line
+                const line = L.polyline([warehousePos, customerPos], {
+                    color: 'gray',
+                    dashArray: '10, 10',
+                    weight: 4
+                }).addTo(map);
+                map.fitBounds(line.getBounds(), { padding: [50, 50] });
+            }
+        });
+
+        document.getElementById('cancel-order-btn')?.addEventListener('click', function () {
+            const orderId = this.getAttribute('data-order-id');
+            if (confirm('Bạn có chắc muốn hủy đơn hàng này?')) {
+                fetch("{{ url_for('cart.cancel_order', order_id=0) }}".replace('0', orderId), {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        alert(data.message);
+                        if (data.success) {
+                            window.location.reload(); // Tải lại trang để cập nhật trạng thái
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Đã xảy ra lỗi khi hủy đơn hàng');
+                    });
+            }
+        });
+    </script>
+    {% endblock %}

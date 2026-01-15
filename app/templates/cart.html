@@ -1,0 +1,244 @@
+{% extends 'base.html' %}
+
+{% block title %}Giỏ hàng - Fashion Store{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h2 class="mb-4">Giỏ hàng của bạn</h2>
+    {% if cart %}
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Sản phẩm ({{ cart|length }})</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Sản phẩm</th>
+                                    <th>Giá</th>
+                                    <th>Số lượng</th>
+                                    <th>Tổng</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in cart %}
+                                <tr id="cart-item-{{ item.variant_id }}">
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ url_for('static', filename=item|resolve_image) }}"
+                                                class="img-thumbnail me-3"
+                                                style="width: 80px; height: 80px; object-fit: cover;"
+                                                alt="{{ item.product_name }}">
+                                            <div>
+                                                <h6 class="mb-0">{{ item.product_name }}</h6>
+                                                <small class="text-muted">Màu: {{ item.color }}, Size: {{ item.size
+                                                    }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ "{:,.0f}".format(item.price) }} đ</td>
+                                    <td>
+                                        <div class="input-group" style="width: 120px;">
+                                            <button class="btn btn-sm btn-outline-secondary update-qty-btn"
+                                                type="button" data-variant-id="{{ item.variant_id }}"
+                                                data-change="-1">-</button>
+                                            <input type="number"
+                                                class="form-control form-control-sm text-center qty-input"
+                                                value="{{ item.quantity }}" min="1" id="quantity-{{ item.variant_id }}"
+                                                data-variant-id="{{ item.variant_id }}">
+                                            <button class="btn btn-sm btn-outline-secondary update-qty-btn"
+                                                type="button" data-variant-id="{{ item.variant_id }}"
+                                                data-change="1">+</button>
+                                        </div>
+                                    </td>
+                                    <td id="subtotal-{{ item.variant_id }}">{{ "{:,.0f}".format(item.price *
+                                        item.quantity) }} đ</td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn"
+                                            data-variant-id="{{ item.variant_id }}">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('product.products') }}" class="btn btn-outline-primary">
+                        <i class="fas fa-arrow-left me-2"></i>Tiếp tục mua sắm
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">Tổng giỏ hàng</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Tạm tính:</span>
+                        <span id="subtotal">{{ "{:,.0f}".format(total) }} đ</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Phí vận chuyển:</span>
+                        <span>Miễn phí</span>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between mb-3 fw-bold">
+                        <span>Tổng cộng:</span>
+                        <span id="total" class="text-danger">{{ "{:,.0f}".format(total) }} đ</span>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('cart.checkout') }}" class="btn btn-primary">
+                            <i class="fas fa-credit-card me-2"></i>Tiến hành thanh toán
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-5">
+        <i class="fas fa-shopping-cart fa-4x mb-3 text-muted"></i>
+        <h3>Giỏ hàng của bạn đang trống</h3>
+        <p class="text-muted">Hãy thêm sản phẩm vào giỏ hàng để tiếp tục mua sắm</p>
+        <a href="{{ url_for('product.products') }}" class="btn btn-primary mt-3">
+            <i class="fas fa-shopping-bag me-2"></i>Mua sắm ngay
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script type="text/template" id="cart-config">
+    {
+        "updateUrl": "{{ url_for('cart.update_cart') }}",
+        "removeUrl": "{{ url_for('cart.remove_from_cart') }}"
+    }
+</script>
+<script>
+    const cartConfig = JSON.parse(document.getElementById('cart-config').textContent);
+
+    // Cập nhật số lượng sản phẩm trong giỏ hàng
+    function updateQuantity(variantId, change) {
+        const quantityInput = document.getElementById(`quantity-${variantId}`);
+        let quantity = parseInt(quantityInput.value);
+
+        if (change !== 0) {
+            quantity += change;
+            quantityInput.value = quantity;
+        } else {
+            quantity = parseInt(quantityInput.value);
+        }
+
+        if (quantity < 1) {
+            quantity = 1;
+            quantityInput.value = 1;
+        }
+
+        // Gửi yêu cầu AJAX để cập nhật giỏ hàng
+        fetch(cartConfig.updateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `variant_id=${variantId}&quantity=${quantity}`
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update subtotal for this item
+                    const price = parseFloat(document.getElementById(`subtotal-${variantId}`).textContent.replace(/[^\d]/g, '')) / (quantity - change);
+                    document.getElementById(`subtotal-${variantId}`).textContent = formatCurrency(price * quantity);
+
+                    // Update total
+                    document.getElementById('subtotal').textContent = formatCurrency(data.total);
+                    document.getElementById('total').textContent = formatCurrency(data.total);
+                } else {
+                    alert(data.message);
+                    // Reset quantity
+                    quantityInput.value = quantity - change;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    // Xóa sản phẩm khỏi giỏ hàng
+    function removeItem(variantId) {
+        if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?')) {
+            // Send AJAX request to remove item
+            fetch(cartConfig.removeUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `variant_id=${variantId}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove item from DOM
+                        document.getElementById(`cart-item-${variantId}`).remove();
+
+                        // Update total
+                        document.getElementById('subtotal').textContent = formatCurrency(data.total);
+                        document.getElementById('total').textContent = formatCurrency(data.total);
+
+                        // If cart is empty, reload page
+                        if (data.total === 0) {
+                            window.location.reload();
+                        }
+                    } else {
+                        alert(data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+        }
+    }
+
+    // Định dạng tiền tệ
+    function formatCurrency(amount) {
+        return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(amount) + ' đ';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Event delegation for cart actions
+        document.body.addEventListener('click', function (e) {
+            const updateBtn = e.target.closest('.update-qty-btn');
+            if (updateBtn) {
+                const variantId = updateBtn.getAttribute('data-variant-id');
+                const change = parseInt(updateBtn.getAttribute('data-change'));
+                updateQuantity(variantId, change);
+                return;
+            }
+
+            const removeBtn = e.target.closest('.remove-item-btn');
+            if (removeBtn) {
+                const variantId = removeBtn.getAttribute('data-variant-id');
+                removeItem(variantId);
+                return;
+            }
+        });
+
+        document.body.addEventListener('change', function (e) {
+            if (e.target.classList.contains('qty-input')) {
+                const variantId = e.target.getAttribute('data-variant-id');
+                updateQuantity(variantId, 0);
+            }
+        });
+    });
+</script>
+{% endblock %}

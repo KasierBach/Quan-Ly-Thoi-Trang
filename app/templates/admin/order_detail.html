@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết đơn hàng #{{ order.OrderID }} - Admin{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .order-status-card {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 col-lg-2">
+            <div class="list-group admin-sidebar mb-4">
+                <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-box me-2"></i>Sản phẩm
+                </a>
+                <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+                </a>
+                <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-comments me-2"></i>Bình luận
+                </a>
+                <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-bar me-2"></i>Báo cáo
+                </a>
+                <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+                </a>
+                <a href="{{ url_for('admin.admin_manage_products') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+                </a>
+                <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
+                    <i class="fas fa-store me-2"></i>Xem cửa hàng
+                </a>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9 col-lg-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Chi tiết đơn hàng #{{ order.OrderID }}</h2>
+                <a href="{{ url_for('admin.admin_orders') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Quay lại
+                </a>
+            </div>
+
+            <div class="row">
+                <!-- Order Info -->
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">Thông tin đơn hàng</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Sản phẩm</th>
+                                            <th>Phân loại</th>
+                                            <th>Giá</th>
+                                            <th>Số lượng</th>
+                                            <th>Thành tiền</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in order_details %}
+                                        <tr>
+                                            <td>
+                                                <div class="d-flex align-items-center">
+                                                    {% if item.ImageURL %}
+                                                    <img src="{{ item.ImageURL }}" alt="{{ item.ProductName }}"
+                                                        class="img-thumbnail me-2"
+                                                        style="width: 50px; height: 50px; object-fit: cover;">
+                                                    {% endif %}
+                                                    <div>
+                                                        <h6 class="mb-0">{{ item.ProductName }}</h6>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">Màu: {{ item.ColorName }}<br>Size: {{
+                                                    item.SizeName }}</small>
+                                            </td>
+                                            <td>{{ "{:,.0f}".format(item.Price) }} đ</td>
+                                            <td class="text-center">{{ item.Quantity }}</td>
+                                            <td>{{ "{:,.0f}".format(item.Subtotal) }} đ</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                    <tfoot>
+                                        <tr>
+                                            <td colspan="4" class="text-end fw-bold">Tổng cộng:</td>
+                                            <td class="fw-bold text-primary">{{ "{:,.0f}".format(order.TotalAmount) }} đ
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer & Status -->
+                <div class="col-md-4">
+                    <div class="card mb-4">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">Thông tin khách hàng</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Họ tên:</strong> {{ order.FullName }}</p>
+                            <p><strong>Email:</strong> {{ order.Email }}</p>
+                            <p><strong>Số điện thoại:</strong> {{ order.Phone or 'N/A' }}</p>
+                            <p><strong>Địa chỉ:</strong> {{ order.ShippingAddress }}</p>
+                            <p><strong>Ngày đặt:</strong> {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</p>
+                            <p><strong>Phương thức:</strong> {{ order.PaymentMethod }}</p>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">Trạng thái đơn hàng</h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="{{ url_for('admin.admin_update_order_status') }}" method="POST">
+                                <input type="hidden" name="order_id" value="{{ order.OrderID }}">
+                                <div class="mb-3">
+                                    <label for="status" class="form-label">Cập nhật trạng thái:</label>
+                                    <select name="status" id="status" class="form-select">
+                                        <option value="Chờ xử lý" {% if order.Status=='Chờ xử lý' %}selected{% endif %}>
+                                            Chờ xử lý</option>
+                                        <option value="Đang giao hàng" {% if order.Status=='Đang giao hàng' %}selected{%
+                                            endif %}>Đang giao hàng</option>
+                                        <option value="Đã giao hàng" {% if order.Status=='Đã giao hàng' %}selected{%
+                                            endif %}>Đã giao hàng</option>
+                                        <option value="Đã hủy" {% if order.Status=='Đã hủy' %}selected{% endif %}>Đã hủy
+                                        </option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100">Cập nhật</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
