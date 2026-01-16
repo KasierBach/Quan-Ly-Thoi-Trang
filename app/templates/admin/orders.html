@@ -104,9 +104,9 @@
                                         <div class="d-flex align-items-center">
                                             <div class="avatar-circle bg-light text-primary me-2 rounded-circle d-flex align-items-center justify-content-center"
                                                 style="width: 32px; height: 32px; font-weight: bold;">
-                                                {{ order.FullName[0] if order.FullName else '?' }}
+                                                {{ order.CustomerName[0] if order.CustomerName else '?' }}
                                             </div>
-                                            {{ order.FullName }}
+                                            {{ order.CustomerName }}
                                         </div>
                                     </td>
                                     <td>{{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</td>

@@ -36,9 +36,40 @@ def admin_dashboard():
     category_revenue = cursor.fetchall()
     cursor.execute('SELECT * FROM vw_BestSellingProducts')
     best_selling = cursor.fetchall()
+    
+    today = datetime.now()
+    current_month_revenue = 0
+    current_month_orders = 0
+    
+    for r in monthly_revenue:
+        try:
+            r_year = int(r.Year)
+            r_month = int(r.Month)
+            if r_year == today.year and r_month == today.month:
+                current_month_revenue = r.TotalRevenue
+                current_month_orders = r.OrderCount
+                break
+        except (ValueError, TypeError, AttributeError):
+            continue
+            
+    total_sold = sum(p.TotalSold for p in best_selling)
+    
+    # Get new customers count for current month
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM Customers WHERE EXTRACT(YEAR FROM CreatedAt) = %s AND EXTRACT(MONTH FROM CreatedAt) = %s', (today.year, today.month))
+    new_customers = cursor.fetchone()[0]
     conn.close()
     
-    return render_template('admin/dashboard.html', monthly_revenue=monthly_revenue, category_revenue=category_revenue, best_selling=best_selling, now=datetime.now())
+    return render_template('admin/dashboard.html', 
+                           monthly_revenue=monthly_revenue, 
+                           category_revenue=category_revenue, 
+                           best_selling=best_selling, 
+                           now=today,
+                           current_month_revenue=current_month_revenue,
+                           current_month_orders=current_month_orders,
+                           total_sold=total_sold,
+                           new_customers=new_customers)
+
 
 @admin_bp.route('/admin/products')
 def admin_products():
@@ -232,34 +263,72 @@ def admin_update_order_status():
 @admin_bp.route('/admin/reports')
 def admin_reports():
     if not is_admin(): return redirect(url_for('main.home'))
-    start_date = request.args.get('start_date')
-    end_date = request.args.get('end_date')
-    if not start_date: start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-    if not end_date: end_date = datetime.now().strftime('%Y-%m-%d')
     
     conn = get_db_connection()
     cursor = conn.cursor()
+    
+    start_date = request.args.get('start_date')
+    end_date = request.args.get('end_date')
+    
+    if not start_date: 
+        # Default to all time (earliest order)
+        try:
+            cursor.execute("SELECT MIN(OrderDate) FROM Orders")
+            min_date_row = cursor.fetchone()
+            if min_date_row and min_date_row[0]:
+                start_date = min_date_row[0].strftime('%Y-%m-%d')
+            else:
+                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+        except:
+             start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+
+    if not end_date: end_date = datetime.now().strftime('%Y-%m-%d')
+    
     cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
     daily_revenue = cursor.fetchall()
     cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Category(%s, %s)', (start_date, end_date))
     category_revenue = cursor.fetchall()
     cursor.execute('SELECT * FROM vw_BestSellingProducts')
     best_selling = cursor.fetchall()
-    conn.close()
-    
+    today = datetime.now()
     dates = []
     revenues = []
+    total_rev = 0
+    total_ord = 0
+    
     for row in daily_revenue:
         dates.append(row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else '')
-        revenues.append(float(row.DailyRevenue) if row.DailyRevenue else 0.0)
+        rev = float(row.DailyRevenue) if row.DailyRevenue else 0.0
+        total_rev += rev
+        total_ord += (row.OrderCount or 0)
+        revenues.append(rev)
     
     cat_names = []
     cat_revs = []
     for row in category_revenue:
         cat_names.append(row.CategoryName)
         cat_revs.append(float(row.CategoryRevenue) if row.CategoryRevenue else 0.0)
+    
+    # Get new customers count for the date range
+    cursor = conn.cursor()
+    cursor.execute('SELECT COUNT(*) FROM Customers WHERE CAST(CreatedAt AS DATE) BETWEEN %s AND %s', (start_date, end_date))
+    new_customers_range = cursor.fetchone()[0]
+    conn.close()
         
-    return render_template('admin/reports.html', daily_revenue=daily_revenue, category_revenue=category_revenue, best_selling=best_selling, start_date=start_date, end_date=end_date, dates=json.dumps(dates), revenues=json.dumps(revenues), category_names=json.dumps(cat_names), category_revenues=json.dumps(cat_revs))
+    return render_template('admin/reports.html', 
+                           daily_revenue=daily_revenue, 
+                           category_revenue=category_revenue, 
+                           best_selling=best_selling, 
+                           now=today,
+                           start_date=start_date, 
+                           end_date=end_date, 
+                           dates=json.dumps(dates), 
+                           revenues=json.dumps(revenues), 
+                           category_names=json.dumps(cat_names), 
+                           category_revenues=json.dumps(cat_revs),
+                           total_revenue=total_rev,
+                           total_orders=total_ord,
+                           new_customers=new_customers_range)
 
 @admin_bp.route('/admin/api/search_pixabay', methods=['GET'])
 def admin_search_pixabay():

@@ -123,9 +123,9 @@
                             <h5 class="mb-0">Thông tin khách hàng</h5>
                         </div>
                         <div class="card-body">
-                            <p><strong>Họ tên:</strong> {{ order.FullName }}</p>
-                            <p><strong>Email:</strong> {{ order.Email }}</p>
-                            <p><strong>Số điện thoại:</strong> {{ order.Phone or 'N/A' }}</p>
+                            <p><strong>Họ tên:</strong> {{ order.CustomerName }}</p>
+                            <p><strong>Email:</strong> {{ order.CustomerEmail }}</p>
+                            <p><strong>Số điện thoại:</strong> {{ order.CustomerPhone or 'N/A' }}</p>
                             <p><strong>Địa chỉ:</strong> {{ order.ShippingAddress }}</p>
                             <p><strong>Ngày đặt:</strong> {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</p>
                             <p><strong>Phương thức:</strong> {{ order.PaymentMethod }}</p>

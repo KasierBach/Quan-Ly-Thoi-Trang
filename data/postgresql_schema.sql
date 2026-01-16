@@ -196,6 +196,7 @@ SELECT
     p.ProductID,
     p.ProductName,
     SUM(od.Quantity) AS TotalSold,
+    SUM(od.Quantity * od.Price) AS TotalRevenue,
     p.Price,
     c.CategoryName
 FROM OrderDetails od
@@ -204,7 +205,7 @@ JOIN Products p ON pv.ProductID = p.ProductID
 JOIN Categories c ON p.CategoryID = c.CategoryID
 GROUP BY p.ProductID, p.ProductName, p.Price, c.CategoryName
 ORDER BY TotalSold DESC
-LIMIT 4;
+LIMIT 10;
 
 CREATE OR REPLACE VIEW vw_CustomerPurchaseHistory AS
 SELECT 

@@ -544,6 +544,7 @@
                                 <button class="quick-action-btn" onclick="setDateRange(30)">30 ngày</button>
                                 <button class="quick-action-btn" onclick="setDateRange(90)">3 tháng</button>
                                 <button class="quick-action-btn" onclick="setDateRange(365)">1 năm</button>
+                                <button class="quick-action-btn" onclick="setDateRange('all')">Tất cả</button>
                             </div>
                         </div>
                     </div>
@@ -554,13 +555,6 @@
 
                 <!-- Statistics Cards -->
                 <div class="stats-grid animate__animated animate__fadeInUp">
-                    {% set total_revenue = 0 %}
-                    {% set total_orders = 0 %}
-                    {% for day in daily_revenue %}
-                    {% set total_revenue = total_revenue + day.DailyRevenue %}
-                    {% set total_orders = total_orders + day.OrderCount %}
-                    {% endfor %}
-
                     <div class="stat-card revenue">
                         <div class="stat-icon">
                             <i class="fas fa-money-bill-wave"></i>
@@ -738,8 +732,8 @@
                                             </td>
                                             <td>
                                                 {% if daily_revenue|length > 0 %}
-                                                {% set avg_revenue = total_revenue / daily_revenue|length %}
-                                                {% set performance = (day.DailyRevenue / avg_revenue) * 100 if
+                                                {% set avg_revenue = total_revenue|float / daily_revenue|length %}
+                                                {% set performance = (day.DailyRevenue|float / avg_revenue) * 100 if
                                                 avg_revenue != 0 else 0 %}
                                                 {% if performance > 120 %}
                                                 <span class="performance-badge performance-excellent">Xuất sắc</span>
@@ -787,8 +781,8 @@
                                         <div>
                                             <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
                                             <small class="text-muted">
-                                                {% if total_revenue > 0 %}
-                                                {{ "{:.1f}".format((category.CategoryRevenue / total_revenue) * 100) }}%
+                                                {% if total_revenue|float > 0 %}
+                                                {{ "{:.1f}".format((category.CategoryRevenue|float / total_revenue|float) * 100) }}%
                                                 tổng doanh thu
                                                 {% else %}
                                                 0% tổng doanh thu
@@ -802,7 +796,7 @@
                                     </div>
                                     <div class="progress mt-2" style="height: 6px;">
                                         <div class="progress-bar"
-                                            data-width="{% if total_revenue > 0 %}{{ (category.CategoryRevenue / total_revenue) * 100 }}{% else %}0{% endif %}"
+                                            data-width="{% if total_revenue|float > 0 %}{{ (category.CategoryRevenue|float / total_revenue|float) * 100 }}{% else %}0{% endif %}"
                                             data-bg-color="{{ colors[loop.index0 % colors|length] }}">
                                         </div>
                                     </div>
@@ -1027,10 +1021,15 @@
     // Utility functions
     function setDateRange(days) {
         const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - days);
 
-        document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+        if (days === 'all') {
+            document.getElementById('start_date').value = '';
+        } else {
+            const startDate = new Date();
+            startDate.setDate(endDate.getDate() - days);
+            document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+        }
+
         document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
 
         // Auto submit form

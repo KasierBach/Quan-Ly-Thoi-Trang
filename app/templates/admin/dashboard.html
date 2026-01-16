@@ -96,12 +96,6 @@
                                     <div>
                                         <h6 class="text-muted">Doanh thu tháng này</h6>
                                         <h3 class="mb-0">
-                                            {% set current_month_revenue = 0 %}
-                                            {% for revenue in monthly_revenue %}
-                                            {% if revenue.Year == now.year and revenue.Month == now.month %}
-                                            {% set current_month_revenue = revenue.TotalRevenue %}
-                                            {% endif %}
-                                            {% endfor %}
                                             {{ "{:,.0f}".format(current_month_revenue) }} đ
                                         </h3>
                                     </div>
@@ -119,12 +113,6 @@
                                     <div>
                                         <h6 class="text-muted">Đơn hàng tháng này</h6>
                                         <h3 class="mb-0">
-                                            {% set current_month_orders = 0 %}
-                                            {% for revenue in monthly_revenue %}
-                                            {% if revenue.Year == now.year and revenue.Month == now.month %}
-                                            {% set current_month_orders = revenue.OrderCount %}
-                                            {% endif %}
-                                            {% endfor %}
                                             {{ current_month_orders }}
                                         </h3>
                                     </div>
@@ -142,10 +130,6 @@
                                     <div>
                                         <h6 class="text-muted">Sản phẩm đã bán</h6>
                                         <h3 class="mb-0">
-                                            {% set total_sold = 0 %}
-                                            {% for product in best_selling %}
-                                            {% set total_sold = total_sold + product.TotalSold %}
-                                            {% endfor %}
                                             {{ total_sold }}
                                         </h3>
                                     </div>
@@ -161,11 +145,11 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="text-muted">Danh mục sản phẩm</h6>
-                                        <h3 class="mb-0">{{ category_revenue|length }}</h3>
+                                        <h6 class="text-muted">Khách hàng mới</h6>
+                                        <h3 class="mb-0">{{ new_customers }}</h3>
                                     </div>
                                     <div class="bg-light rounded-circle p-3">
-                                        <i class="fas fa-tags text-warning fa-2x"></i>
+                                        <i class="fas fa-users text-warning fa-2x"></i>
                                     </div>
                                 </div>
                             </div>
