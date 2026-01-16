@@ -1,0 +1,15 @@
+column "isactive" is of type boolean but expression is of type integer
+LINE 254: ...r1@example.com', CURRENT_TIMESTAMP - INTERVAL '30 days', 1),
+                                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+
+PG ERROR:
+ERROR:  column "isactive" is of type boolean but expression is of type integer
+LINE 254: ...r1@example.com', CURRENT_TIMESTAMP - INTERVAL '30 days', 1),
+                                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+
+DIAG:
+column "isactive" is of type boolean but expression is of type integer
+DETAIL:
+None
