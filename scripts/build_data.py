@@ -83,7 +83,7 @@ def main():
     
     # Add Customers 12-20 (Dummy data to satisfy FKs)
     # Using same password hash as others
-    password_hash = "'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a'"
+    password_hash = "'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3'"
     extra_customers = []
     for i in range(12, 21):
         extra_customers.append(f"({i}, 'Customer {i}', 'customer{i}@example.com', {password_hash}, '09000000{i}', 'Address {i}', FALSE, CURRENT_TIMESTAMP)")
@@ -218,12 +218,14 @@ BEGIN
             -- Random Product 1-22
             v_ProductId := floor(random() * 22 + 1)::int;
             
-            -- Get a Variant for this product
-            SELECT VariantID INTO v_VariantId FROM ProductVariants WHERE ProductID = v_ProductId LIMIT 1;
+            -- Get a Variant for this product with positive quantity
+            SELECT VariantID, Price INTO v_VariantId, v_Price 
+            FROM ProductVariants pv 
+            JOIN Products p ON pv.ProductID = p.ProductID
+            WHERE pv.ProductID = v_ProductId AND pv.Quantity > 5 
+            LIMIT 1;
             
             IF v_VariantId IS NOT NULL THEN
-                SELECT Price INTO v_Price FROM Products WHERE ProductID = v_ProductId;
-                
                 INSERT INTO OrderDetails (OrderID, VariantID, Quantity, Price)
                 VALUES (v_OrderId, v_VariantId, floor(random() * 2 + 1)::int, v_Price);
             END IF;

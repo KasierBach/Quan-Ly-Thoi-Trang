@@ -178,6 +178,76 @@
                     {% endif %}
                 </div>
             </div>
+
+            <!-- Advanced Pagination -->
+            <div class="card mt-4 shadow-sm">
+                <div class="card-body py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <span class="text-muted">
+                                Trang {{ paging.current_page }} / {{ paging.total_pages }}
+                                (Hiển thị {{ paging.start_index }} - {{ paging.end_index }} / {{ paging.total_records }}
+                                kết quả)
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="mb-0 small text-muted">Tới trang:</label>
+                                    <input type="number" id="pageJump" class="form-control form-control-sm text-center"
+                                        style="width: 60px;" value="{{ paging.current_page }}" min="1"
+                                        max="{{ paging.total_pages }}">
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;">
+                                        {% for val in [10, 15, 20, 50, 100] %}
+                                        <option value="{{ val }}" {% if paging.per_page==val %}selected{% endif %}>{{
+                                            val }} dòng</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination pagination-sm mb-0">
+                                        <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
+                                            <a class="page-link"
+                                                href="{{ url_for('admin.admin_comments', filter=filter, page=paging.current_page-1, per_page=paging.per_page) }}">Trước</a>
+                                        </li>
+                                        <li
+                                            class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
+                                            <a class="page-link"
+                                                href="{{ url_for('admin.admin_comments', filter=filter, page=paging.current_page+1, per_page=paging.per_page) }}">Sau</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                // Pagination Handlers
+                document.getElementById('perPageSelect').addEventListener('change', function () {
+                    let perPage = this.value;
+                    let url = new URL(window.location.href);
+                    url.searchParams.set('per_page', perPage);
+                    url.searchParams.set('page', 1);
+                    window.location.href = url.href;
+                });
+
+                document.getElementById('pageJump').addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        let page = parseInt(this.value);
+                        let maxPage = parseInt(this.getAttribute('max'));
+                        if (isNaN(page) || page < 1) page = 1;
+                        if (page > maxPage) page = maxPage;
+
+                        let url = new URL(window.location.href);
+                        url.searchParams.set('page', page);
+                        window.location.href = url.href;
+                    }
+                });
+            </script>
         </div>
     </div>
 </div>

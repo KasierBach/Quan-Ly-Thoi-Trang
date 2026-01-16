@@ -74,21 +74,56 @@ def admin_dashboard():
 @admin_bp.route('/admin/products')
 def admin_products():
     if not is_admin(): return redirect(url_for('main.home'))
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    sort_by = request.args.get('sort_by', 'newest')
+    
+    if page < 1: page = 1
+    if per_page not in [12, 24, 48]: per_page = 12
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('''
+    
+    # Sorting logic
+    sort_query = "p.ProductID DESC"
+    if sort_by == 'price_asc': sort_query = "p.Price ASC"
+    elif sort_by == 'price_desc': sort_query = "p.Price DESC"
+    elif sort_by == 'name_asc': sort_query = "p.ProductName ASC"
+    
+    # Count total records
+    cursor.execute("SELECT COUNT(*) FROM Products")
+    total_records = cursor.fetchone()[0]
+    
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    if page > total_pages: page = total_pages
+    offset = (page - 1) * per_page
+    
+    cursor.execute(f'''
         SELECT p.*, c.CategoryName,
         (SELECT COUNT(*) FROM ProductVariants WHERE ProductID = p.ProductID) AS VariantCount,
         (SELECT SUM(Quantity) FROM ProductVariants WHERE ProductID = p.ProductID) AS TotalStock
         FROM Products p
         JOIN Categories c ON p.CategoryID = c.CategoryID
-        ORDER BY p.ProductID DESC
-    ''')
+        ORDER BY {sort_query}
+        LIMIT %s OFFSET %s
+    ''', (per_page, offset))
     products = cursor.fetchall()
+    
     cursor.execute('SELECT * FROM Categories')
     categories = cursor.fetchall()
     conn.close()
-    return render_template('products.html', products=products, categories=categories)
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
+    
+    return render_template('products.html', products=products, categories=categories, paging=paging_data, sort=sort_by)
 
 @admin_bp.route('/admin/products/add', methods=['GET', 'POST'])
 def admin_add_product():
@@ -214,16 +249,48 @@ def admin_add_variant():
 @admin_bp.route('/admin/orders')
 def admin_orders():
     if not is_admin(): return redirect(url_for('main.home'))
+    
     status = request.args.get('status', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    if page < 1: page = 1
+    if per_page not in [10, 20, 50, 100]: per_page = 20
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    query = 'SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID'
-    if status: query += f" WHERE o.Status = '{status}'"
-    query += " ORDER BY o.OrderDate DESC"
-    cursor.execute(query)
+    
+    # Base query parts
+    base_query = 'FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID'
+    where_clause = f" WHERE o.Status = '{status}'" if status else ""
+    
+    # Count total records
+    cursor.execute(f"SELECT COUNT(*) {base_query} {where_clause}")
+    total_records = cursor.fetchone()[0]
+    
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    
+    # Boundary logic: cap page at total_pages
+    if page > total_pages: page = total_pages
+    
+    offset = (page - 1) * per_page
+    
+    query = f"SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail {base_query} {where_clause} ORDER BY o.OrderDate DESC LIMIT %s OFFSET %s"
+    
+    cursor.execute(query, (per_page, offset))
     orders = cursor.fetchall()
     conn.close()
-    return render_template('admin/orders.html', orders=orders, current_status=status)
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
+    
+    return render_template('admin/orders.html', orders=orders, current_status=status, paging=paging_data)
 
 @admin_bp.route('/admin/orders/<int:order_id>')
 def admin_order_detail(order_id):
@@ -430,23 +497,59 @@ def admin_update_message_status_json():
 @admin_bp.route('/admin/comments')
 def admin_comments():
     if not is_admin(): return redirect(url_for('main.home'))
+    
     filter_type = request.args.get('filter', '')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 15, type=int)
+    
+    if page < 1: page = 1
+    if per_page not in [10, 15, 20, 50, 100]: per_page = 15
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    query = '''
-        SELECT pc.CommentID, pc.Content, pc.CommentDate, pc.AdminReply, pc.ReplyDate, pc.IsVisible,
-               c.FullName AS CustomerName, p.ProductName, p.ProductID
+    
+    # Base query parts
+    base_query = '''
         FROM ProductComments pc
         JOIN Customers c ON pc.CustomerID = c.CustomerID
         JOIN Products p ON pc.ProductID = p.ProductID
     '''
-    if filter_type == 'no_reply': query += " WHERE pc.AdminReply IS NULL"
-    elif filter_type == 'replied': query += " WHERE pc.AdminReply IS NOT NULL"
-    query += " ORDER BY pc.CommentDate DESC"
-    cursor.execute(query)
+    where_clause = ""
+    if filter_type == 'no_reply': where_clause = " WHERE pc.AdminReply IS NULL"
+    elif filter_type == 'replied': where_clause = " WHERE pc.AdminReply IS NOT NULL"
+    
+    # Count total records
+    cursor.execute(f"SELECT COUNT(*) {base_query} {where_clause}")
+    total_records = cursor.fetchone()[0]
+    
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    
+    # Boundary logic: cap page at total_pages
+    if page > total_pages: page = total_pages
+    
+    offset = (page - 1) * per_page
+    
+    query = f'''
+        SELECT pc.CommentID, pc.Content, pc.CommentDate, pc.AdminReply, pc.ReplyDate, pc.IsVisible,
+               c.FullName AS CustomerName, p.ProductName, p.ProductID
+        {base_query} {where_clause}
+        ORDER BY pc.CommentDate DESC LIMIT %s OFFSET %s
+    '''
+    
+    cursor.execute(query, (per_page, offset))
     comments = cursor.fetchall()
     conn.close()
-    return render_template('admin/comments.html', comments=comments, filter=filter_type)
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
+    
+    return render_template('admin/comments.html', comments=comments, filter=filter_type, paging=paging_data)
 
 @admin_bp.route('/admin/toggle_comment_visibility', methods=['POST'])
 def admin_toggle_comment_visibility():
@@ -494,19 +597,53 @@ def admin_manage_products():
         conn.close()
         return redirect(url_for('admin.admin_manage_products'))
     
-    cursor.execute('''
+    # GET logic with pagination and sorting
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    sort_by = request.args.get('sort_by', 'newest')
+    
+    if page < 1: page = 1
+    if per_page not in [10, 20, 50, 100]: per_page = 20
+    
+    # Sorting logic
+    sort_query = "p.ProductID DESC"
+    if sort_by == 'price_asc': sort_query = "p.Price ASC"
+    elif sort_by == 'price_desc': sort_query = "p.Price DESC"
+    elif sort_by == 'name_asc': sort_query = "p.ProductName ASC"
+    
+    # Count total records
+    cursor.execute("SELECT COUNT(*) FROM Products")
+    total_records = cursor.fetchone()[0]
+    
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    if page > total_pages: page = total_pages
+    offset = (page - 1) * per_page
+    
+    cursor.execute(f'''
         SELECT p.*, c.CategoryName,
         (SELECT COUNT(*) FROM ProductVariants WHERE ProductID = p.ProductID) AS VariantCount,
         (SELECT SUM(Quantity) FROM ProductVariants WHERE ProductID = p.ProductID) AS TotalStock
         FROM Products p
         JOIN Categories c ON p.CategoryID = c.CategoryID
-        ORDER BY p.ProductID DESC
-    ''')
+        ORDER BY {sort_query}
+        LIMIT %s OFFSET %s
+    ''', (per_page, offset))
+    
     products = cursor.fetchall()
     cursor.execute('SELECT * FROM Categories')
     categories = cursor.fetchall()
     conn.close()
-    return render_template('admin/manage_products.html', products=products, categories=categories)
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
+    
+    return render_template('admin/manage_products.html', products=products, categories=categories, paging=paging_data, sort_by=sort_by)
 
 @admin_bp.route('/admin/products/delete/<int:product_id>', methods=['POST'])
 def admin_delete_product(product_id):

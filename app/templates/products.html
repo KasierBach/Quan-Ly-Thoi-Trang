@@ -145,7 +145,9 @@
         <!-- Product List -->
         <div class="col-lg-9">
             <!-- Results Info -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <!-- Results Info -->
+            <div class="d-flex justify-content-between align-items-center mb-4" id="product-list-top"
+                style="scroll-margin-top: 100px;">
                 <div>
                     <h4 class="mb-1">
                         {% if search_term %}
@@ -169,14 +171,15 @@
                     <form method="get" id="sortForm">
                         <select class="form-select form-select-sm" style="width: auto;" name="sort"
                             onchange="this.form.submit()">
-                            <option value="">Sắp xếp theo</option>
-                            <option value="price_asc">Giá: Thấp đến cao</option>
-                            <option value="price_desc">Giá: Cao đến thấp</option>
-                            <option value="name_asc">Tên A-Z</option>
-                            <option value="newest">Mới nhất</option>
+                            <option value="newest" {% if sort=='newest' %}selected{% endif %}>Mới nhất</option>
+                            <option value="price_asc" {% if sort=='price_asc' %}selected{% endif %}>Giá: Thấp đến cao
+                            </option>
+                            <option value="price_desc" {% if sort=='price_desc' %}selected{% endif %}>Giá: Cao đến thấp
+                            </option>
+                            <option value="name_asc" {% if sort=='name_asc' %}selected{% endif %}>Tên A-Z</option>
                         </select>
                         {% for key, value in request.args.items() %}
-                        {% if key != 'sort' %}
+                        {% if key != 'sort' and key != 'page' %}
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                         {% endfor %}
@@ -184,10 +187,8 @@
                 </div>
             </div>
 
-
-
             {% if products %}
-            <div class="row g-3">
+            <div class="row g-3" id="products-grid">
                 {% for product in products %}
                 <div class="col-lg-4 col-md-6 mb-3">
                     <div class="card product-card h-100">
@@ -196,7 +197,8 @@
                                 class="card-img-top product-img" alt="{{ product.ProductName }}">
 
                             <!-- Product Badges -->
-                            {% if loop.index <= 3 %} <div class="position-absolute top-0 start-0 m-2">
+                            {% if loop.index <= 3 and paging.current_page==1 %} <div
+                                class="position-absolute top-0 start-0 m-2">
                                 <span class="badge bg-danger">
                                     <i class="fas fa-fire me-1"></i>Hot
                                 </span>
@@ -235,7 +237,7 @@
                                 {% if product.Price is not none %}
                                 <span class="h6 text-primary fw-bold mb-0 price">{{ "{:,.0f}".format(product.Price)
                                     }}đ</span>
-                                {% if loop.index <= 5 and product.Price is not none and product.Price|float %} <br>
+                                {% if loop.index <= 5 %} <br>
                                     <small class="text-muted price-old">{{ "{:,.0f}".format(product.Price|float * 1.2)
                                         }}đ</small>
                                     {% endif %}
@@ -255,23 +257,41 @@
         </div>
 
         <!-- Pagination -->
-        {% if products|length >= 12 %}
-        <nav aria-label="Product pagination" class="mt-4">
+        {% if paging.total_pages > 1 %}
+        <nav aria-label="Product pagination" class="mt-5">
             <ul class="pagination justify-content-center">
-                <li class="page-item">
-                    <a class="page-link" href="#" aria-label="Previous">
-                        <span aria-hidden="true">&laquo;</span>
+                <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
+                    <a class="page-link"
+                        href="{{ url_for('product.products', page=paging.current_page-1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top"
+                        aria-label="Previous">
+                        <span aria-hidden="true">&laquo; Trang trước</span>
                     </a>
                 </li>
-                <li class="page-item active"><a class="page-link" href="#">1</a></li>
-                <li class="page-item"><a class="page-link" href="#">2</a></li>
-                <li class="page-item"><a class="page-link" href="#">3</a></li>
-                <li class="page-item">
-                    <a class="page-link" href="#" aria-label="Next">
-                        <span aria-hidden="true">&raquo;</span>
+
+                {% set start_page = [1, paging.current_page - 2]|max %}
+                {% set end_page = [paging.total_pages, start_page + 4]|min %}
+                {% set start_page = [1, end_page - 4]|max %}
+
+                {% for p in range(start_page, end_page + 1) %}
+                <li class="page-item {% if p == paging.current_page %}active{% endif %}">
+                    <a class="page-link"
+                        href="{{ url_for('product.products', page=p, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top">{{
+                        p }}</a>
+                </li>
+                {% endfor %}
+
+                <li class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
+                    <a class="page-link"
+                        href="{{ url_for('product.products', page=paging.current_page+1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top"
+                        aria-label="Next">
+                        <span aria-hidden="true">Trang sau &raquo;</span>
                     </a>
                 </li>
             </ul>
+            <div class="text-center mt-2 text-muted small">
+                Hiển thị {{ paging.start_index }} - {{ paging.end_index }} trong tổng số {{ paging.total_records }} sản
+                phẩm
+            </div>
         </nav>
         {% endif %}
 
@@ -298,6 +318,7 @@
     </div>
 </div>
 </div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -340,15 +361,5 @@
         });
     });
 
-    // Smooth scroll to top when pagination is clicked
-    document.querySelectorAll('.pagination a').forEach(link => {
-        link.addEventListener('click', function (e) {
-            e.preventDefault();
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
-    });
 </script>
 {% endblock %}

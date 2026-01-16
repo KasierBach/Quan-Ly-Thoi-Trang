@@ -61,20 +61,24 @@
                             class="btn btn-sm {% if not current_status %}btn-primary{% else %}btn-outline-primary{% endif %}">
                             Tất cả
                         </a>
-                        <a href="{{ url_for('admin.admin_orders', status='Chờ xử lý') }}"
-                            class="btn btn-sm {% if current_status == 'Chờ xử lý' %}btn-warning{% else %}btn-outline-warning{% endif %}">
+                        <a href="{{ url_for('admin.admin_orders', status='Pending') }}"
+                            class="btn btn-sm {% if current_status == 'Pending' %}btn-warning{% else %}btn-outline-warning{% endif %}">
                             Chờ xử lý
                         </a>
-                        <a href="{{ url_for('admin.admin_orders', status='Đang giao hàng') }}"
-                            class="btn btn-sm {% if current_status == 'Đang giao hàng' %}btn-info{% else %}btn-outline-info{% endif %}">
+                        <a href="{{ url_for('admin.admin_orders', status='Processing') }}"
+                            class="btn btn-sm {% if current_status == 'Processing' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                            Đang xử lý
+                        </a>
+                        <a href="{{ url_for('admin.admin_orders', status='Shipped') }}"
+                            class="btn btn-sm {% if current_status == 'Shipped' %}btn-info{% else %}btn-outline-info{% endif %}">
                             Đang giao hàng
                         </a>
-                        <a href="{{ url_for('admin.admin_orders', status='Đã giao hàng') }}"
-                            class="btn btn-sm {% if current_status == 'Đã giao hàng' %}btn-success{% else %}btn-outline-success{% endif %}">
+                        <a href="{{ url_for('admin.admin_orders', status='Delivered') }}"
+                            class="btn btn-sm {% if current_status == 'Delivered' %}btn-success{% else %}btn-outline-success{% endif %}">
                             Đã giao hàng
                         </a>
-                        <a href="{{ url_for('admin.admin_orders', status='Đã hủy') }}"
-                            class="btn btn-sm {% if current_status == 'Đã hủy' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                        <a href="{{ url_for('admin.admin_orders', status='Cancelled') }}"
+                            class="btn btn-sm {% if current_status == 'Cancelled' %}btn-danger{% else %}btn-outline-danger{% endif %}">
                             Đã hủy
                         </a>
                     </div>
@@ -82,7 +86,7 @@
             </div>
 
             <!-- Orders Table -->
-            <div class="card shadow-sm">
+            <div class="card shadow-sm mb-4">
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover mb-0 align-middle">
@@ -112,14 +116,16 @@
                                     <td>{{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</td>
                                     <td class="fw-bold text-primary">{{ "{:,.0f}".format(order.TotalAmount) }} đ</td>
                                     <td>
-                                        {% if order.Status == 'Chờ xử lý' %}
-                                        <span class="badge bg-warning text-dark">{{ order.Status }}</span>
-                                        {% elif order.Status == 'Đang giao hàng' %}
-                                        <span class="badge bg-info text-dark">{{ order.Status }}</span>
-                                        {% elif order.Status == 'Đã giao hàng' %}
-                                        <span class="badge bg-success">{{ order.Status }}</span>
-                                        {% elif order.Status == 'Đã hủy' %}
-                                        <span class="badge bg-danger">{{ order.Status }}</span>
+                                        {% if order.Status == 'Pending' %}
+                                        <span class="badge bg-warning text-dark">Chờ xử lý</span>
+                                        {% elif order.Status == 'Processing' %}
+                                        <span class="badge bg-primary text-white">Đang xử lý</span>
+                                        {% elif order.Status == 'Shipped' %}
+                                        <span class="badge bg-info text-dark">Đang giao hàng</span>
+                                        {% elif order.Status == 'Delivered' %}
+                                        <span class="badge bg-success">Đã giao hàng</span>
+                                        {% elif order.Status == 'Cancelled' %}
+                                        <span class="badge bg-danger">Đã hủy</span>
                                         {% else %}
                                         <span class="badge bg-secondary">{{ order.Status }}</span>
                                         {% endif %}
@@ -144,6 +150,75 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Advanced Pagination -->
+            <div class="card shadow-sm">
+                <div class="card-body py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <span class="text-muted">
+                                Trang {{ paging.current_page }} / {{ paging.total_pages }}
+                                (Hiển thị {{ paging.start_index }} - {{ paging.end_index }} / {{ paging.total_records }}
+                                kết quả)
+                            </span>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <label class="mb-0 small text-muted">Tới trang:</label>
+                                    <input type="number" id="pageJump" class="form-control form-control-sm text-center"
+                                        style="width: 60px;" value="{{ paging.current_page }}" min="1"
+                                        max="{{ paging.total_pages }}">
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;">
+                                        {% for val in [10, 20, 50, 100] %}
+                                        <option value="{{ val }}" {% if paging.per_page==val %}selected{% endif %}>{{
+                                            val }} dòng</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <nav aria-label="Page navigation">
+                                    <ul class="pagination pagination-sm mb-0">
+                                        <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
+                                            <a class="page-link"
+                                                href="{{ url_for('admin.admin_orders', status=current_status, page=paging.current_page-1, per_page=paging.per_page) }}">Trước</a>
+                                        </li>
+                                        <li
+                                            class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
+                                            <a class="page-link"
+                                                href="{{ url_for('admin.admin_orders', status=current_status, page=paging.current_page+1, per_page=paging.per_page) }}">Sau</a>
+                                        </li>
+                                    </ul>
+                                </nav>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <script>
+                document.getElementById('perPageSelect').addEventListener('change', function () {
+                    let perPage = this.value;
+                    let url = new URL(window.location.href);
+                    url.searchParams.set('per_page', perPage);
+                    url.searchParams.set('page', 1); // Reset to page 1 on per_page change
+                    window.location.href = url.href;
+                });
+
+                document.getElementById('pageJump').addEventListener('keypress', function (e) {
+                    if (e.key === 'Enter') {
+                        let page = parseInt(this.value);
+                        let maxPage = parseInt(this.getAttribute('max'));
+                        if (isNaN(page) || page < 1) page = 1;
+                        if (page > maxPage) page = maxPage;
+
+                        let url = new URL(window.location.href);
+                        url.searchParams.set('page', page);
+                        window.location.href = url.href;
+                    }
+                });
+            </script>
         </div>
     </div>
 </div>

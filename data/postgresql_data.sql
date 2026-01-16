@@ -26,17 +26,17 @@ INSERT INTO Sizes (SizeID, SizeName) VALUES
 
 -- 4. Customers (11 Customers)
 INSERT INTO Customers (CustomerID, FullName, Email, Password, PhoneNumber, Address, IsAdmin, CreatedAt) VALUES 
-(1, 'Nguyễn Văn An', 'an.nguyen@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0901234567', '123 Đường Lê Lợi, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(2, 'Trần Thị Bình', 'binh.tran@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0912345678', '456 Đường Nguyễn Huệ, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(3, 'Lê Văn Cường', 'cuong.le@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0923456789', '789 Đường Cách Mạng Tháng 8, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(4, 'Phạm Thị Dung', 'dung.pham@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0934567890', '101 Đường Võ Văn Tần, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(5, 'Hoàng Văn Em', 'em.hoang@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0945678901', '202 Đường Nguyễn Thị Minh Khai, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(6, 'Nguyễn Thị Hương', 'huong.nguyen@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0987654321', '25 Đường Lý Tự Trọng, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(7, 'Trần Văn Minh', 'minh.tran@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0976543210', '42 Đường Nguyễn Đình Chiểu, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(8, 'Lê Thị Lan', 'lan.le@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0965432109', '78 Đường Trần Hưng Đạo, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(9, 'Phạm Văn Đức', 'duc.pham@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0954321098', '15 Đường Lê Duẩn, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(10, 'Vũ Thị Mai', 'mai.vu@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0943210987', '63 Đường Nguyễn Trãi, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(11, 'Admin', 'admin123@gmail.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0000000000', 'Quản trị viên', TRUE, CURRENT_TIMESTAMP);
+(1, 'Nguyễn Văn An', 'an.nguyen@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0901234567', '123 Đường Lê Lợi, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(2, 'Trần Thị Bình', 'binh.tran@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0912345678', '456 Đường Nguyễn Huệ, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(3, 'Lê Văn Cường', 'cuong.le@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0923456789', '789 Đường Cách Mạng Tháng 8, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(4, 'Phạm Thị Dung', 'dung.pham@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0934567890', '101 Đường Võ Văn Tần, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(5, 'Hoàng Văn Em', 'em.hoang@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0945678901', '202 Đường Nguyễn Thị Minh Khai, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(6, 'Nguyễn Thị Hương', 'huong.nguyen@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0987654321', '25 Đường Lý Tự Trọng, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(7, 'Trần Văn Minh', 'minh.tran@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0976543210', '42 Đường Nguyễn Đình Chiểu, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(8, 'Lê Thị Lan', 'lan.le@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0965432109', '78 Đường Trần Hưng Đạo, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(9, 'Phạm Văn Đức', 'duc.pham@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0954321098', '15 Đường Lê Duẩn, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(10, 'Vũ Thị Mai', 'mai.vu@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0943210987', '63 Đường Nguyễn Trãi, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(11, 'Admin', 'admin123@gmail.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0000000000', 'Quản trị viên', TRUE, CURRENT_TIMESTAMP);
 
 -- 5. Products (22 Products)
 INSERT INTO Products (ProductID, ProductName, Description, Price, CategoryID, CreatedAt, ImageURL) VALUES 

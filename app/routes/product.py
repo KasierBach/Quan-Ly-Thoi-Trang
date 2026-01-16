@@ -16,6 +16,13 @@ def products():
     size_id = request.args.get('size', type=int)
     in_stock_only = request.args.get('in_stock', type=int, default=0)
     
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 12, type=int)
+    sort = request.args.get('sort', 'newest')
+    
+    if page < 1: page = 1
+    if per_page not in [12, 24, 48]: per_page = 12 # Common values for 3-4 column grid
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute('SELECT * FROM Categories')
@@ -27,12 +34,38 @@ def products():
     cursor.execute('SELECT * FROM Sizes')
     sizes = cursor.fetchall()
     
-    cursor.execute('''
+    # Sorting logic
+    sort_query = "ProductID DESC"
+    if sort == 'price_asc': sort_query = "Price ASC"
+    elif sort == 'price_desc': sort_query = "Price DESC"
+    elif sort == 'name_asc': sort_query = "ProductName ASC"
+
+    # Count total records first
+    count_query = f"SELECT COUNT(*) FROM sp_SearchProducts(%s, %s, %s, %s, %s, %s, %s)"
+    cursor.execute(count_query, (search_term, category_id, min_price, max_price, color_id, size_id, bool(in_stock_only)))
+    total_records = cursor.fetchone()[0]
+    
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    if page > total_pages: page = total_pages
+    offset = (page - 1) * per_page
+
+    cursor.execute(f'''
         SELECT * FROM sp_SearchProducts(%s, %s, %s, %s, %s, %s, %s)
-    ''', (search_term, category_id, min_price, max_price, color_id, size_id, bool(in_stock_only)))
+        ORDER BY {sort_query}
+        LIMIT %s OFFSET %s
+    ''', (search_term, category_id, min_price, max_price, color_id, size_id, bool(in_stock_only), per_page, offset))
     
     products = cursor.fetchall()
     conn.close()
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
     
     return render_template('products.html', 
                           products=products, 
@@ -45,7 +78,9 @@ def products():
                           max_price=max_price,
                           color_id=color_id,
                           size_id=size_id,
-                          in_stock_only=in_stock_only)
+                          in_stock_only=in_stock_only,
+                          paging=paging_data,
+                          sort=sort)
 
 @product_bp.route('/product/<int:product_id>')
 def product_detail(product_id):

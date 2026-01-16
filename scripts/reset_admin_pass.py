@@ -6,7 +6,7 @@ load_dotenv()
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 # New hash for password '123456'
-NEW_HASH = 'pbkdf2:sha256:600000$ALvXqoPhpgixkXCG$e61aa73b755088386b4a4890d12f0d8b3ce4d8550ad0cef9d7a82b66a10904bd'
+NEW_HASH = 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3'
 
 try:
     conn = psycopg2.connect(DATABASE_URL)

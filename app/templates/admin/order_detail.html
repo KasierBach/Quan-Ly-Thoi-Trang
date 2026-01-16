@@ -142,14 +142,16 @@
                                 <div class="mb-3">
                                     <label for="status" class="form-label">Cập nhật trạng thái:</label>
                                     <select name="status" id="status" class="form-select">
-                                        <option value="Chờ xử lý" {% if order.Status=='Chờ xử lý' %}selected{% endif %}>
-                                            Chờ xử lý</option>
-                                        <option value="Đang giao hàng" {% if order.Status=='Đang giao hàng' %}selected{%
-                                            endif %}>Đang giao hàng</option>
-                                        <option value="Đã giao hàng" {% if order.Status=='Đã giao hàng' %}selected{%
-                                            endif %}>Đã giao hàng</option>
-                                        <option value="Đã hủy" {% if order.Status=='Đã hủy' %}selected{% endif %}>Đã hủy
-                                        </option>
+                                        <option value="Pending" {% if order.Status=='Pending' %}selected{% endif %}>Chờ
+                                            xử lý</option>
+                                        <option value="Processing" {% if order.Status=='Processing' %}selected{% endif
+                                            %}>Đang xử lý</option>
+                                        <option value="Shipped" {% if order.Status=='Shipped' %}selected{% endif %}>Đang
+                                            giao hàng</option>
+                                        <option value="Delivered" {% if order.Status=='Delivered' %}selected{% endif %}>
+                                            Đã giao hàng</option>
+                                        <option value="Cancelled" {% if order.Status=='Cancelled' %}selected{% endif %}>
+                                            Đã hủy</option>
                                     </select>
                                 </div>
                                 <button type="submit" class="btn btn-primary w-100">Cập nhật</button>

@@ -1,50 +1,246 @@
--- AUTOMATICALLY GENERATED FROM SQL SERVER DATA MIGRATION
+-- RICH DATA GENERATOR OUTPUT
 TRUNCATE TABLE OrderDetails, Orders, ProductVariants, ProductComments, Reviews, Wishlist, Products, Categories, Colors, Sizes, Customers, NewsletterSubscribers, PasswordResetTokens RESTART IDENTITY CASCADE;
 -- 1. Categories
-INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES 
-(1, 'Áo nam', 'Các loại áo dành cho nam giới'),
-(2, 'Quần nam', 'Các loại quần dành cho nam giới'),
-(3, 'Áo nữ', 'Các loại áo dành cho nữ giới'),
-(4, 'Quần nữ', 'Các loại quần dành cho nữ giới'),
-(5, 'Váy đầm', 'Các loại váy và đầm dành cho nữ giới'),
-(6, 'Phụ kiện', 'Các loại phụ kiện thời trang');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (1, 'Áo nam', 'Các loại áo dành cho nam giới');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (2, 'Quần nam', 'Các loại quần dành cho nam giới');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (3, 'Áo nữ', 'Các loại áo dành cho nữ giới');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (4, 'Quần nữ', 'Các loại quần dành cho nữ giới');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (5, 'Váy đầm', 'Các loại váy và đầm dành cho nữ giới');
+INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (6, 'Phụ kiện', 'Các loại phụ kiện thời trang');
 
 -- 2. Colors
-INSERT INTO Colors (ColorID, ColorName) VALUES 
-(1, 'Đen'), (2, 'Trắng'), (3, 'Đỏ'), (4, 'Xanh dương'), (5, 'Xanh lá'),
-(6, 'Vàng'), (7, 'Hồng'), (8, 'Xám'), (9, 'Nâu');
+INSERT INTO Colors (ColorID, ColorName) VALUES (1, 'Đen');
+INSERT INTO Colors (ColorID, ColorName) VALUES (2, 'Trắng');
+INSERT INTO Colors (ColorID, ColorName) VALUES (3, 'Đỏ');
+INSERT INTO Colors (ColorID, ColorName) VALUES (4, 'Xanh dương');
+INSERT INTO Colors (ColorID, ColorName) VALUES (5, 'Xanh lá');
+INSERT INTO Colors (ColorID, ColorName) VALUES (6, 'Vàng');
+INSERT INTO Colors (ColorID, ColorName) VALUES (7, 'Hồng');
+INSERT INTO Colors (ColorID, ColorName) VALUES (8, 'Xám');
+INSERT INTO Colors (ColorID, ColorName) VALUES (9, 'Nâu');
+INSERT INTO Colors (ColorID, ColorName) VALUES (10, 'Tím');
+INSERT INTO Colors (ColorID, ColorName) VALUES (11, 'Cam');
+INSERT INTO Colors (ColorID, ColorName) VALUES (12, 'Kem');
 
 -- 3. Sizes
-INSERT INTO Sizes (SizeID, SizeName) VALUES 
-(1, 'S'), (2, 'M'), (3, 'L'), (4, 'XL'), (5, 'XXL'),
-(6, '28'), (7, '29'), (8, '30'), (9, '31'), (10, '32'), (11, '33'), (12, '34');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (1, 'S');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (2, 'M');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (3, 'L');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (4, 'XL');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (5, 'XXL');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (6, '28');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (7, '29');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (8, '30');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (9, '31');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (10, '32');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (11, '33');
+INSERT INTO Sizes (SizeID, SizeName) VALUES (12, '34');
 
+-- 4. Customers (200)
+INSERT INTO Customers (CustomerID, FullName, Email, Password, PhoneNumber, Address, IsAdmin, CreatedAt) VALUES
+(1, 'Nguyễn Văn An', 'an.nguyen@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0901234567', '123 Đường Lê Lợi, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(2, 'Trần Thị Bình', 'binh.tran@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0912345678', '456 Đường Nguyễn Huệ, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(3, 'Lê Văn Cường', 'cuong.le@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0923456789', '789 Đường Cách Mạng Tháng 8, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(4, 'Phạm Thị Dung', 'dung.pham@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0934567890', '101 Đường Võ Văn Tần, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(5, 'Hoàng Văn Em', 'em.hoang@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0945678901', '202 Đường Nguyễn Thị Minh Khai, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(6, 'Nguyễn Thị Hương', 'huong.nguyen@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0987654321', '25 Đường Lý Tự Trọng, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(7, 'Trần Văn Minh', 'minh.tran@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0976543210', '42 Đường Nguyễn Đình Chiểu, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(8, 'Lê Thị Lan', 'lan.le@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0965432109', '78 Đường Trần Hưng Đạo, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(9, 'Phạm Văn Đức', 'duc.pham@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0954321098', '15 Đường Lê Duẩn, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(10, 'Vũ Thị Mai', 'mai.vu@example.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0943210987', '63 Đường Nguyễn Trãi, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
+(11, 'Admin', 'admin123@gmail.com', 'pbkdf2:sha256:600000$XDV5QUQ3okhGw4Yr$89c269aa7832d6cb668604d0dec99cb4280306451ce2a418478bb7b6375e8ce3', '0000000000', 'Quản trị viên', TRUE, CURRENT_TIMESTAMP),
+(12, 'Hồ Ngọc Thảo', 'thao.nh@outlook.com', 'pbkdf2:sha256:600000$2q9JvwgfMzOJc4JQ$ae87f024b7a9fffc6b7b243be0d7dd3f03ad3dd71ac5e4070a19fecb33685ede', '0997255451', '66B Đường Hai Bà Trưng, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(13, 'Bùi Anh Em', 'bui.em@outlook.com', 'pbkdf2:sha256:600000$eonmZaVJcybJeR5U$d44cb930d13172923707c7b89b1500d7c462927a51448b4d3845debc0fa0132e', '0910603015', '349 Đường Lý Thường Kiệt, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(14, 'Đặng Tất Quân', 'dang.quan@hotmail.com', 'pbkdf2:sha256:600000$hnCffpwvkghvh4k2$2e3e6516e6633e6d2383079d30fde90bcab8c5ec7374fe3c568e1eb0d02ac004', '0937361960', '116/45 Đường Hai Bà Trưng, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(15, 'Đặng Tất Thịnh', 'thinh.td@fpt.edu.vn', 'pbkdf2:sha256:600000$CktHiNifP3Wk2exE$458fef9b27ab79565a4bab1befcaa0b5d50e1c61093ea98ec4ec8a559342eef3', '0923079704', '273A Đường Hai Bà Trưng, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(16, 'Đặng Bảo Ngọc', 'ngocdang51@outlook.com', 'pbkdf2:sha256:600000$rprBTT0DbAJXig7i$282220b9b5bdfdc2695403d4d3659f9b69e065b61e9d6c90f199e6ed3ceda88c', '0982544562', '238 Đường Trần Phú, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(17, 'Dương Công Dũng', 'dungduong65@vnu.edu.vn', 'pbkdf2:sha256:600000$RsQdBeP7pUR0SKaQ$05188e435244720eda7ae1c860a8983b821675f0964c20d4e539f9caef65fe45', '0923080121', '190B Đường Lý Thường Kiệt, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(18, 'Nguyễn Quang Việt', 'viet.nguyen@yahoo.com', 'pbkdf2:sha256:600000$EUHMWY6q4Oj1SDAO$3267a7670db87712a47b63efee05e15fedf3c0070c44344c3e8f7909927be3ba', '0979577256', '53 Đường Hùng Vương, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(19, 'Vũ Ngọc Hoa', 'hoa.nv@gmail.com', 'pbkdf2:sha256:600000$scbE5XcMClUtbUg2$38b783f365ce96b2ea161baf7f72de5396a85b31e7b98377bddc22728d1baa8d', '0959544166', '205/2 Đường Đồng Khởi, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(20, 'Phạm Tất Minh', 'minh.pham@vnu.edu.vn', 'pbkdf2:sha256:600000$alkVKaSCpaLQEnqK$7a94d4ffa5e88d91a4515c1d48879e1cf81ec5b25e5b4c2e39a5cf959f4e2b36', '0926361337', '283/45 Đường Lý Thường Kiệt, Quận Hải Châu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(21, 'Ngô Bảo Hương', 'huong.bn@hotmail.com', 'pbkdf2:sha256:600000$8km7eA0AutnQuZkh$feaab35a6e6ba5da6d199a440963824984711547ce6e4537d89969ef769e5f9b', '0934734974', '153/12 Đường Trần Phú, Quận Hai Bà Trưng, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(22, 'Lý Anh Kiên', 'kien.ly@fpt.edu.vn', 'pbkdf2:sha256:600000$XWQ2cu8Cpsi4r5P9$41d29ae2f038e126b48aad649c67e5bf9c4b385d31b8d44f44104f6dc01dff35', '0955375269', '196/12 Đường Cách Mạng Tháng 8, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(23, 'Đỗ Mai Hương', 'huongdo28@yahoo.com', 'pbkdf2:sha256:600000$SAGWROPa4t9YD2G0$c024d64860633aff6425f0d7f3ad5a129c16ee10a41272a90004de5a4c77945e', '0928195586', '237 Đường Điện Biên Phủ, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(24, 'Phạm Thu An', 'anpham27@yahoo.com', 'pbkdf2:sha256:600000$TcCR15lLWoMZVjYH$472e1b0c04414c39f2ca3c55980cb425f3e28e63f652f656122671969d4905df', '0950705528', '193/45 Đường Đồng Khởi, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(25, 'Bùi Anh An', 'anbui68@outlook.com', 'pbkdf2:sha256:600000$jwASCs3WU91QCotx$26d039f22d602d26d67f5fd4b87d9e6d5dcb3395793b825e4255fc60672dc407', '0983739674', '189/12 Đường Hùng Vương, Quận Hai Bà Trưng, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(26, 'Nguyễn Bảo Minh', 'minh.bn@vnu.edu.vn', 'pbkdf2:sha256:600000$6klLGFF3w9G3eeen$889a4f9f3a3f130388d0b8c1306f3d77ed3e9601139af7fda7ddf77d807c8801', '0998449525', '393 Đường Nguyễn Huệ, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(27, 'Hồ Huyền An', 'ho.an@fpt.edu.vn', 'pbkdf2:sha256:600000$HdPicJC5DYP3zkF4$d1dcef5dcdd13dc83d897ce92aa0526737862cf06f050187ce79444030e74c2f', '0942507069', '188/12 Đường Lý Tự Trọng, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(28, 'Đặng Mai Thảo', 'thao.md@fpt.edu.vn', 'pbkdf2:sha256:600000$gYt0lRMZ8PGnqg6X$0e25f36ef606f496e61d5d56c4786281b1e26c1d9e2597882eb51ed316571182', '0914916750', '152A Đường Nguyễn Huệ, Quận Ngũ Hành Sơn, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(29, 'Phạm Thành Kiên', 'kienpham96@fpt.edu.vn', 'pbkdf2:sha256:600000$syLb0zlGCDD40TJq$72d00bcf92682147c247059473fb005bd6dffc1021005d79eac1d7148cdbc5a7', '0987031063', '266/2 Đường Phan Chu Trinh, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(30, 'Đỗ Thành Cường', 'cuong.do@gmail.com', 'pbkdf2:sha256:600000$qOGQAu2ITT81AE7u$53fd0102dc85da4731b0f192edea965ae5f5284d3811bea6b521bce5445c4f09', '0978679220', '420B Đường Lý Tự Trọng, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(31, 'Hồ Thanh Hoa', 'hoa.th@outlook.com', 'pbkdf2:sha256:600000$zqTAdHGkVmJPoHUz$dfa0d384275ad58447ab5f120a55cb99cf4e22ed5fc3776c859537c25723c75a', '0990456347', '325B Đường Bạch Đằng, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(32, 'Phan Anh Việt', 'viet.phan@hotmail.com', 'pbkdf2:sha256:600000$2rB4RZMBSZ4O77kf$6d82f5b12597aceec1ab71d4c64a65e41cd5b3f11c3a3bb13d105b1f97bf3674', '0972294227', '443/2 Đường Lê Lợi, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(33, 'Hồ Bảo Sơn', 'son.bh@yahoo.com', 'pbkdf2:sha256:600000$ZXndmQLGc2cKsjor$e43c676b88bbd44dc9f1b872ffaa9ab02ef34717e5582cab806df56b30b612f1', '0953244684', '198A Đường Đồng Khởi, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(34, 'Nguyễn Quỳnh Vy', 'nguyen.vy@outlook.com', 'pbkdf2:sha256:600000$asQyc7an0ewa7LbA$37821227e4a2eb14f23069b55456b630d704a55d2b2b250298423b0f1f10b6f6', '0998416153', '52A Đường Hai Bà Trưng, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(35, 'Ngô Công Phúc', 'phuc.cn@yahoo.com', 'pbkdf2:sha256:600000$sWGvT7DAZIsDXgFE$6be9937020bfbf80b20f5f8290e67cbc36f2453385bd44ade1a0d27d2fba8c98', '0914969570', '255B Đường Lý Thường Kiệt, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(36, 'Bùi Tất Em', 'embui10@hotmail.com', 'pbkdf2:sha256:600000$g4DTAnnmjaUvhZVa$789eb511851632e71ff92cafc5ed74e0e7d36fefccdd20f92d6ada5408c1d991', '0946812388', '293B Đường Lý Thường Kiệt, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(37, 'Hoàng Ánh Trang', 'hoang.trang@hotmail.com', 'pbkdf2:sha256:600000$IQFHV4l2qROmcEuX$483b4dbc1f34b7ca0a3edb2f765b59ba6daa26916e0f553ec036752367949795', '0986782179', '60/45 Đường Trần Hưng Đạo, Quận Hoàn Kiếm, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(38, 'Nguyễn Quỳnh Linh', 'linhnguyen45@fpt.edu.vn', 'pbkdf2:sha256:600000$beEo0fmGp2dwzVZz$2163b615a1676667778db5e6889e4531084ac70ebf050dc57ef1e5e59416e1e0', '0968154243', '358B Đường Nguyễn Huệ, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(39, 'Bùi Anh Cường', 'bui.cuong@gmail.com', 'pbkdf2:sha256:600000$h8j8lwnYpSe1wAPH$b6f365d045744bb1c56ae5c4f707fabcbb1ac2f6d6e931d045983287f6d7d738', '0912331357', '354B Đường Lê Duẩn, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(40, 'Võ Tất Minh', 'vo.minh@outlook.com', 'pbkdf2:sha256:600000$UeFrXn0pnI7ZsfEX$3ca1a9bece4d9b2ea887e56246ca5a9e50cf1aa774f4ae82b3366e2cbbfd3905', '0968100101', '351/12 Đường Hùng Vương, Quận Ngũ Hành Sơn, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(41, 'Hồ Quỳnh Quỳnh', 'ho.quynh@vnu.edu.vn', 'pbkdf2:sha256:600000$VTwL4kiUJsoHFEqK$a7ec5ccf15f7f99ab7c430020813c815ca2c43c0bdd0964f8d6e9d2fcdb43f94', '0983395813', '380/12 Đường Điện Biên Phủ, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(42, 'Phan Thị Linh', 'linhphan12@hotmail.com', 'pbkdf2:sha256:600000$KJk0YehuqGNfCX2E$6a973ad18c11a10794b99a2d4eceaf3fe565f901c04ba3046957b28d999a624a', '0941589811', '192/2 Đường Cách Mạng Tháng 8, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(43, 'Nguyễn Bảo Long', 'long.bn@outlook.com', 'pbkdf2:sha256:600000$oWr7utSAk2jCwQbh$8b3e3ed46c8c215a8050b4a80ed5ef1a9b13b27ebd35667dbc296b7067f476f6', '0913906435', '275A Đường Cách Mạng Tháng 8, Quận 3, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(44, 'Võ Minh Bình', 'binh.mv@hotmail.com', 'pbkdf2:sha256:600000$U58XmR4siY4PRn6l$4f08b55ecaefb64825dea29d2f3838250df684fdd43336dc677dfa5181862b62', '0913603095', '421/12 Đường Trần Hưng Đạo, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(45, 'Võ Minh Long', 'longvo76@fpt.edu.vn', 'pbkdf2:sha256:600000$NeNLPmP3BdBAADiT$ab1a09a56b5a06d273b2977a9c62204854f944dd444086306a36b7715d2bc784', '0992600391', '77/2 Đường Trần Hưng Đạo, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(46, 'Bùi Quang Nam', 'nam.qb@outlook.com', 'pbkdf2:sha256:600000$ONTq6W6bcfG6Gy5Q$5a6030ec189c75ed0ad8bd15f7f09428af8ba30292ea9840805132091e53ccab', '0962868594', '432/12 Đường Lê Lợi, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(47, 'Võ Thanh Vy', 'vy.vo@vnu.edu.vn', 'pbkdf2:sha256:600000$wspuDtduLMGBh7fc$f15a53d3053fcd651ce6b2c76a4e3229c352b0aa4c9546f77ce9e2b258159a89', '0924785802', '39B Đường Lý Thường Kiệt, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(48, 'Dương Thành Hùng', 'hung.duong@fpt.edu.vn', 'pbkdf2:sha256:600000$1qOiJKWMwIvI9C5T$8b67b8da68f9ce8d6974f728006428d67d1f9a2c5e1dbc2e7e34285287caf3bf', '0991590255', '448A Đường Lê Duẩn, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(49, 'Đặng Đức Dũng', 'dang.dung@vnu.edu.vn', 'pbkdf2:sha256:600000$ktApDGhk2EpvWg3v$93b0fdbf98a9be7ed0995b268b31b852325931a4261c24bbe6ec222cd1dc1f05', '0958662100', '120 Đường Lê Duẩn, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(50, 'Trần Ánh Ngọc', 'tran.ngoc@gmail.com', 'pbkdf2:sha256:600000$AyK3PnjyZyEtkrpT$6f94bb976e9badc551d2b58d84df13cedef4d1e429e29150d93bea7948a14614', '0949357705', '73A Đường Lý Tự Trọng, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(51, 'Đỗ Mai Dung', 'dung.md@gmail.com', 'pbkdf2:sha256:600000$jhcuWdYicyGBBObA$b95f958ed0f0fd898131662e788a1bf2670b832e551974f72e768db59f2c4f84', '0976267312', '27/2 Đường Bạch Đằng, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(52, 'Nguyễn Tất Dũng', 'nguyen.dung@outlook.com', 'pbkdf2:sha256:600000$JiHYJLZC6mUlWItQ$bfa7f78372b0761685096dd2ef2df24d826442a4ada5b87a997f929a56fd1798', '0940600866', '372 Đường Đồng Khởi, Quận Hoàn Kiếm, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(53, 'Lý Quỳnh Hà', 'ha.ly@yahoo.com', 'pbkdf2:sha256:600000$7R6sJGRlMAQOF1ZG$ec8624247f510f837708db47a8fb8ea4605a1a11d0280418605f9b730e39cb37', '0966598069', '92A Đường Trần Phú, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(54, 'Lê Quỳnh Mai', 'mai.le@yahoo.com', 'pbkdf2:sha256:600000$cTvHjKGLObY6a5Hd$220ee690d34844a04270530d31871a46268a77b19a2d94e7defa3cf2142a06bd', '0993621383', '390A Đường Hai Bà Trưng, Quận Tây Hồ, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(55, 'Hoàng Bảo Lan', 'lanhoang39@outlook.com', 'pbkdf2:sha256:600000$ai9N8vTdR6WxyFuX$4285303228a2db0b104381969957d4a378090921ac665d85c820a3634fc877ef', '0986362946', '75/2 Đường Phan Chu Trinh, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(56, 'Đặng Thị Thảo', 'thaodang33@fpt.edu.vn', 'pbkdf2:sha256:600000$DEF3z3tMgUrLjX7S$2c4e31cb0241012751613560e307f2a189b6406fe2bdc7f139089abea5092aac', '0981530263', '45 Đường Phan Chu Trinh, Q.Thủ Đức, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(57, 'Nguyễn Thành Dũng', 'dung.nguyen@gmail.com', 'pbkdf2:sha256:600000$YGlZwtixheE6Lsl3$9c6244e5dce1fcf5820d824626bf826b51d002527c95ebde9e4551cfbf7a458f', '0970958069', '112A Đường Nguyễn Huệ, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(58, 'Lê Anh Minh', 'minh.le@fpt.edu.vn', 'pbkdf2:sha256:600000$eynUTonDzn0fyRrS$d087ba08abe4fb55f0fd8fa061ec7de8577e2cd3ba4a7c9748ad3849076a9178', '0952246601', '337/45 Đường Phan Chu Trinh, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(59, 'Vũ Trọng Dũng', 'vu.dung@vnu.edu.vn', 'pbkdf2:sha256:600000$7c5prV25BC80VplX$bd1ec6e97c0c4e78defbaf051872cf632b13cec2a554443a153107378976e214', '0921663875', '42 Đường Lý Thường Kiệt, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(60, 'Vũ Thị Bình', 'binh.vu@yahoo.com', 'pbkdf2:sha256:600000$Y3oopeJafqg1DDqi$4fffd202a61426477a0c246f1620e80ad0b66920e95248b069918ef3e5c28a91', '0963152475', '308B Đường Trần Hưng Đạo, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(61, 'Hồ Minh Thảo', 'thaoho12@hotmail.com', 'pbkdf2:sha256:600000$tLDt42zidfHnPOfb$b3408305aa2d97983b8885e04d723aeb0098127bf9f022cb82e5972846640ec2', '0949911469', '191B Đường Cách Mạng Tháng 8, Quận 1, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(62, 'Dương Anh Nam', 'duong.nam@hotmail.com', 'pbkdf2:sha256:600000$erGqQ0IAVPdDANU3$4ea137f629927486d1fa61ac9c98389eefcb519f0fc6c2d6bde9b2c24a65addb', '0980135370', '105/12 Đường Bạch Đằng, Quận Đống Đa, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(63, 'Hoàng Bảo Nhi', 'hoang.nhi@hotmail.com', 'pbkdf2:sha256:600000$t0d3wufXzjC4MUPg$42d897a264dff668513c68258285975add1b8cc87dde178d9b45b73777be10b0', '0975341562', '230/12 Đường Nguyễn Thị Minh Khai, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(64, 'Vũ Bảo Hương', 'huong.vu@outlook.com', 'pbkdf2:sha256:600000$Zt1YamHwsYGDSCaO$6aef211dcd94f45cbef713f62322d1cd3a43769ebca831c7239b2de8b43f085c', '0922814436', '338B Đường Đồng Khởi, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(65, 'Phạm Thu Trang', 'trang.tp@yahoo.com', 'pbkdf2:sha256:600000$ZsVZWTK72FfyWqm9$fca28306ed3cc230dfde17b251bbc203d09931367f7c5496d520248000da322a', '0986880742', '71 Đường Phan Chu Trinh, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(66, 'Phan Tất Bình', 'binh.phan@vnu.edu.vn', 'pbkdf2:sha256:600000$PDa7t8AO9oA3uSXs$b1ba05843f9495b81490680f6f2358df6885306723396a825f3bf048e07e23cd', '0999864477', '395/2 Đường Cách Mạng Tháng 8, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(67, 'Nguyễn Thu Thảo', 'thao.nguyen@vnu.edu.vn', 'pbkdf2:sha256:600000$7zw8kmaSD9dmk21q$40263af534374a289bd6a653a23f6163a7c97d0f640c666d30a26e931877bcb4', '0967494224', '50/12 Đường Đồng Khởi, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(68, 'Lý Thu Bình', 'binhly48@outlook.com', 'pbkdf2:sha256:600000$27htFTDG8LDJkSTc$226114d6f29adccc9c1d2bc46db6dec0739e1536d487963612030e899509b185', '0955779131', '16A Đường Nguyễn Thị Minh Khai, Quận 1, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(69, 'Phan Ngọc Nhi', 'nhi.np@outlook.com', 'pbkdf2:sha256:600000$7ydoH5Y9R6OPhk1e$58ec0877e9a48a6411f8a889c117caf2e277ad8d90a4ae416dfdead903b014dc', '0928006541', '382/12 Đường Trần Hưng Đạo, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(70, 'Dương Đức An', 'an.dd@gmail.com', 'pbkdf2:sha256:600000$eK4L5zNJjTXOrdjq$d016ee333f47442cdd209c055e5545cc76d1c78854a4fc929c45cc03101cac40', '0949515551', '182/12 Đường Đồng Khởi, Quận Hai Bà Trưng, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(71, 'Trần Mai Phương', 'tran.phuong@yahoo.com', 'pbkdf2:sha256:600000$G0agwYvRPKIxy6VS$16fa2f15eed1ac3e34357961990f30be27c6299e8d243aca9d1da830b7458a27', '0916359178', '215/12 Đường Trần Phú, Q.Thủ Đức, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(72, 'Lê Quang Quân', 'quanle22@hotmail.com', 'pbkdf2:sha256:600000$7Rqmb1193I1JrHzR$13c0e03be9a2c6435770b89e15e183de12cc474230765b5afd0b66e63c9babf0', '0911865483', '41/45 Đường Hai Bà Trưng, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(73, 'Phan Thế Sơn', 'phan.son@hotmail.com', 'pbkdf2:sha256:600000$OG32LzvbvouxvQ2l$9c96c5e478e2c765c6047fd67a59f5d040e695bd6807179e2f8ab0efb6695428', '0986524910', '230/12 Đường Nguyễn Thị Minh Khai, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(74, 'Đỗ Thị Bình', 'binhdo15@outlook.com', 'pbkdf2:sha256:600000$W1wL2e5u9egjE3Gi$e20729cbcd57ce5c27d500b8fab2c32aed47108b94dce1ca128d5780b7bf1aec', '0961988326', '419/45 Đường Hùng Vương, Quận Bình Thạnh, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(75, 'Hoàng Quỳnh Hoa', 'hoang.hoa@outlook.com', 'pbkdf2:sha256:600000$lS7aMChzjcssU6Ee$075521d355c91004cb4490cdee8d1c6a740348c3bc356d3ddff1b1ab22773d8f', '0961334803', '385/2 Đường Lý Thường Kiệt, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(76, 'Võ Bảo Thịnh', 'thinhvo66@fpt.edu.vn', 'pbkdf2:sha256:600000$Ktmw3aB91v3L81Gm$aa8ec16f7ed3f0c8905ab2c4a49d6bbf08395bd9773f9aefc6ff637f10cf4b73', '0957739643', '335 Đường Bạch Đằng, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(77, 'Phan Mai Trang', 'phan.trang@hotmail.com', 'pbkdf2:sha256:600000$e9COOGrV6X5aNjGU$b8a301ca11913d756fd4eefc808bfb4835fbeddd6f9d2c857ca31a227cd6c1e4', '0973146509', '181A Đường Lê Lợi, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(78, 'Nguyễn Thị Thảo', 'nguyen.thao@vnu.edu.vn', 'pbkdf2:sha256:600000$W5nXnwiNojp1z1yX$c5759a025313810ee7db0c17744b9ad0ebc6682f3f3b414f15c01a42870d6558', '0989107156', '86/2 Đường Nguyễn Thị Minh Khai, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(79, 'Đỗ Minh Quỳnh', 'do.quynh@vnu.edu.vn', 'pbkdf2:sha256:600000$XgreSQc9NrrZazQ3$65c77eba9c61c43f076332502aac8659cf86a932ce0df6498d568d8edf72e614', '0967243787', '354/12 Đường Lý Tự Trọng, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(80, 'Nguyễn Đức Hùng', 'hung.dn@hotmail.com', 'pbkdf2:sha256:600000$qHFgoXrt3OysfgCb$7046f3fa9befb4fe8827f421e7f0ba99339b28a4b65a6ab9796eb57249f3e1c4', '0917065953', '391 Đường Điện Biên Phủ, Quận Hải Châu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(81, 'Phạm Minh Quỳnh', 'pham.quynh@vnu.edu.vn', 'pbkdf2:sha256:600000$lBoGIjd1NEea2Jf2$67f8129e26614ae3539c43a05a4f58615ea9d89e492e9b40f60a62c6d2963a5e', '0953753198', '58/2 Đường Lê Lợi, Quận Đống Đa, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(82, 'Bùi Văn Tùng', 'tungbui69@fpt.edu.vn', 'pbkdf2:sha256:600000$QMCYTqVD1dYZYqBU$de4ec12d7b29568ada686fc1e60d97a9b42fc65e8a38417ec36ad95932a530e4', '0997497981', '222B Đường Lê Duẩn, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(83, 'Đặng Minh Thảo', 'dang.thao@hotmail.com', 'pbkdf2:sha256:600000$SfLjWtd6TK7kL44v$2bc9472d1da70ccd32d859394be10b3d04ea1d1cb59ad7f831121317da834be3', '0968082238', '314 Đường Lý Tự Trọng, Quận Bình Thạnh, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(84, 'Trần Tất Hùng', 'hungtran27@outlook.com', 'pbkdf2:sha256:600000$4oy7IZZDmA61Hy6j$dd6111475ef45a6089583bc9de128e0eb7d6cf2034cb1d7f93d474a60eb135fd', '0990637289', '349/12 Đường Đồng Khởi, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(85, 'Phạm Bảo Hoa', 'hoa.pham@gmail.com', 'pbkdf2:sha256:600000$gnDx84r8BAfUpCgq$8f7cebc56efb07f0a9f928960bec03e24f9b1db2f57ee8bca2b8187ddeeae748', '0931032270', '242B Đường Bạch Đằng, Quận 1, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(86, 'Lý Quỳnh Hoa', 'ly.hoa@vnu.edu.vn', 'pbkdf2:sha256:600000$2ZsNcLy1A9DIdQvb$5f3fa039141b9bb56257e829b54ddbf38ccff813c1e9df113cd05a2d523149c3', '0987236457', '194/12 Đường Trần Hưng Đạo, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(87, 'Võ Phương Phương', 'vo.phuong@hotmail.com', 'pbkdf2:sha256:600000$0YpYhZgHLIXkiFA8$95e8f0d431a78de05661988cfb730cc388cf07b73d5e806e476a14cb9ff1af6b', '0947353316', '212A Đường Hai Bà Trưng, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(88, 'Đặng Quang Hùng', 'dang.hung@hotmail.com', 'pbkdf2:sha256:600000$3aWeyH1c7i8lNBey$33ed2792da59ea64ca597977488159f3b49d0767a50267d51a0d2e1089bb1ea5', '0960323996', '90/2 Đường Trần Hưng Đạo, Quận Ngũ Hành Sơn, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(89, 'Lý Mai Vy', 'ly.vy@gmail.com', 'pbkdf2:sha256:600000$8P8jqUpea70Cf3uj$3a762d3f9c7f73ec7405aa8b33da6adb6a408497f14e19c5aeb8fcc6e058d676', '0978647691', '30/2 Đường Đồng Khởi, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(90, 'Đặng Anh Tùng', 'tung.dang@fpt.edu.vn', 'pbkdf2:sha256:600000$EmyCRWxURDDU6Xvc$57cfc1538bb3450eaeb11d1b263209e6268393b91e672ea66c1101a3752a36ed', '0932411195', '98 Đường Phan Chu Trinh, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(91, 'Hoàng Trọng Duy', 'duyhoang61@fpt.edu.vn', 'pbkdf2:sha256:600000$tu3Umy2PbvFgKCdP$7f0777776edd6f5f2b2276e46cb2cd029adcf06d77054d886238101ddf9506d4', '0990526266', '135B Đường Lý Thường Kiệt, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(92, 'Hồ Diệu Nhi', 'ho.nhi@vnu.edu.vn', 'pbkdf2:sha256:600000$tlpXZtXIjTuSqDBb$6083493c5a6ef62550144c2abb92c3dd3465206f19d979ecd7c320f5d7618248', '0959851014', '260A Đường Đồng Khởi, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(93, 'Lê Phương Vy', 'vy.le@vnu.edu.vn', 'pbkdf2:sha256:600000$gJoeDewIZkuezvRv$d773503efe953aec5ecf6d0bc34f3deb7f9727d3f2217650c9a0bf8710c1382d', '0922179002', '82A Đường Lê Lợi, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(94, 'Nguyễn Diệu Trang', 'nguyen.trang@fpt.edu.vn', 'pbkdf2:sha256:600000$u7qGdUEdJFEoN6Bd$6df8e11113f3a29fae50b5070c32ac67e0b0639946c3c8d544f3d75d7a0661ee', '0939337386', '298A Đường Lý Tự Trọng, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(95, 'Dương Thanh Quỳnh', 'quynhduong57@fpt.edu.vn', 'pbkdf2:sha256:600000$QqFdy7kwblzCK4Du$e3e5dde87576aea09fa6bb5d4921c1131bdf7db2257e6d09852c680c434c1867', '0977797175', '137/12 Đường Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(96, 'Vũ Bảo Thịnh', 'thinh.bv@vnu.edu.vn', 'pbkdf2:sha256:600000$gjNrlavIT8MDbBFg$ef03361464f3da1ae99a17f56d2a654961d18b0b568598bf3a435df521a7a1ce', '0995261614', '44/2 Đường Hai Bà Trưng, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(97, 'Vũ Thị Lan', 'lan.tv@fpt.edu.vn', 'pbkdf2:sha256:600000$FUROVMGMAe5aGCuN$a99a5ed406880b4d54c31c082764c8e3abc2b72e6d6cf308e94d6a62382ee1d6', '0940118979', '7/2 Đường Điện Biên Phủ, Quận Ngũ Hành Sơn, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(98, 'Hồ Quỳnh Dung', 'ho.dung@vnu.edu.vn', 'pbkdf2:sha256:600000$2TcJDhEAFGRqrbcp$a08271eee7edb1daf421a1ffbb28ec68a3044c25d72e8d4a3f2142eed249ce4a', '0991562333', '406/12 Đường Nguyễn Thị Minh Khai, Quận Đống Đa, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(99, 'Nguyễn Công Cường', 'cuong.cn@gmail.com', 'pbkdf2:sha256:600000$Txx0JIGpXR5JEmGo$3e58bf4310f07789f080c3d414387126730490fdfa7b71ba3e9a1876e75ce46a', '0922931609', '274 Đường Hùng Vương, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(100, 'Đặng Bảo Bình', 'binh.bd@outlook.com', 'pbkdf2:sha256:600000$pFensB3xWNCIttOd$1df42ff4114a22b7bfd50de9918ebf8194b53619d69bd532a01da87887d387c3', '0975898968', '395/45 Đường Lê Lợi, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(101, 'Phạm Thu Phương', 'phuong.pham@fpt.edu.vn', 'pbkdf2:sha256:600000$MdhYccNRH7FS6PKm$6ebd0da215d33e4623c4a6ece4031075ffca1dbf22ddce8c0a0807259628df3c', '0997730597', '209B Đường Nguyễn Thị Minh Khai, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(102, 'Lý Huyền Bình', 'binh.hl@outlook.com', 'pbkdf2:sha256:600000$GQeVpuQmj9um9z59$3e8d91381734ed6e004782c79268d6aad4740b01dba854f7644ca7b61509ee38', '0932288947', '433B Đường Lê Lợi, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(103, 'Dương Thị Nhi', 'duong.nhi@gmail.com', 'pbkdf2:sha256:600000$YppNPWufm1rLuiZG$73cf2522f65734a426e3f17ee75e66e9b03c6c522e207d780f1841085879f3a3', '0961038420', '234/12 Đường Hùng Vương, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(104, 'Đỗ Ánh Trang', 'trang.do@yahoo.com', 'pbkdf2:sha256:600000$3OmQOTiBxCunElvP$c84876b42331114b3d1bef4ab2702113391e25aa22010026eb376105d21ce9b6', '0941585875', '38 Đường Nguyễn Thị Minh Khai, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(105, 'Đặng Anh Cường', 'dang.cuong@gmail.com', 'pbkdf2:sha256:600000$xiMOccI4oQVv9FSw$4b62cf970c849a6a0bcff6da1113b14858a6b0f7c0da3424c1c79aaf9d48549a', '0953237502', '398B Đường Lý Tự Trọng, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(106, 'Phạm Minh Chi', 'chi.pham@gmail.com', 'pbkdf2:sha256:600000$iQ0mO161H8XZjMI0$2d73f506ab43bea131763d70f9375029df82c0f8d4758871dae0afa7a5388b16', '0977745133', '407B Đường Lý Tự Trọng, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(107, 'Lê Trọng An', 'an.tl@hotmail.com', 'pbkdf2:sha256:600000$CNkDzyOlXgyhBYlp$6504154ccadfcc7dc533f0d2ae7fd94892f365f87c4be86b673d59c3134fe2fb', '0922747095', '78/2 Đường Lê Duẩn, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(108, 'Vũ Bảo Quỳnh', 'quynh.vu@outlook.com', 'pbkdf2:sha256:600000$lxgGgMocZhWUWVuq$d4ce13ba5507fbcf3fa11a4f76d23da1b1952f40918fba2b33f28e1361bb98a9', '0940483754', '412A Đường Cách Mạng Tháng 8, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(109, 'Phạm Ngọc An', 'anpham38@yahoo.com', 'pbkdf2:sha256:600000$xpCNXfdJMRvvWmo7$4fb19e90c5e42369bdc5f884e3a95a1b504758b1867132111ebaeacced5848be', '0951253256', '192B Đường Trần Phú, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(110, 'Phan Huyền Mai', 'mai.hp@fpt.edu.vn', 'pbkdf2:sha256:600000$oFGBpL1f56TuGOxW$524c1f9a6c49a8a6791d80413a666967666e3fdad276f703290c391055668f29', '0935707215', '415/45 Đường Trần Hưng Đạo, Quận 3, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(111, 'Phạm Trọng Long', 'longpham77@gmail.com', 'pbkdf2:sha256:600000$ALdwia4DOnTZXrgp$56243eb622b55bb4b9895633f7b252b6ac6c7cf1634f25efb1dfc5bbe9c27ad3', '0976505504', '352 Đường Phan Chu Trinh, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(112, 'Trần Minh Thịnh', 'thinh.tran@yahoo.com', 'pbkdf2:sha256:600000$GyEjF3Spcoc5pgVd$6968552e760c941d3fd479840d97337f0af3fa2aa3c46daf55e8a99ae9d3786e', '0971177797', '404/45 Đường Cách Mạng Tháng 8, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(113, 'Vũ Thế Em', 'vu.em@gmail.com', 'pbkdf2:sha256:600000$GCBYxemxZ68zyrz6$55af9952c6481ae0dc86150e97aa598690d0160ce62cb0a4e58dc86aec9c5a31', '0931595507', '256A Đường Phan Chu Trinh, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(114, 'Đỗ Ánh Chi', 'do.chi@hotmail.com', 'pbkdf2:sha256:600000$uFyXedVecnCNktYH$a79a5df9984fef6c2429640d4151b81f547c1732bec0c9d56eb36f087ac3322e', '0977086964', '219/12 Đường Phan Chu Trinh, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(115, 'Hoàng Thành Minh', 'minhhoang21@hotmail.com', 'pbkdf2:sha256:600000$qtEEHm49bBgjJdML$6ff073d7fffdb489cdec2abd87e15befdf51bf5af9b7561c358992dd3533c8e5', '0987276201', '5/45 Đường Nguyễn Thị Minh Khai, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(116, 'Võ Bảo Mai', 'maivo78@hotmail.com', 'pbkdf2:sha256:600000$lBmvZbBsbGDwhSDM$4d9f386de37a0b353892bd4464699d59487ec985d4f907d9734413dae0be33be', '0931950322', '244A Đường Cách Mạng Tháng 8, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(117, 'Vũ Ánh Trang', 'trang.vu@gmail.com', 'pbkdf2:sha256:600000$n0ocF9R0ww2nLBKG$b66158d583f4aa223249754b998295e62fbe92332f0a66c4649d509ed8adef90', '0926478573', '273A Đường Đồng Khởi, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(118, 'Bùi Thị Phương', 'phuongbui58@yahoo.com', 'pbkdf2:sha256:600000$BTiJwHhya3h1qTJ2$cfd5698423c2d086d02ae2cbb900498a2e91e0feb5dbbb316cd4fe1857b417b2', '0983359463', '335/2 Đường Trần Phú, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(119, 'Lý Tất An', 'an.tl@vnu.edu.vn', 'pbkdf2:sha256:600000$dCn4Qp7OexHVaEcF$6c43f5c048c23bcb5a78a4bfe6ec68e0239b722bb1cf05eaec6520378c656c0c', '0975744690', '143A Đường Hùng Vương, Quận 1, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(120, 'Võ Ngọc Vy', 'vy.nv@vnu.edu.vn', 'pbkdf2:sha256:600000$MoS37KRZGxd010zw$a1a90b08520b3bb7c94dc7b6d673332e920a8e9093f7fddce23b8016172f0122', '0912349905', '109/45 Đường Đồng Khởi, Quận Ngũ Hành Sơn, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(121, 'Lý Minh Tùng', 'tung.ly@vnu.edu.vn', 'pbkdf2:sha256:600000$E2cdip4Qm9RjOf7s$700aea57afac498609db44fd917e0ecf6d54958eb0756dfa376d000c4baf4498', '0937722824', '52/45 Đường Lê Duẩn, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(122, 'Phan Huyền Chi', 'chi.phan@gmail.com', 'pbkdf2:sha256:600000$N9cIvHfOtppstnbJ$c713c6db6cd8fcd1bb88b3c23f0dd9dfbca2d945b4e9ee4313b009489bf3fadf', '0913914602', '251A Đường Lê Lợi, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(123, 'Lê Minh Bình', 'binh.le@vnu.edu.vn', 'pbkdf2:sha256:600000$P14tWOta9TboXwDY$ee03df8d97ac6bc2fb204ea464d60d255f1fc9acdacc71c50197179ee28adfbf', '0989361396', '446/12 Đường Lê Lợi, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(124, 'Phạm Thu Trang', 'trang.tp@outlook.com', 'pbkdf2:sha256:600000$x3ceA6vPXy3tbelk$8bbcb27667da8d5eead489e7b0ebda8c477cad37d2917c3bbf7f2c7bbb0856a5', '0985704250', '73/45 Đường Cách Mạng Tháng 8, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(125, 'Vũ Đức Phúc', 'phuc.dv@yahoo.com', 'pbkdf2:sha256:600000$2cYWgynmFA6sv2cx$f448b55a88e1d69237c94eedd45e683cd27d3384358dcd4c49ebec8e0fddb353', '0982125911', '45/45 Đường Trần Phú, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(126, 'Đỗ Ánh Vy', 'vydo26@yahoo.com', 'pbkdf2:sha256:600000$21ugqbUty1fR38Cm$ae3b9e387c3d22986e2fcc0915b66a461bf37dabebe413cac70b5425ffd6b539', '0993171149', '258/12 Đường Điện Biên Phủ, Quận 7, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(127, 'Lý Hữu Khải', 'khai.hl@fpt.edu.vn', 'pbkdf2:sha256:600000$sVlZwko9YZnGcn0E$35336ca9e030f7805e0a47c978e394a106ad36da41edba1ef32c28be7c262845', '0911122927', '380A Đường Trần Phú, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(128, 'Ngô Hữu Bình', 'binhngo56@yahoo.com', 'pbkdf2:sha256:600000$jPxbxKz7Wvgco4DG$ebdc4814e8613c96349bdaa1054f237a678135af224ee7fd3347a73351a040e1', '0965462905', '388/45 Đường Lý Thường Kiệt, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(129, 'Hoàng Văn Bình', 'binh.hoang@vnu.edu.vn', 'pbkdf2:sha256:600000$Uh3Avo6OEHmrnMrA$fb2671ba123c7ca4e22d430af6f31d66b7da075b12f64b52ac56c11f4ca90ff8', '0964309867', '22 Đường Phan Chu Trinh, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(130, 'Hồ Minh Thảo', 'thao.ho@vnu.edu.vn', 'pbkdf2:sha256:600000$RTWRzSPKowjap2JF$fb4c1a45c594344f882696024a160854184ee7c83373ee64963294550cbb0842', '0910277719', '358/2 Đường Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(131, 'Vũ Quang Phúc', 'phuc.vu@vnu.edu.vn', 'pbkdf2:sha256:600000$5H5VzI38dgkVwFIr$a6f69384a1f5bf2bc6f4876a55254e2643afbba4fd0e84722cdce556191c06aa', '0994833808', '252/12 Đường Lý Tự Trọng, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(132, 'Đỗ Anh Phúc', 'phuc.ad@hotmail.com', 'pbkdf2:sha256:600000$mcF8hVdL5NmmQK70$1b93690398ff056dfc08618147aac88644c18309eee18e31fc849037017db651', '0953020011', '37/12 Đường Hai Bà Trưng, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(133, 'Vũ Công Em', 'emvu60@fpt.edu.vn', 'pbkdf2:sha256:600000$efCcABEiVLjCigEb$943202b926ceb1d0971f830a1d627843e8bc1b5e47e911b6498e9312462bd8eb', '0921166771', '149/2 Đường Trần Hưng Đạo, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(134, 'Bùi Ánh Vy', 'vy.ab@vnu.edu.vn', 'pbkdf2:sha256:600000$joINozqks7bbIAYB$e82e565dc9d2541e3c95268b7212306b70a4e12037a6f821ea5fdd5de6bbc645', '0948660906', '107/45 Đường Đồng Khởi, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(135, 'Trần Huyền Chi', 'chitran84@yahoo.com', 'pbkdf2:sha256:600000$xoAz3TXPNmzDOzRY$a2272e92bea20e8ee4028ef2e3f60c6935189d98cc049ba877ce3fa56c2f7276', '0964734428', '79/45 Đường Lý Thường Kiệt, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(136, 'Bùi Minh Trang', 'trang.mb@vnu.edu.vn', 'pbkdf2:sha256:600000$Blrc3DNoemAwOsqb$6604bbdf9ca2b61c791cee0b56613bd68333d8dd5df0e0e3fc65406687845abd', '0918221800', '393/45 Đường Hai Bà Trưng, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(137, 'Dương Thị Ngọc', 'ngocduong37@gmail.com', 'pbkdf2:sha256:600000$0Hk8mtgvwrXYOVJA$2cc9d3dc4132bec0460e3eacbc1a7c6538db08cc2d2243bbce3ffb9891bf77ad', '0999537617', '329/2 Đường Phan Chu Trinh, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(138, 'Phan Thanh Hoa', 'hoa.phan@yahoo.com', 'pbkdf2:sha256:600000$Rjl0ttHV7mHgnNfZ$b4737fec91e032ea398c43fec28d95e799aa1e519c71620ec6242ebdc3714f79', '0916895412', '59/45 Đường Lê Lợi, Quận Tây Hồ, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(139, 'Bùi Thị Dung', 'dungbui17@yahoo.com', 'pbkdf2:sha256:600000$CnERaNzBuULs16Ub$123d19a9ff4f7407c3e69c4eadca37f42825bf8b2d9420d71c0f8ad90f1f15f9', '0962688988', '87/2 Đường Nguyễn Thị Minh Khai, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(140, 'Đặng Anh Nam', 'nam.dang@gmail.com', 'pbkdf2:sha256:600000$JosN9YGUbMHHaNlE$2e71fdc78acb41f8e0e31fb91f57b2e53a2fd489437e543c34eeae3c78bd1fb1', '0924621612', '217B Đường Đồng Khởi, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(141, 'Phan Bảo Quỳnh', 'phan.quynh@yahoo.com', 'pbkdf2:sha256:600000$lsq5c8FVK0NcRJrq$f36d3b19c6ca6ab0f4a9c628fe56e06edf53fd24b50b568722215089aa13a4f4', '0929713640', '441 Đường Lý Thường Kiệt, Quận Hải Châu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(142, 'Phạm Minh Em', 'pham.em@vnu.edu.vn', 'pbkdf2:sha256:600000$hh27cX96jLkStwlM$9beefa0dc573378a077fb76e422e5c861bb45078fb72ec9b37ed3466063cf5e9', '0966816350', '219A Đường Lê Duẩn, Quận Đống Đa, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(143, 'Phạm Trọng Nam', 'pham.nam@yahoo.com', 'pbkdf2:sha256:600000$h4fiSHye8tphVOq7$5133ac20a7082ec781886ff2be0d6f949115f003d947da6c159309910c187b89', '0937377775', '201 Đường Cách Mạng Tháng 8, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(144, 'Đỗ Tất Hùng', 'hungdo34@vnu.edu.vn', 'pbkdf2:sha256:600000$FPuuhIYORur4IMqe$17bd60a85430b2a331d11f95aa072c0cc25ff6cc70bc7f105e2e1d26c21614d1', '0936475134', '34/45 Đường Điện Biên Phủ, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(145, 'Ngô Thu Thảo', 'ngo.thao@fpt.edu.vn', 'pbkdf2:sha256:600000$OWtA2rX99telG1IG$cbc8a30372aab506a5c48776619dff82a75c7e6da1120643d7ed8829c3de1c65', '0977975131', '64/2 Đường Lê Lợi, Quận 3, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(146, 'Ngô Hữu Sơn', 'son.hn@vnu.edu.vn', 'pbkdf2:sha256:600000$bdpSrFpV7yI8YqTB$9b1f568018b6670bf3e735024238b21b4e8ae1d50ba381dbc4baf83844a9bd66', '0943233685', '24A Đường Trần Phú, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(147, 'Dương Quỳnh Lan', 'landuong11@gmail.com', 'pbkdf2:sha256:600000$QBEMvcfTDG1YShAa$01dd8af4058776cb47f80ad9c11b80706aad937c595da37da3a975db3c822f37', '0941887282', '119/2 Đường Phan Chu Trinh, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(148, 'Phan Thế Nam', 'nam.phan@yahoo.com', 'pbkdf2:sha256:600000$E71qHrg4J52JBwzt$3678ced21cc8938cd7d08834c0b60119e4512309e754d1d7a4f33cb423229884', '0945266647', '363/2 Đường Hùng Vương, Quận 3, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(149, 'Đỗ Minh Nhi', 'nhido69@gmail.com', 'pbkdf2:sha256:600000$R1boffaM7sSOGSGk$99cf14d35120516d0312a61e7d78cead35c328a2c573c2f4d881f5d942564698', '0964508041', '33B Đường Hùng Vương, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(150, 'Lý Thế Phúc', 'phucly93@fpt.edu.vn', 'pbkdf2:sha256:600000$AFUQqThf5yWw1KQg$6de595accffd3fd0266ea8a0dc12943f831f53de4028d581f63093d9fc4dc113', '0977371156', '28 Đường Phan Chu Trinh, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(151, 'Bùi Đức Phúc', 'phuc.db@yahoo.com', 'pbkdf2:sha256:600000$QXpZ6WjsPpEoRRLQ$e8954be34563685348a54c23f0d2679c232a2e05c385aec90bbe8bc067543d3f', '0981041662', '392/12 Đường Hai Bà Trưng, Quận 7, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(152, 'Hoàng Văn Kiên', 'hoang.kien@gmail.com', 'pbkdf2:sha256:600000$mOJ7dqasTMFWdFUJ$c52570b50b609f87d23e6409ffbfcc56daa9348d032fcc89da89628d3d547160', '0953695439', '324/45 Đường Bạch Đằng, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(153, 'Dương Đức Cường', 'cuong.dd@fpt.edu.vn', 'pbkdf2:sha256:600000$ILPpixr8FBdsWqpO$b3b5e25bcd3f9e661d64b55263c388a9d41dd8f50413ba79e0f21d192e744628', '0996361206', '230/12 Đường Lê Lợi, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(154, 'Hoàng Phương Trang', 'trang.hoang@gmail.com', 'pbkdf2:sha256:600000$2DpTvVqRBGJrcTgX$c8ae6fab402be6d0b68cd0ece635e07237c24e294e6e6d60aa1de7769964faa6', '0944294674', '61B Đường Bạch Đằng, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(155, 'Bùi Thanh Trang', 'trang.tb@yahoo.com', 'pbkdf2:sha256:600000$uASVJoNOlpLeaJqB$19172b743d501b63d99afd278cdf9fdd68ac5024d66680ca5875448d39e49ac6', '0948566763', '341/45 Đường Nguyễn Thị Minh Khai, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(156, 'Vũ Hữu Sơn', 'vu.son@outlook.com', 'pbkdf2:sha256:600000$Mj8QeFy99qDymDkj$256daedc369e2dc185a50f5691d10b63ee4bf6e14fdedd936618dd67a76ee246', '0950776825', '73 Đường Hùng Vương, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(157, 'Hồ Thế Sơn', 'sonho16@fpt.edu.vn', 'pbkdf2:sha256:600000$1j6D3nCFQ8cUrx4N$e29b18711bb5e30fc70ee433f45786e584129d6e0363eaeef1569ee41d85c673', '0923764371', '101/2 Đường Nguyễn Thị Minh Khai, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(158, 'Võ Diệu An', 'an.vo@vnu.edu.vn', 'pbkdf2:sha256:600000$aSPv3kzJIAvtE7Gi$bae15c61f6fadb52d30cc8a01db53a406f907b94b06cd528c02bfc18f63bd2d1', '0987362263', '180/12 Đường Lê Lợi, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(159, 'Phạm Bảo Kiên', 'kien.bp@yahoo.com', 'pbkdf2:sha256:600000$7e6Q6DieQ6i12Hdj$56f16e90263dd816bada217e97f4c2fb07798f4252545aaaa6b21768134fcc7c', '0957611629', '119 Đường Lý Thường Kiệt, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(160, 'Lý Bảo Hà', 'ha.ly@fpt.edu.vn', 'pbkdf2:sha256:600000$nFWqXM0SWWSaUNWj$ac9d55d22885abad33b6058482baf13939deba8041e31d8807e8b83ceff81fe3', '0911907087', '291/2 Đường Điện Biên Phủ, Quận Bình Thủy, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(161, 'Dương Thế Bình', 'binh.duong@vnu.edu.vn', 'pbkdf2:sha256:600000$ChRRqWVYR9Wrloxv$cd833fd1a8ad4044376fb3489f0856ae537e16a70b0863818c90083edcc2419b', '0923420947', '423B Đường Phan Chu Trinh, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(162, 'Hồ Bảo An', 'an.ho@vnu.edu.vn', 'pbkdf2:sha256:600000$QC7bTZMytgLH4Fjq$eeb2bb7684bd03dc81fabe0ed3ad85b766bcb025f308cdf57a9465a7f5c1a6b7', '0944006513', '334/45 Đường Lý Tự Trọng, Quận Cầu Giấy, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(163, 'Lý Hữu Khải', 'ly.khai@yahoo.com', 'pbkdf2:sha256:600000$MMpr8UsnjiEpuMcH$aa0e621d655f016ca91f456b351e2c837daf1d1af31da6a173c8240ff885fcd4', '0989905304', '295/2 Đường Lê Duẩn, Quận Tây Hồ, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(164, 'Phan Tất Thịnh', 'phan.thinh@yahoo.com', 'pbkdf2:sha256:600000$yuoK5m1xJp1TstcH$52e9653e4ac01b6e043f3bf3e26cb542e46d4c62d6625a62e22331ef9e2fa3e3', '0952678998', '450/45 Đường Cách Mạng Tháng 8, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(165, 'Nguyễn Tất Khải', 'khainguyen94@gmail.com', 'pbkdf2:sha256:600000$9jHobo5toSlSi8HN$a2c0722d027c38511848e1e645bc9ce0db898ea504ed27cfc377cd90a077c56e', '0923374700', '142 Đường Lý Thường Kiệt, Quận Tây Hồ, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(166, 'Bùi Đức Thịnh', 'thinhbui96@hotmail.com', 'pbkdf2:sha256:600000$jGzbMA4mfwwMJtTr$17a7594de8965699ad2a24836d524ba982c3e4f706e04795175e8675a1148cf2', '0974415489', '201/2 Đường Cách Mạng Tháng 8, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(167, 'Phạm Thị Dung', 'pham.dung@fpt.edu.vn', 'pbkdf2:sha256:600000$PwnGlUtNtDFtRGjO$98e3e715829b3a5fe0cbc65d9d87f4fc9ea17b9d7a3694a3f9d4eff07422447b', '0912491160', '116/45 Đường Cách Mạng Tháng 8, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(168, 'Đỗ Bảo Ngọc', 'ngoc.do@fpt.edu.vn', 'pbkdf2:sha256:600000$BSyrSKOUZjhoys56$649bbe08f0ff71522b6267d2dfc30da2248f1005f73274039e52c660b84a6560', '0969677091', '439A Đường Trần Hưng Đạo, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(169, 'Vũ Anh Dũng', 'vu.dung@fpt.edu.vn', 'pbkdf2:sha256:600000$C4BhlhlRWrS5enTF$aa8b7c0dfd43c272ef57af35b43d438a746dc94dea289575b8313874d6db3591', '0979652087', '373/2 Đường Nguyễn Thị Minh Khai, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(170, 'Lý Mai Lan', 'lan.ml@vnu.edu.vn', 'pbkdf2:sha256:600000$c8pMwc1cpzc7xNDq$6633d0a97a93a310334ca4e1c9caefc61d41ede672dc32c756f4d7e1199f8937', '0992295397', '125/45 Đường Lê Lợi, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(171, 'Đặng Minh Sơn', 'dang.son@gmail.com', 'pbkdf2:sha256:600000$ezT9ats24WBoWVlY$9caac4eb8678852e8e42dbf7fc85be950f9565b6186b9c89aa1a600dc5ec54a1', '0986579544', '27A Đường Trần Phú, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(172, 'Lý Văn Phúc', 'phuc.ly@fpt.edu.vn', 'pbkdf2:sha256:600000$jo9qcoxIDIsEo3xZ$081968d77c026922a4fee29338121629f9c31e2755571e256ebe0359f0925940', '0989936569', '328/2 Đường Phan Chu Trinh, Quận Thanh Khê, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(173, 'Phan Minh Quỳnh', 'quynh.phan@outlook.com', 'pbkdf2:sha256:600000$f05ms20NhYOOkAm3$89df7a5d7148d0e20a8b899d384ae260fd1459b7dc151c0245344c42388fa8b7', '0952527119', '258/45 Đường Nguyễn Huệ, Quận Hồng Bàng, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(174, 'Hồ Quỳnh Trang', 'trang.ho@fpt.edu.vn', 'pbkdf2:sha256:600000$GaBfzy1vmfdAHH48$00ae3f641f6e2773599929a2ecc682473f3cc54e8e290b1ba78bcfbacfa49ef8', '0959469083', '67/12 Đường Cách Mạng Tháng 8, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(175, 'Ngô Tất Hùng', 'ngo.hung@outlook.com', 'pbkdf2:sha256:600000$BARsDepcKHTT3snO$dc4f97599cb730d25249ec4618da7bf4b38c54a08f7b6156678cc894454ff836', '0938720770', '231B Đường Lý Tự Trọng, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(176, 'Hồ Bảo Minh', 'minhho79@gmail.com', 'pbkdf2:sha256:600000$RaVXLssann0d1rH9$c8249cfd60fe7359576f022cde4c5edf107d3c485c83037e37c614e03faed99f', '0984214140', '441/12 Đường Nguyễn Huệ, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(177, 'Hoàng Quỳnh Chi', 'chi.qh@yahoo.com', 'pbkdf2:sha256:600000$Rj9tRGkoGSypSuGg$8924b3f84714f9cf5dfa4cc85c139d462c03decfec6b1d4c82592465d765e4ec', '0981742620', '350B Đường Hùng Vương, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(178, 'Đỗ Ánh Nhi', 'nhi.ad@vnu.edu.vn', 'pbkdf2:sha256:600000$0H28Fbyt7V0GCQBO$bd60a7ae7d37be51cd9e1febef524b4dd72e9d70f1d4e5e8f578bcb8aecbddba', '0992446805', '102/12 Đường Hai Bà Trưng, Quận Sơn Trà, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(179, 'Nguyễn Thị Hà', 'ha.nguyen@vnu.edu.vn', 'pbkdf2:sha256:600000$EgB1akf7gPN4qfWF$0f010e6fd95effad622b25eab2e3b8409b852814da123c0e104afac4f895cd0e', '0928247226', '322/2 Đường Nguyễn Huệ, Quận Đống Đa, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(180, 'Đỗ Văn Bình', 'binhdo96@yahoo.com', 'pbkdf2:sha256:600000$T2KaY9CrRXIhNNdd$d1f9c555175f0c1b901e65f898bad522af544d1f11f841f87de1bc1a6d56953f', '0930535194', '320A Đường Trần Hưng Đạo, Quận Cái Răng, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(181, 'Ngô Mai Lan', 'lan.ngo@fpt.edu.vn', 'pbkdf2:sha256:600000$B4wQPp7mtfvZhihg$18794067540b3a6cf02b53d66845d3751f2843aa77ba677a77918e26c307f4d1', '0951863017', '449 Đường Lê Lợi, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(182, 'Dương Trọng Việt', 'vietduong14@gmail.com', 'pbkdf2:sha256:600000$mioVA18kqzquoAgz$f5c0c0549f7924dc3952ebc09c94ae0dbd1bb549e87e42f169add4ab03600e9f', '0973139949', '170 Đường Hai Bà Trưng, Quận Lê Chân, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(183, 'Phan Diệu Hương', 'huong.phan@yahoo.com', 'pbkdf2:sha256:600000$JfCtzVXW4faiOsQp$6df86c14031af8523651109637e9a3c0ed5f290cd5270cfeecb5026e821e52f4', '0997983385', '427/2 Đường Trần Phú, Quận 5, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(184, 'Đỗ Phương Hương', 'huong.do@gmail.com', 'pbkdf2:sha256:600000$A2X73QfbDte8paTu$dc10e11e4b65b23c8494e071eb693d8ed42b98942f3f4436a730ff20606b8416', '0918073665', '384 Đường Phan Chu Trinh, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(185, 'Lê Hữu Sơn', 'son.hl@gmail.com', 'pbkdf2:sha256:600000$soLUvf0AzcZFy3Eo$d4619c731cceb2b51c5cd53248afd1214c3f5b0dcc9c08a929b8a4e3bf7487e8', '0973794019', '434/12 Đường Nguyễn Thị Minh Khai, Q.Thủ Đức, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(186, 'Võ Đức Phúc', 'vo.phuc@outlook.com', 'pbkdf2:sha256:600000$voogVb1IVFuH2Ob3$62f4081bb501de678b643a7671a66996b2faf51e15b10b0ce93d0baaf5687819', '0963217271', '262/2 Đường Đồng Khởi, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(187, 'Võ Huyền Mai', 'mai.hv@gmail.com', 'pbkdf2:sha256:600000$8ZBXtoBjzqhqDTD8$714129521d0154c93ac1dee2c3e202e442ab5c1658f2e80a0d9170fbabf3865c', '0978985582', '239A Đường Lê Lợi, Quận 3, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(188, 'Bùi Quang Tùng', 'bui.tung@fpt.edu.vn', 'pbkdf2:sha256:600000$eqLUteoeBUVtL4v6$59dad16a05b2bfdb56d244d5693ca465c26dc7e2e8d6088fab020add47785c0f', '0986478890', '88 Đường Cách Mạng Tháng 8, Quận Ba Đình, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(189, 'Lê Bảo Minh', 'minh.bl@yahoo.com', 'pbkdf2:sha256:600000$dLSHD8ACU5pvBsHB$5da1546146450b87ddf291fa2071f5f8ccf419bcbc85130639f468d3ff59e79a', '0911618426', '81/45 Đường Đồng Khởi, Quận Ninh Kiều, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(190, 'Hồ Thị Bình', 'binh.th@fpt.edu.vn', 'pbkdf2:sha256:600000$WMtYzOZeBAfY6lfR$dd896a9aaff6cd32ff2deae6033b530893b98cbc342826d6e3cebd15159b7707', '0993574237', '435/12 Đường Hùng Vương, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(191, 'Đặng Thanh Dung', 'dungdang58@yahoo.com', 'pbkdf2:sha256:600000$FyZPoMSxJVbAuVpy$5e82191254ce0ae11b4a129f74684599258ddba6dfc044884faf8680fd818269', '0973613175', '435/2 Đường Phan Chu Trinh, Quận Ngô Quyền, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(192, 'Hoàng Anh Cường', 'cuonghoang27@gmail.com', 'pbkdf2:sha256:600000$5Oxy5BFPGPGx8qj7$6703b9e1bbf87bedcece69ca981cbdce5b4ec919b194ba35a9f65fa139d345b8', '0948808828', '360 Đường Phan Chu Trinh, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(193, 'Vũ Công Nam', 'nam.cv@fpt.edu.vn', 'pbkdf2:sha256:600000$LA1dfbSdFWUpkNGX$63b7a0ed9f3fd74bc373c3a5f2577ca7ef3712c67d442fe1a2286bd35e8592b7', '0926216103', '425B Đường Hùng Vương, Quận Liên Chiểu, Đà Nẵng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(194, 'Lý Thanh Linh', 'linh.tl@gmail.com', 'pbkdf2:sha256:600000$dhYTraH6BDJqTEjl$8af9ddafcadd40926be1a36bd3dbbc501c8f54fdd1cac74b0524745002eb409d', '0987189901', '360/45 Đường Lê Lợi, Quận Hà Đông, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(195, 'Ngô Tất Nam', 'nam.ngo@outlook.com', 'pbkdf2:sha256:600000$voVjqmbeVygNOhLL$7907260014aa1da5d7ea6e03a16c3a4d46395b66c2ed437adb2ba699a7796719', '0914062793', '24 Đường Trần Hưng Đạo, Quận Ô Môn, Cần Thơ', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(196, 'Phan Minh Chi', 'chi.phan@fpt.edu.vn', 'pbkdf2:sha256:600000$67lQyIuZesk1bWF9$a87b31787f5b2c406acd5e0d23cae3bd91b0555d5f68e5da7333545eeb47e736', '0950962571', '419 Đường Điện Biên Phủ, Quận Hoàn Kiếm, Hà Nội', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(197, 'Dương Huyền Hà', 'duong.ha@yahoo.com', 'pbkdf2:sha256:600000$wsx9lVXhlO64dg96$ba5ad805998f9fab90dc86ce9f1850e641f82f3fa1d1ef300d422ae4f6022767', '0999213033', '357/12 Đường Đồng Khởi, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(198, 'Bùi Ngọc Chi', 'bui.chi@vnu.edu.vn', 'pbkdf2:sha256:600000$S4hkS8ouHz3YfBJD$0f1000a7514f4cd8364c19ae5f3e64280de683ba612ceff6b4ca30d87abc84c5', '0955300852', '138 Đường Hai Bà Trưng, Quận Gò Vấp, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(199, 'Bùi Huyền Linh', 'linh.hb@yahoo.com', 'pbkdf2:sha256:600000$nzKwRgr4IQopxKaG$4b9cf743dc0cc439a3792ff774ffd83df969cded54081b3e52ce9b40c08a5cd7', '0924335028', '423/12 Đường Lý Tự Trọng, Quận Hải An, Hải Phòng', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval),
+(200, 'Bùi Hữu Cường', 'cuong.bui@vnu.edu.vn', 'pbkdf2:sha256:600000$2NeSECy6a86ONsmy$1f0ded15fa1230cb38968d76d2bf33f2ae4d3e9d14fea55a8d376a8c056e4955', '0920149979', '395/2 Đường Trần Phú, Quận 10, TP. Hồ Chí Minh', FALSE, CURRENT_TIMESTAMP - (random() * 365 || ' days')::interval);
 
--- 4. Customers (11 Customers)
-INSERT INTO Customers (CustomerID, FullName, Email, Password, PhoneNumber, Address, IsAdmin, CreatedAt) VALUES 
-(1, 'Nguyễn Văn An', 'an.nguyen@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0901234567', '123 Đường Lê Lợi, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(2, 'Trần Thị Bình', 'binh.tran@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0912345678', '456 Đường Nguyễn Huệ, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(3, 'Lê Văn Cường', 'cuong.le@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0923456789', '789 Đường Cách Mạng Tháng 8, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(4, 'Phạm Thị Dung', 'dung.pham@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0934567890', '101 Đường Võ Văn Tần, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(5, 'Hoàng Văn Em', 'em.hoang@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0945678901', '202 Đường Nguyễn Thị Minh Khai, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(6, 'Nguyễn Thị Hương', 'huong.nguyen@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0987654321', '25 Đường Lý Tự Trọng, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(7, 'Trần Văn Minh', 'minh.tran@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0976543210', '42 Đường Nguyễn Đình Chiểu, Quận 3, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(8, 'Lê Thị Lan', 'lan.le@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0965432109', '78 Đường Trần Hưng Đạo, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(9, 'Phạm Văn Đức', 'duc.pham@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0954321098', '15 Đường Lê Duẩn, Quận 1, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(10, 'Vũ Thị Mai', 'mai.vu@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0943210987', '63 Đường Nguyễn Trãi, Quận 5, TP.HCM', FALSE, CURRENT_TIMESTAMP),
-(11, 'Admin', 'admin123@gmail.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0000000000', 'Quản trị viên', TRUE, CURRENT_TIMESTAMP),
-(12, 'Customer 12', 'customer12@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000012', 'Address 12', FALSE, CURRENT_TIMESTAMP),
-(13, 'Customer 13', 'customer13@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000013', 'Address 13', FALSE, CURRENT_TIMESTAMP),
-(14, 'Customer 14', 'customer14@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000014', 'Address 14', FALSE, CURRENT_TIMESTAMP),
-(15, 'Customer 15', 'customer15@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000015', 'Address 15', FALSE, CURRENT_TIMESTAMP),
-(16, 'Customer 16', 'customer16@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000016', 'Address 16', FALSE, CURRENT_TIMESTAMP),
-(17, 'Customer 17', 'customer17@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000017', 'Address 17', FALSE, CURRENT_TIMESTAMP),
-(18, 'Customer 18', 'customer18@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000018', 'Address 18', FALSE, CURRENT_TIMESTAMP),
-(19, 'Customer 19', 'customer19@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000019', 'Address 19', FALSE, CURRENT_TIMESTAMP),
-(20, 'Customer 20', 'customer20@example.com', 'pbkdf2:sha256:600000$Kd3120b68bed6615c89a50d41e6caa0a', '0900000020', 'Address 20', FALSE, CURRENT_TIMESTAMP);
-
--- 5. Products (22 Products)
-INSERT INTO Products (ProductID, ProductName, Description, Price, CategoryID, CreatedAt, ImageURL) VALUES 
+-- 5. Products (40)
+INSERT INTO Products (ProductID, ProductName, Description, Price, CategoryID, CreatedAt, ImageURL) VALUES
 (1, 'Áo sơ mi nam trắng', 'Áo sơ mi nam màu trắng chất liệu cotton cao cấp, thiết kế đơn giản, lịch sự', 350000, 1, CURRENT_TIMESTAMP, 'images/1.jpg'),
 (2, 'Áo thun nam đen', 'Áo thun nam màu đen chất liệu cotton, thiết kế đơn giản, thoải mái', 250000, 1, CURRENT_TIMESTAMP, 'images/2.jpg'),
 (3, 'Quần jean nam xanh', 'Quần jean nam màu xanh đậm, chất liệu denim co giãn, form slim fit', 450000, 2, CURRENT_TIMESTAMP, 'images/3.jpg'),
@@ -66,347 +262,1064 @@ INSERT INTO Products (ProductID, ProductName, Description, Price, CategoryID, Cr
 (19, 'Váy liền thân công sở', 'Váy liền thân công sở, thiết kế thanh lịch, kín đáo', 580000, 5, CURRENT_TIMESTAMP, 'images/19.jpg'),
 (20, 'Đầm maxi đi biển', 'Đầm maxi đi biển, chất liệu voan nhẹ, họa tiết hoa', 620000, 5, CURRENT_TIMESTAMP, 'images/20.jpg'),
 (21, 'Mũ bucket thời trang', 'Mũ bucket thời trang, chất liệu cotton, phù hợp đi chơi, dã ngoại', 180000, 6, CURRENT_TIMESTAMP, 'images/21.jpg'),
-(22, 'Túi xách nữ công sở', 'Túi xách nữ công sở, chất liệu da PU cao cấp, nhiều ngăn tiện lợi', 480000, 6, CURRENT_TIMESTAMP, 'images/22.jpg');
+(22, 'Túi xách nữ công sở', 'Túi xách nữ công sở, chất liệu da PU cao cấp, nhiều ngăn tiện lợi', 480000, 6, CURRENT_TIMESTAMP, 'images/22.jpg'),
+(23, 'Áo khoác nam da lộn', 'Chất liệu da lộn mềm mại, lót lông ấm áp', 850000, 1, CURRENT_TIMESTAMP, 'images/23.jpg'),
+(24, 'Quần Jeans nam xám khói', 'Màu xám khói hiện đại, wash nhẹ cá tính', 490000, 2, CURRENT_TIMESTAMP, 'images/24.jpg'),
+(25, 'Áo len nữ cổ lọ', 'Len dệt sợi to, phong cách vintage', 390000, 3, CURRENT_TIMESTAMP, 'images/25.jpg'),
+(26, 'Quần Jogger nữ thun', 'Dáng basic, cạp chun thoải mái', 250000, 4, CURRENT_TIMESTAMP, 'images/26.jpg'),
+(27, 'Chân váy dập ly', 'Vải voan 2 lớp, độ xòe rộng', 320000, 5, CURRENT_TIMESTAMP, 'images/27.jpg'),
+(28, 'Kính mắt thời trang', 'Chống tia UV400, gọng nhựa bền bỉ', 150000, 6, CURRENT_TIMESTAMP, 'images/28.jpg'),
+(29, 'Áo Hoodie nam nỉ', 'Nỉ bông dày dặn, in hình trẻ trung', 330000, 1, CURRENT_TIMESTAMP, 'images/29.jpg'),
+(30, 'Quần Kaki nam xanh rêu', 'Chất vải bền màu, form đứng dáng', 380000, 2, CURRENT_TIMESTAMP, 'images/30.jpg'),
+(31, 'Áo Croptop nữ cá tính', 'Áo ôm dáng, cổ tim gợi cảm', 180000, 3, CURRENT_TIMESTAMP, 'images/31.jpg'),
+(32, 'Quần Short nữ lửng', 'Phong cách street style, vải thô', 220000, 4, CURRENT_TIMESTAMP, 'images/32.jpg'),
+(33, 'Đầm suông cổ yếm', 'Váy lụa hở lưng đi tiệc', 590000, 5, CURRENT_TIMESTAMP, 'images/33.jpg'),
+(34, 'Ví da nữ mini', 'Da bò thật, thiết kế nhỏ gọn', 420000, 6, CURRENT_TIMESTAMP, 'images/34.jpg'),
+(35, 'Áo Vest nam lịch lãm', 'Form chuẩn doanh nhân, màu đen sọc', 1200000, 1, CURRENT_TIMESTAMP, 'images/35.jpg'),
+(36, 'Áo dạ nữ dáng dài', 'Màu be trung tính, sang trọng', 950000, 3, CURRENT_TIMESTAMP, 'images/36.jpg'),
+(37, 'Chân váy chữ A', 'Vải tuyết mưa, công sở trẻ trung', 280000, 5, CURRENT_TIMESTAMP, 'images/37.jpg'),
+(38, 'Dây chuyền bạc Ý', 'Mặt đá lấp lánh, quà tặng ý nghĩa', 450000, 6, CURRENT_TIMESTAMP, 'images/38.jpg'),
+(39, 'Áo Gió nam 2 lớp', 'Chống thấm nước, có mũ tháo rời', 450000, 1, CURRENT_TIMESTAMP, 'images/39.jpg'),
+(40, 'Quần Tây nam cao cấp', 'Chất liệu vải không nhăn, độ bền cao', 550000, 2, CURRENT_TIMESTAMP, 'images/40.jpg');
 
 -- 6. Product Variants
-INSERT INTO ProductVariants (ProductID, ColorID, SizeID, Quantity) VALUES 
-(1, 2, 1, 20), (1, 2, 2, 30), (1, 2, 3, 25), (1, 2, 4, 15),
-(2, 1, 1, 25), (2, 1, 2, 35), (2, 1, 3, 30), (2, 1, 4, 20), (2, 8, 1, 15), (2, 8, 2, 25), (2, 8, 3, 20), (2, 8, 4, 10),
-(3, 4, 6, 15), (3, 4, 7, 20), (3, 4, 8, 25), (3, 4, 9, 20), (3, 4, 10, 15), (3, 4, 11, 10),
-(4, 9, 6, 10), (4, 9, 7, 15), (4, 9, 8, 20), (4, 9, 9, 15), (4, 9, 10, 10), (4, 9, 11, 5),
-(5, 2, 1, 20), (5, 2, 2, 30), (5, 2, 3, 20),
-(6, 7, 1, 25), (6, 7, 2, 35), (6, 7, 3, 25), (6, 2, 1, 20), (6, 2, 2, 30), (6, 2, 3, 20),
-(7, 4, 6, 15), (7, 4, 7, 20), (7, 4, 8, 15), (7, 4, 9, 10),
-(8, 1, 1, 15), (8, 1, 2, 25), (8, 1, 3, 15),
-(9, 7, 1, 10), (9, 7, 2, 20), (9, 7, 3, 10),
-(10, 1, 1, 30), (10, 9, 1, 25),
-(11, 4, 1, 15), (11, 4, 2, 25), (11, 4, 3, 20), (11, 4, 4, 10),
-(12, 1, 1, 20), (12, 1, 2, 30), (12, 1, 3, 25), (12, 4, 1, 15), (12, 4, 2, 25), (12, 4, 3, 20), (12, 3, 1, 10), (12, 3, 2, 15), (12, 3, 3, 10),
-(13, 1, 8, 20), (13, 1, 9, 15), (13, 1, 10, 10), (13, 9, 8, 15), (13, 9, 9, 10), (13, 9, 10, 5), (13, 8, 8, 15), (13, 8, 9, 10), (13, 8, 10, 5),
-(14, 1, 1, 25), (14, 1, 2, 35), (14, 1, 3, 30), (14, 8, 1, 20), (14, 8, 2, 30), (14, 8, 3, 25), (14, 5, 1, 15), (14, 5, 2, 25), (14, 5, 3, 20),
-(15, 2, 1, 20), (15, 2, 2, 30), (15, 2, 3, 15), (15, 1, 1, 15), (15, 1, 2, 25), (15, 1, 3, 10), (15, 7, 1, 10), (15, 7, 2, 20), (15, 7, 3, 5),
-(16, 1, 1, 15), (16, 1, 2, 25), (16, 1, 3, 10), (16, 4, 1, 10), (16, 4, 2, 20), (16, 4, 3, 5), (16, 7, 1, 10), (16, 7, 2, 15), (16, 7, 3, 5),
-(17, 1, 1, 20), (17, 1, 2, 30), (17, 1, 3, 15), (17, 9, 1, 15), (17, 9, 2, 25), (17, 9, 3, 10), (17, 8, 1, 10), (17, 8, 2, 20), (17, 8, 3, 5),
-(18, 1, 1, 25), (18, 1, 2, 35), (18, 1, 3, 20), (18, 8, 1, 15), (18, 8, 2, 25), (18, 8, 3, 10), (18, 4, 1, 10), (18, 4, 2, 20), (18, 4, 3, 5),
-(19, 1, 1, 15), (19, 1, 2, 25), (19, 1, 3, 10), (19, 9, 1, 10), (19, 9, 2, 20), (19, 9, 3, 5), (19, 4, 1, 10), (19, 4, 2, 15), (19, 4, 3, 5),
-(20, 4, 1, 15), (20, 4, 2, 25), (20, 4, 3, 10), (20, 7, 1, 20), (20, 7, 2, 30), (20, 7, 3, 15), (20, 6, 1, 10), (20, 6, 2, 20), (20, 6, 3, 5),
-(21, 1, 1, 30), (21, 2, 1, 25), (21, 4, 1, 20), (21, 7, 1, 15),
-(22, 1, 1, 20), (22, 9, 1, 15), (22, 3, 1, 10);
+INSERT INTO ProductVariants (ProductID, ColorID, SizeID, Quantity) VALUES
+(1, 9, 3, 56),
+(1, 9, 1, 44),
+(1, 9, 2, 98),
+(1, 2, 3, 84),
+(1, 2, 2, 74),
+(1, 2, 4, 50),
+(1, 7, 1, 25),
+(1, 7, 3, 70),
+(1, 7, 2, 50),
+(1, 7, 4, 94),
+(1, 7, 5, 55),
+(2, 11, 2, 63),
+(2, 11, 1, 60),
+(2, 11, 4, 82),
+(2, 3, 5, 40),
+(2, 3, 2, 59),
+(2, 3, 3, 25),
+(2, 10, 2, 77),
+(2, 10, 3, 90),
+(2, 10, 4, 47),
+(2, 10, 1, 34),
+(2, 1, 5, 99),
+(2, 1, 4, 24),
+(2, 1, 3, 33),
+(3, 3, 11, 67),
+(3, 3, 8, 57),
+(3, 3, 6, 78),
+(3, 3, 9, 28),
+(3, 3, 10, 40),
+(3, 4, 7, 92),
+(3, 4, 9, 26),
+(3, 4, 8, 75),
+(3, 6, 12, 97),
+(3, 6, 8, 88),
+(3, 6, 11, 69),
+(3, 6, 10, 28),
+(3, 6, 7, 81),
+(3, 6, 6, 40),
+(3, 6, 9, 71),
+(3, 8, 10, 71),
+(3, 8, 12, 33),
+(3, 8, 11, 88),
+(4, 12, 9, 61),
+(4, 12, 12, 54),
+(4, 12, 10, 66),
+(4, 12, 11, 95),
+(4, 5, 12, 29),
+(4, 5, 9, 72),
+(4, 5, 8, 60),
+(4, 5, 11, 30),
+(5, 11, 4, 85),
+(5, 11, 1, 91),
+(5, 11, 5, 57),
+(5, 11, 2, 20),
+(5, 1, 4, 32),
+(5, 1, 3, 51),
+(5, 1, 1, 66),
+(5, 1, 2, 37),
+(5, 1, 5, 61),
+(5, 9, 4, 65),
+(5, 9, 3, 91),
+(5, 9, 1, 73),
+(6, 4, 4, 43),
+(6, 4, 3, 93),
+(6, 4, 2, 70),
+(6, 4, 5, 89),
+(6, 4, 1, 37),
+(6, 11, 4, 42),
+(6, 11, 1, 100),
+(6, 11, 5, 99),
+(6, 11, 2, 65),
+(6, 11, 3, 92),
+(6, 8, 1, 97),
+(6, 8, 4, 65),
+(6, 8, 2, 50),
+(7, 1, 10, 31),
+(7, 1, 11, 40),
+(7, 1, 12, 56),
+(7, 1, 8, 75),
+(7, 1, 9, 80),
+(7, 1, 7, 69),
+(7, 9, 8, 67),
+(7, 9, 10, 58),
+(7, 9, 11, 48),
+(7, 9, 9, 33),
+(8, 9, 1, 27),
+(8, 9, 4, 59),
+(8, 9, 2, 87),
+(8, 5, 1, 66),
+(8, 5, 3, 46),
+(8, 7, 1, 84),
+(8, 7, 3, 69),
+(8, 7, 2, 33),
+(8, 7, 4, 30),
+(8, 7, 5, 50),
+(8, 3, 1, 70),
+(8, 3, 3, 99),
+(8, 3, 2, 50),
+(9, 12, 5, 44),
+(9, 12, 2, 72),
+(9, 12, 1, 64),
+(9, 12, 3, 90),
+(9, 12, 4, 53),
+(9, 11, 2, 88),
+(9, 11, 3, 60),
+(9, 11, 4, 94),
+(10, 6, 1, 42),
+(10, 11, 1, 82),
+(10, 1, 1, 29),
+(11, 3, 5, 87),
+(11, 3, 3, 84),
+(11, 3, 2, 98),
+(11, 10, 2, 71),
+(11, 10, 4, 20),
+(12, 5, 3, 94),
+(12, 5, 5, 79),
+(12, 5, 1, 40),
+(12, 5, 2, 86),
+(12, 7, 5, 80),
+(12, 7, 2, 34),
+(12, 7, 4, 21),
+(12, 11, 3, 24),
+(12, 11, 5, 63),
+(12, 12, 5, 25),
+(12, 12, 4, 50),
+(12, 12, 2, 80),
+(13, 8, 11, 98),
+(13, 8, 10, 37),
+(13, 8, 8, 43),
+(13, 11, 7, 83),
+(13, 11, 10, 99),
+(13, 11, 12, 90),
+(14, 8, 7, 57),
+(14, 8, 8, 84),
+(14, 8, 12, 79),
+(14, 8, 11, 37),
+(14, 8, 10, 35),
+(14, 8, 6, 42),
+(14, 8, 9, 23),
+(14, 4, 10, 95),
+(14, 4, 6, 87),
+(14, 4, 11, 26),
+(14, 4, 8, 59),
+(14, 4, 9, 62),
+(14, 4, 7, 60),
+(14, 7, 8, 57),
+(14, 7, 7, 26),
+(14, 7, 11, 58),
+(15, 10, 5, 58),
+(15, 10, 1, 90),
+(15, 5, 3, 29),
+(15, 5, 4, 32),
+(15, 8, 2, 41),
+(15, 8, 4, 69),
+(15, 8, 3, 28),
+(15, 8, 5, 98),
+(15, 11, 3, 38),
+(15, 11, 1, 87),
+(15, 11, 4, 48),
+(15, 11, 2, 32),
+(16, 1, 2, 75),
+(16, 1, 3, 98),
+(16, 3, 4, 60),
+(16, 3, 3, 78),
+(16, 3, 1, 82),
+(16, 3, 5, 81),
+(16, 3, 2, 82),
+(16, 11, 4, 51),
+(16, 11, 5, 58),
+(16, 11, 1, 77),
+(16, 5, 2, 96),
+(16, 5, 4, 59),
+(16, 5, 3, 77),
+(16, 5, 5, 30),
+(16, 5, 1, 73),
+(17, 4, 9, 51),
+(17, 4, 10, 62),
+(17, 4, 8, 55),
+(17, 4, 12, 62),
+(17, 4, 11, 38),
+(17, 7, 6, 40),
+(17, 7, 7, 53),
+(17, 7, 12, 52),
+(17, 7, 10, 21),
+(17, 2, 8, 75),
+(17, 2, 11, 93),
+(17, 2, 10, 65),
+(17, 2, 6, 22),
+(17, 2, 12, 55),
+(17, 2, 7, 30),
+(17, 2, 9, 47),
+(17, 11, 11, 69),
+(17, 11, 10, 94),
+(17, 11, 8, 75),
+(17, 11, 6, 83),
+(18, 7, 12, 65),
+(18, 7, 10, 37),
+(18, 4, 9, 38),
+(18, 4, 12, 29),
+(18, 4, 11, 71),
+(18, 4, 8, 34),
+(19, 8, 5, 99),
+(19, 8, 4, 86),
+(19, 8, 2, 98),
+(19, 5, 4, 86),
+(19, 5, 2, 38),
+(19, 9, 2, 96),
+(19, 9, 5, 96),
+(19, 9, 4, 42),
+(19, 9, 1, 63),
+(20, 4, 5, 64),
+(20, 4, 1, 34),
+(20, 6, 1, 83),
+(20, 6, 3, 57),
+(20, 2, 3, 96),
+(20, 2, 5, 57),
+(20, 10, 3, 52),
+(20, 10, 5, 79),
+(20, 10, 4, 49),
+(20, 10, 2, 85),
+(20, 10, 1, 48),
+(21, 11, 1, 48),
+(21, 3, 1, 29),
+(22, 12, 1, 42),
+(22, 1, 1, 28),
+(23, 11, 4, 37),
+(23, 11, 2, 99),
+(23, 11, 1, 97),
+(23, 11, 5, 64),
+(23, 5, 5, 89),
+(23, 5, 4, 33),
+(23, 5, 2, 25),
+(23, 9, 2, 49),
+(23, 9, 3, 70),
+(23, 9, 5, 27),
+(23, 9, 4, 87),
+(23, 9, 1, 27),
+(24, 1, 12, 35),
+(24, 1, 11, 53),
+(24, 4, 6, 87),
+(24, 4, 9, 41),
+(25, 2, 2, 65),
+(25, 2, 1, 69),
+(25, 12, 2, 57),
+(25, 12, 1, 61),
+(25, 12, 5, 61),
+(25, 10, 1, 54),
+(25, 10, 3, 31),
+(26, 3, 6, 52),
+(26, 3, 7, 24),
+(26, 3, 12, 95),
+(26, 3, 8, 35),
+(26, 3, 10, 43),
+(26, 12, 11, 80),
+(26, 12, 8, 73),
+(26, 12, 7, 44),
+(26, 12, 6, 80),
+(26, 12, 12, 49),
+(26, 1, 8, 47),
+(26, 1, 6, 77),
+(26, 1, 9, 88),
+(26, 1, 12, 56),
+(26, 1, 7, 42),
+(26, 1, 10, 35),
+(26, 6, 8, 29),
+(26, 6, 10, 56),
+(26, 6, 6, 24),
+(26, 6, 7, 71),
+(26, 6, 9, 22),
+(27, 3, 4, 79),
+(27, 3, 2, 77),
+(27, 3, 5, 41),
+(27, 3, 3, 62),
+(27, 12, 1, 62),
+(27, 12, 3, 98),
+(27, 12, 5, 37),
+(27, 12, 4, 47),
+(27, 2, 5, 38),
+(27, 2, 4, 62),
+(27, 2, 3, 29),
+(27, 2, 1, 98),
+(28, 7, 1, 38),
+(28, 3, 1, 54),
+(28, 12, 1, 45),
+(29, 8, 3, 31),
+(29, 8, 2, 38),
+(29, 8, 1, 52),
+(29, 10, 3, 39),
+(29, 10, 1, 51),
+(29, 10, 5, 48),
+(29, 11, 3, 60),
+(29, 11, 2, 82),
+(29, 11, 5, 100),
+(29, 11, 1, 84),
+(29, 1, 5, 78),
+(29, 1, 3, 82),
+(29, 1, 1, 49),
+(29, 1, 4, 90),
+(30, 2, 12, 31),
+(30, 2, 8, 53),
+(30, 10, 9, 23),
+(30, 10, 6, 33),
+(30, 10, 8, 86),
+(30, 10, 11, 73),
+(31, 4, 4, 70),
+(31, 4, 1, 55),
+(31, 4, 3, 86),
+(31, 11, 2, 50),
+(31, 11, 1, 50),
+(31, 11, 3, 28),
+(31, 11, 4, 38),
+(31, 11, 5, 89),
+(31, 10, 2, 51),
+(31, 10, 4, 24),
+(31, 9, 3, 67),
+(31, 9, 2, 25),
+(31, 9, 5, 51),
+(32, 5, 6, 72),
+(32, 5, 11, 53),
+(32, 5, 9, 72),
+(32, 5, 7, 77),
+(32, 5, 12, 58),
+(32, 5, 10, 38),
+(32, 5, 8, 41),
+(32, 8, 11, 74),
+(32, 8, 12, 57),
+(32, 8, 10, 48),
+(32, 8, 6, 35),
+(32, 8, 8, 73),
+(32, 12, 7, 65),
+(32, 12, 10, 49),
+(32, 12, 12, 90),
+(32, 12, 8, 40),
+(32, 12, 6, 61),
+(32, 12, 9, 20),
+(32, 6, 11, 38),
+(32, 6, 6, 87),
+(32, 6, 8, 93),
+(32, 6, 9, 81),
+(32, 6, 7, 20),
+(32, 6, 12, 23),
+(32, 6, 10, 96),
+(33, 10, 3, 40),
+(33, 10, 2, 34),
+(33, 10, 5, 94),
+(33, 10, 1, 83),
+(33, 11, 5, 71),
+(33, 11, 3, 83),
+(33, 11, 2, 27),
+(33, 1, 2, 79),
+(33, 1, 3, 91),
+(33, 1, 1, 99),
+(34, 11, 1, 31),
+(34, 7, 1, 28),
+(34, 3, 1, 77),
+(34, 9, 1, 49),
+(35, 1, 5, 38),
+(35, 1, 2, 30),
+(35, 1, 3, 53),
+(35, 1, 4, 41),
+(35, 1, 1, 73),
+(35, 4, 4, 68),
+(35, 4, 3, 85),
+(35, 7, 3, 67),
+(35, 7, 5, 97),
+(35, 7, 1, 92),
+(35, 7, 2, 91),
+(35, 7, 4, 74),
+(35, 8, 4, 69),
+(35, 8, 5, 25),
+(35, 8, 1, 77),
+(35, 8, 3, 20),
+(35, 8, 2, 56),
+(36, 5, 2, 39),
+(36, 5, 4, 86),
+(36, 5, 3, 22),
+(36, 7, 1, 41),
+(36, 7, 5, 50),
+(36, 7, 3, 71),
+(36, 7, 4, 24),
+(36, 7, 2, 57),
+(37, 7, 5, 33),
+(37, 7, 3, 80),
+(37, 7, 4, 77),
+(37, 3, 4, 61),
+(37, 3, 3, 98),
+(37, 3, 5, 72),
+(37, 3, 1, 54),
+(37, 4, 4, 78),
+(37, 4, 1, 45),
+(37, 5, 1, 30),
+(37, 5, 5, 40),
+(37, 5, 2, 69),
+(37, 5, 4, 66),
+(38, 4, 1, 46),
+(38, 3, 1, 47),
+(38, 11, 1, 47),
+(38, 5, 1, 35),
+(39, 1, 3, 24),
+(39, 1, 1, 66),
+(39, 1, 2, 38),
+(39, 7, 1, 81),
+(39, 7, 3, 81),
+(39, 7, 2, 57),
+(39, 7, 4, 29),
+(39, 2, 1, 87),
+(39, 2, 2, 69),
+(39, 4, 2, 50),
+(39, 4, 1, 89),
+(39, 4, 4, 97),
+(39, 4, 5, 35),
+(40, 6, 6, 59),
+(40, 6, 9, 74),
+(40, 6, 10, 62),
+(40, 6, 8, 21),
+(40, 6, 12, 81),
+(40, 6, 11, 39),
+(40, 6, 7, 51),
+(40, 5, 11, 29),
+(40, 5, 7, 35);
 
+-- 7. Reviews
+INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate) VALUES
+(168, 1, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(34, 1, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(176, 1, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(119, 1, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(38, 1, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(2, 1, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(155, 1, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(123, 1, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(110, 1, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(127, 1, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(17, 2, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(135, 2, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(60, 2, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(185, 2, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(81, 2, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(107, 2, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(5, 2, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(7, 2, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(112, 2, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(40, 2, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 3, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(51, 3, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(183, 3, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(174, 3, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(97, 3, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(18, 4, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(17, 4, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(101, 4, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(12, 4, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(181, 4, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 4, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(13, 4, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(35, 4, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(168, 4, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(185, 4, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(4, 4, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(192, 4, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(80, 4, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 4, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(155, 5, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(13, 5, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(187, 5, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(157, 5, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(149, 5, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(23, 5, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(81, 6, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(154, 6, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(91, 6, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(118, 6, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 6, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(133, 6, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(107, 6, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(176, 6, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(52, 6, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(121, 7, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(147, 7, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(167, 7, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(58, 7, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(85, 7, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(174, 7, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(103, 7, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 8, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 8, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(64, 8, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(69, 8, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(170, 8, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(109, 8, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(42, 8, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(192, 8, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(96, 9, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(138, 9, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(97, 9, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(38, 9, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(22, 9, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(61, 9, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(170, 9, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(157, 9, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 9, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(66, 9, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(42, 9, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(110, 9, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(188, 9, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(51, 9, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(46, 9, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(99, 10, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(132, 10, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 10, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(179, 10, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(88, 10, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(168, 10, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(171, 10, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(158, 10, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(126, 10, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(173, 10, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(93, 10, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(126, 11, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(160, 11, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(81, 11, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(69, 11, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(177, 11, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(128, 11, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(137, 11, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(18, 11, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 12, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(57, 12, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(182, 12, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(166, 12, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(178, 12, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(121, 12, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(154, 12, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(152, 12, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 12, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(142, 12, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(143, 12, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(103, 12, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(180, 13, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(28, 13, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(66, 13, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(137, 13, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(197, 13, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(37, 13, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(143, 13, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(46, 13, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(106, 13, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(45, 13, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(145, 13, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(142, 13, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 13, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(152, 13, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(161, 14, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(42, 14, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(154, 14, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(184, 14, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(70, 14, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(160, 14, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(133, 14, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(7, 14, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(141, 14, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(178, 14, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(140, 14, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(36, 14, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(95, 14, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 14, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(76, 14, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(130, 15, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(16, 15, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(188, 15, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(15, 15, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(173, 15, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(181, 15, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(52, 16, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(166, 16, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(68, 16, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(121, 16, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(152, 16, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(35, 16, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(56, 16, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(187, 16, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(80, 17, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(177, 17, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(100, 17, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(145, 17, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(26, 17, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(127, 17, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(6, 17, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(19, 18, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(14, 18, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(182, 18, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(72, 18, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(162, 18, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(28, 18, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(130, 18, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(137, 18, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(113, 18, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(175, 18, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 19, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(93, 19, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(55, 19, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(123, 19, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(8, 19, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(2, 19, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(13, 19, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 20, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(31, 20, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 20, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(3, 20, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(34, 20, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(116, 20, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(50, 20, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(40, 20, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(12, 21, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(158, 21, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(13, 21, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(149, 21, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(74, 21, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(111, 21, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(193, 21, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(125, 21, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(62, 21, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(30, 21, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(32, 21, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(162, 21, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(128, 22, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(172, 22, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(120, 22, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(154, 22, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(27, 22, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(165, 22, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(155, 22, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(175, 22, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(29, 22, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(91, 22, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(79, 22, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(77, 22, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 23, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(130, 23, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(135, 23, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(99, 23, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(111, 23, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(5, 23, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(172, 23, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(102, 23, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(156, 23, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(170, 24, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(105, 24, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(55, 24, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(38, 24, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(73, 24, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(57, 24, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(14, 24, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(113, 24, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(25, 24, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(64, 24, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(156, 24, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(54, 24, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(12, 24, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(37, 24, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(171, 24, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(70, 25, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(119, 25, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(187, 25, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(196, 25, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(188, 25, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(97, 25, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(114, 26, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(32, 26, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(127, 26, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(27, 26, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(185, 26, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(196, 26, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(85, 26, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(84, 26, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(96, 26, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(112, 26, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(10, 26, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(106, 27, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(36, 27, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(113, 27, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(110, 27, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(136, 27, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(48, 27, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(34, 27, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(66, 28, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(117, 28, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(118, 28, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(10, 28, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(6, 28, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(169, 28, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(123, 28, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(54, 28, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(172, 28, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(31, 28, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(102, 28, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(100, 28, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(161, 28, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(23, 28, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(143, 29, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 29, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(70, 29, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(72, 29, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(18, 29, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(96, 29, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(57, 29, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(136, 29, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(200, 29, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(69, 30, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(166, 30, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(53, 30, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 30, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(76, 30, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(167, 30, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(67, 30, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(7, 30, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(60, 30, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(107, 30, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(160, 30, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(106, 30, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(78, 30, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(149, 31, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(109, 31, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(190, 31, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(58, 31, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(166, 31, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 31, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(56, 31, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(46, 31, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(193, 31, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(33, 31, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(129, 31, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(137, 31, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(191, 31, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(125, 31, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(47, 32, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(189, 32, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(24, 32, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(86, 32, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(146, 32, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(82, 32, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(196, 32, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(44, 32, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(85, 32, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(102, 32, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(90, 32, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(195, 32, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(124, 32, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 32, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 33, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(54, 33, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(105, 33, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(9, 33, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(43, 33, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(2, 34, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(22, 34, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(169, 34, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(158, 34, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(198, 34, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(125, 34, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(75, 34, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(5, 34, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(65, 34, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(72, 35, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(75, 35, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(175, 35, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(89, 35, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(5, 35, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(179, 35, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(135, 35, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(33, 36, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(186, 36, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(145, 36, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(200, 36, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(120, 36, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(170, 36, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(160, 36, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(185, 36, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(9, 36, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(32, 36, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(78, 36, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(131, 36, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(175, 37, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(24, 37, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(188, 37, 5, 'Giao hàng rất nhanh, đóng gói đẹp. Sẽ quay lại ủng hộ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(55, 37, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(74, 37, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(162, 37, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(150, 37, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(140, 38, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(135, 38, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(32, 38, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(113, 38, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(53, 38, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(141, 38, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(47, 38, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(43, 38, 5, 'Tuyệt vời! Vải mặc rất thích, đúng kích cỡ.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(184, 38, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(82, 38, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(170, 39, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(128, 39, 3, 'Bình thường, không quá đặc biệt so với giá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(126, 39, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(172, 39, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(74, 39, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(162, 39, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(118, 39, 4, 'Giao hàng hơi chậm nhưng bù lại chất lượng quá ok.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(176, 39, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(86, 39, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(117, 39, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(51, 39, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(70, 39, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(150, 39, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(63, 39, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(159, 39, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(161, 40, 1, 'Sản phẩm tệ, không giống mô tả. Không nên mua.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(59, 40, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(152, 40, 5, 'Sản phẩm cực kỳ chất lượng, đáng đồng tiền bát gạo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(7, 40, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(73, 40, 4, 'Hàng ổn, form đẹp. Tuy nhiên màu hơi khác ảnh một tẹo.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval),
+(21, 40, 2, 'Hơi thất vọng, chỉ may còn thừa nhiều quá.', CURRENT_TIMESTAMP - (random() * 60 || ' days')::interval) ON CONFLICT DO NOTHING;
 
--- Reviews from SQL Server
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES 
-    (1, 1, 5, 'Sản phẩm rất tốt, chất lượng cao, đúng như mô tả.', CURRENT_TIMESTAMP - INTERVAL '5 days'),
-    (2, 1, 4, 'Tôi rất hài lòng với sản phẩm này, giao hàng nhanh.', CURRENT_TIMESTAMP - INTERVAL '3 days'),
-    (3, 2, 5, 'Áo rất đẹp, form chuẩn, mặc rất thoải mái.', CURRENT_TIMESTAMP - INTERVAL '7 days'),
-    (4, 3, 4, 'Quần jean chất lượng tốt, đường may đẹp.', CURRENT_TIMESTAMP - INTERVAL '10 days'),
-    (5, 5, 5, 'Áo sơ mi trắng rất đẹp, vải mềm và thoáng mát.', CURRENT_TIMESTAMP - INTERVAL '2 days') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (4, 1, 5, 'Sản phẩm tuyệt vời!', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (13, 1, 1, 'Không hài lòng, sản phẩm lỗi.', '2025-05-23 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (19, 1, 4, 'Hàng tốt, giao nhanh.', '2025-05-19 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (1, 2, 4, 'Mình thích sản phẩm này.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (2, 2, 1, 'Khác xa ảnh, thất vọng.', '2025-05-12 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (7, 2, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (18, 3, 1, 'Không hài lòng, sản phẩm lỗi.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (10, 3, 4, 'Mình thích sản phẩm này.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (6, 3, 2, 'Chất lượng chưa như mong đợi.', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (2, 4, 2, 'Màu hơi khác hình.', '2025-05-13 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 4, 3, 'Hàng ổn so với giá.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (11, 4, 1, 'Giao sai màu, chất vải xấu.', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (9, 5, 4, 'Tạm ổn, giống mô tả.', '2025-05-15 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (7, 5, 2, 'Màu hơi khác hình.', '2025-05-19 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (5, 5, 4, 'Hàng tốt, giao nhanh.', '2025-05-14 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (9, 6, 5, 'Chất lượng vượt mong đợi.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (20, 6, 3, 'Bình thường, không quá đặc biệt.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (13, 6, 3, 'Bình thường, không quá đặc biệt.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (14, 7, 1, 'Khác xa ảnh, thất vọng.', '2025-05-12 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (1, 7, 5, 'Sản phẩm tuyệt vời!', '2025-05-15 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (9, 7, 2, 'Chất lượng chưa như mong đợi.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 8, 4, 'Tạm ổn, giống mô tả.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (11, 8, 3, 'Hàng ổn so với giá.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (11, 8, 5, 'Sản phẩm tuyệt vời!', '2025-05-13 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (4, 9, 2, 'Form hơi lệch, cần cải thiện.', '2025-05-14 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (7, 9, 5, 'Rất hài lòng, sẽ mua lại.', '2025-05-12 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (11, 9, 1, 'Khác xa ảnh, thất vọng.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (10, 10, 1, 'Giao sai màu, chất vải xấu.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (9, 10, 2, 'Màu hơi khác hình.', '2025-05-19 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (16, 10, 4, 'Tạm ổn, giống mô tả.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (18, 11, 2, 'Màu hơi khác hình.', '2025-05-11 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (20, 11, 1, 'Giao sai màu, chất vải xấu.', '2025-05-14 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 11, 3, 'Hàng ổn so với giá.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (4, 12, 2, 'Màu hơi khác hình.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 12, 3, 'Bình thường, không quá đặc biệt.', '2025-05-18 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (19, 12, 1, 'Khác xa ảnh, thất vọng.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (4, 13, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-13 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (7, 13, 5, 'Sản phẩm tuyệt vời!', '2025-05-21 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (10, 13, 1, 'Giao sai màu, chất vải xấu.', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (6, 14, 4, 'Tạm ổn, giống mô tả.', '2025-05-18 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (18, 14, 1, 'Khác xa ảnh, thất vọng.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 14, 5, 'Sản phẩm tuyệt vời!', '2025-05-14 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (20, 15, 2, 'Chất lượng chưa như mong đợi.', '2025-05-13 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 15, 5, 'Sản phẩm tuyệt vời!', '2025-05-18 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (13, 15, 4, 'Tạm ổn, giống mô tả.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (16, 16, 5, 'Sản phẩm tuyệt vời!', '2025-05-11 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (18, 16, 4, 'Mình thích sản phẩm này.', '2025-05-14 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (7, 16, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-19 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (9, 17, 2, 'Màu hơi khác hình.', '2025-05-24 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 17, 3, 'Bình thường, không quá đặc biệt.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (19, 17, 3, 'Bình thường, không quá đặc biệt.', '2025-05-21 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (12, 18, 4, 'Hàng tốt, giao nhanh.', '2025-05-18 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (3, 18, 1, 'Không hài lòng, sản phẩm lỗi.', '2025-05-15 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 18, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-15 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (3, 19, 4, 'Hàng tốt, giao nhanh.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (1, 19, 5, 'Sản phẩm tuyệt vời!', '2025-05-13 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 19, 5, 'Chất lượng vượt mong đợi.', '2025-05-22 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (16, 20, 2, 'Form hơi lệch, cần cải thiện.', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 20, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-20 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (20, 20, 4, 'Tạm ổn, giống mô tả.', '2025-05-16 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (5, 21, 5, 'Chất lượng vượt mong đợi.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (17, 21, 4, 'Mình thích sản phẩm này.', '2025-05-17 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (8, 21, 3, 'Cũng được nhưng không ấn tượng.', '2025-05-12 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (10, 22, 1, 'Không hài lòng, sản phẩm lỗi.', '2025-05-15 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (19, 22, 4, 'Mình thích sản phẩm này.', '2025-05-11 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
-INSERT INTO Reviews (CustomerID, ProductID, Rating, Comment, ReviewDate)
-VALUES (16, 22, 1, 'Khác xa ảnh, thất vọng.', '2025-05-21 07:53:02') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
--- Wishlist from SQL Server
-INSERT INTO Wishlist (CustomerID, ProductID, AddedDate)
-VALUES 
-    (1, 2, CURRENT_TIMESTAMP - INTERVAL '3 days'),
-    (1, 5, CURRENT_TIMESTAMP - INTERVAL '2 days'),
-    (2, 3, CURRENT_TIMESTAMP - INTERVAL '5 days'),
-    (3, 1, CURRENT_TIMESTAMP - INTERVAL '1 days'),
-    (4, 9, CURRENT_TIMESTAMP - INTERVAL '4 days') ON CONFLICT (CustomerID, ProductID) DO NOTHING;
--- ContactMessages from SQL Server
-INSERT INTO ContactMessages (Name, Email, Subject, Message, SubmitDate, Status)
-VALUES 
-    ('Nguyễn Văn A', 'nguyenvana@example.com', 'Hỏi về chính sách đổi trả', 'Tôi muốn biết thêm về chính sách đổi trả của cửa hàng. Cảm ơn!', CURRENT_TIMESTAMP - INTERVAL '7 days', 'Answered'),
-    ('Trần Thị B', 'tranthib@example.com', 'Vấn đề về đơn hàng', 'Đơn hàng của tôi bị chậm giao, mã đơn hàng là #123. Mong được hỗ trợ.', CURRENT_TIMESTAMP - INTERVAL '3 days', 'Processing'),
-    ('Lê Văn C', 'levanc@example.com', 'Hợp tác kinh doanh', 'Tôi muốn hợp tác kinh doanh với cửa hàng của bạn. Vui lòng liên hệ lại với tôi.', CURRENT_TIMESTAMP - INTERVAL '1 days', 'New');
--- NewsletterSubscribers from SQL Server
-INSERT INTO NewsletterSubscribers (Email, SubscribeDate, IsActive)
-VALUES 
-    ('subscriber1@example.com', CURRENT_TIMESTAMP - INTERVAL '30 days', TRUE),
-    ('subscriber2@example.com', CURRENT_TIMESTAMP - INTERVAL '25 days', TRUE),
-    ('subscriber3@example.com', CURRENT_TIMESTAMP - INTERVAL '20 days', TRUE),
-    ('subscriber4@example.com', CURRENT_TIMESTAMP - INTERVAL '15 days', TRUE),
-    ('subscriber5@example.com', CURRENT_TIMESTAMP - INTERVAL '10 days', TRUE) ON CONFLICT (Email) DO NOTHING;
--- ProductComments from SQL Server
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES 
-    (1, 1, 'Sản phẩm rất đẹp, đúng như mô tả. Tôi rất hài lòng với chất lượng vải.', CURRENT_TIMESTAMP - INTERVAL '7 days', 
-     'Cảm ơn bạn đã mua hàng và đánh giá sản phẩm. Chúng tôi rất vui khi bạn hài lòng!', CURRENT_TIMESTAMP - INTERVAL '6 days', TRUE),
-    
-    (2, 1, 'Tôi đã mua áo này cho chồng tôi, anh ấy rất thích. Size vừa vặn, màu sắc đẹp.', CURRENT_TIMESTAMP - INTERVAL '5 days', 
-     NULL, NULL, TRUE),
-    
-    (3, 2, 'Áo thun chất lượng tốt, nhưng tôi nghĩ màu hơi khác so với hình ảnh trên website.', CURRENT_TIMESTAMP - INTERVAL '4 days', 
-     'Xin lỗi vì sự khác biệt về màu sắc. Đôi khi màu sắc có thể hiển thị khác nhau tùy thuộc vào màn hình. Nếu bạn không hài lòng, bạn có thể đổi trả trong vòng 30 ngày.', CURRENT_TIMESTAMP - INTERVAL '3 days', TRUE),
-    
-    (4, 3, 'Quần jean rất thoải mái, form dáng đẹp. Tôi sẽ mua thêm màu khác.', CURRENT_TIMESTAMP - INTERVAL '3 days', 
-     NULL, NULL, TRUE),
-    
-    (5, 5, 'Áo sơ mi trắng rất đẹp, nhưng hơi nhỏ so với size thông thường. Nên đặt size lớn hơn 1.', CURRENT_TIMESTAMP - INTERVAL '2 days', 
-     'Cảm ơn bạn đã chia sẻ kinh nghiệm. Chúng tôi sẽ cập nhật thông tin về kích thước trong mô tả sản phẩm.', CURRENT_TIMESTAMP - INTERVAL '1 days', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (4, 1, 'Giao hàng hơi chậm một chút.', '2025-05-21 07:26:10', 'Cảm ơn bạn. Hy vọng sẽ phục vụ bạn ở những lần mua tiếp theo!', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (5, 1, 'Không quá đặc biệt nhưng dùng được.', '2025-05-21 07:26:10', 'Phản hồi của bạn là động lực để chúng tôi phát triển sản phẩm tốt hơn.', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (6, 1, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-16 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-17 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (7, 2, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-17 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (8, 2, 'Tư vấn nhiệt tình, sẽ ủng hộ tiếp.', '2025-05-17 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (9, 2, 'Tư vấn nhiệt tình, sẽ ủng hộ tiếp.', '2025-05-16 07:26:10', 'Nếu bạn cần hỗ trợ thêm, hãy liên hệ hotline hoặc fanpage.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (10, 3, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (11, 3, 'Size không chuẩn, mặc hơi chật.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (12, 3, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (13, 4, 'Đường may chưa được đẹp.', '2025-05-22 07:26:10', 'Bạn vui lòng để lại mã đơn hàng để chúng tôi hỗ trợ tốt hơn nhé.', '2025-05-24 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (14, 4, 'Không giống hình, thất vọng nhẹ.', '2025-05-18 07:26:10', 'Bạn vui lòng để lại mã đơn hàng để chúng tôi hỗ trợ tốt hơn nhé.', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (15, 4, 'Sản phẩm tạm ổn, đúng như mô tả.', '2025-05-17 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (16, 5, 'Vải hơi thô, không như mong đợi.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (17, 5, 'Sản phẩm tạm ổn, đúng như mô tả.', '2025-05-17 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (18, 5, 'Size không chuẩn, mặc hơi chật.', '2025-05-22 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (19, 6, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-17 07:26:10', 'Cảm ơn bạn đã tin tưởng và ủng hộ cửa hàng!', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (20, 6, 'Vải hơi thô, không như mong đợi.', '2025-05-15 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (1, 6, 'Form chuẩn, mặc rất vừa.', '2025-05-18 07:26:10', 'Phản hồi của bạn là động lực để chúng tôi phát triển sản phẩm tốt hơn.', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (2, 7, 'Không quá đặc biệt nhưng dùng được.', '2025-05-21 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (3, 7, 'Tư vấn nhiệt tình, sẽ ủng hộ tiếp.', '2025-05-15 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (4, 7, 'Vải hơi thô, không như mong đợi.', '2025-05-15 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-16 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (5, 8, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-16 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-17 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (6, 8, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-20 07:26:10', 'Cảm ơn bạn đã tin tưởng và ủng hộ cửa hàng!', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (7, 8, 'Giao hàng hơi chậm một chút.', '2025-05-22 07:26:10', 'Cảm ơn bạn đã tin tưởng và ủng hộ cửa hàng!', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (8, 9, 'Sản phẩm tạm ổn, đúng như mô tả.', '2025-05-17 07:26:10', 'Nếu bạn cần hỗ trợ thêm, hãy liên hệ hotline hoặc fanpage.', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (9, 9, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-19 07:26:10', 'Cảm ơn bạn đã góp ý. Chúng tôi sẽ lưu ý để điều chỉnh sản phẩm.', '2025-05-20 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (10, 9, 'Cũng được, không có gì nổi bật.', '2025-05-20 07:26:10', 'Cảm ơn bạn đã tin tưởng và ủng hộ cửa hàng!', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (11, 10, 'Sản phẩm rất đẹp và chất lượng.', '2025-05-15 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-16 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (12, 10, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-22 07:26:10', 'Phản hồi của bạn là động lực để chúng tôi phát triển sản phẩm tốt hơn.', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (13, 10, 'Form chuẩn, mặc rất vừa.', '2025-05-17 07:26:10', 'Cảm ơn bạn đã góp ý. Chúng tôi sẽ lưu ý để điều chỉnh sản phẩm.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (14, 11, 'Không quá đặc biệt nhưng dùng được.', '2025-05-17 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (15, 11, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-19 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (16, 11, 'Không quá đặc biệt nhưng dùng được.', '2025-05-17 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (17, 12, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-15 07:26:10', 'Cảm ơn bạn. Hy vọng sẽ phục vụ bạn ở những lần mua tiếp theo!', '2025-05-17 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (18, 12, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-21 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (19, 12, 'Size không chuẩn, mặc hơi chật.', '2025-05-19 07:26:10', 'Phản hồi của bạn là động lực để chúng tôi phát triển sản phẩm tốt hơn.', '2025-05-20 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (20, 13, 'Size không chuẩn, mặc hơi chật.', '2025-05-15 07:26:10', 'Bạn vui lòng để lại mã đơn hàng để chúng tôi hỗ trợ tốt hơn nhé.', '2025-05-17 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (1, 13, 'Đường may chưa được đẹp.', '2025-05-19 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (2, 13, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-19 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (3, 14, 'Giao hàng hơi chậm một chút.', '2025-05-20 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (4, 14, 'Đường may chưa được đẹp.', '2025-05-18 07:26:10', 'Cảm ơn bạn. Hy vọng sẽ phục vụ bạn ở những lần mua tiếp theo!', '2025-05-20 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (5, 14, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-20 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (6, 15, 'Size không chuẩn, mặc hơi chật.', '2025-05-15 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-16 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (7, 15, 'Size không chuẩn, mặc hơi chật.', '2025-05-22 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (8, 15, 'Sản phẩm tạm ổn, đúng như mô tả.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (9, 16, 'Sản phẩm tạm ổn, đúng như mô tả.', '2025-05-17 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (10, 16, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-15 07:26:10', 'Cảm ơn bạn đã góp ý. Chúng tôi sẽ lưu ý để điều chỉnh sản phẩm.', '2025-05-17 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (11, 16, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-18 07:26:10', 'Rất tiếc vì trải nghiệm chưa tốt, bạn có thể liên hệ CSKH để được hỗ trợ đổi trả.', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (12, 17, 'Sản phẩm rất đẹp và chất lượng.', '2025-05-19 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (13, 17, 'Form chuẩn, mặc rất vừa.', '2025-05-19 07:26:10', 'Nếu bạn cần hỗ trợ thêm, hãy liên hệ hotline hoặc fanpage.', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (14, 17, 'Giao hàng hơi chậm một chút.', '2025-05-20 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (15, 18, 'Tư vấn nhiệt tình, sẽ ủng hộ tiếp.', '2025-05-18 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (16, 18, 'Cũng được, không có gì nổi bật.', '2025-05-18 07:26:10', 'Cảm ơn bạn đã góp ý. Chúng tôi sẽ lưu ý để điều chỉnh sản phẩm.', '2025-05-20 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (17, 18, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-20 07:26:10', NULL, NULL, TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (18, 19, 'Cũng được, không có gì nổi bật.', '2025-05-20 07:26:10', 'Bạn vui lòng để lại mã đơn hàng để chúng tôi hỗ trợ tốt hơn nhé.', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (19, 19, 'Màu bị phai sau khi giặt lần đầu.', '2025-05-18 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-19 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (20, 19, 'Giao hàng hơi chậm một chút.', '2025-05-21 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (1, 20, 'Size không chuẩn, mặc hơi chật.', '2025-05-22 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (2, 20, 'Sản phẩm rất đẹp và chất lượng.', '2025-05-22 07:26:10', 'Cảm ơn bạn đã tin tưởng và ủng hộ cửa hàng!', '2025-05-24 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (3, 20, 'Tư vấn nhiệt tình, sẽ ủng hộ tiếp.', '2025-05-22 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-24 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (4, 21, 'Không giống hình, thất vọng nhẹ.', '2025-05-20 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-22 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (5, 21, 'Mình rất hài lòng, giao hàng nhanh.', '2025-05-21 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (6, 21, 'Mua lần 2 rồi, vẫn rất thích.', '2025-05-21 07:26:10', 'Chúng tôi xin lỗi vì sự bất tiện và sẽ cải thiện dịch vụ.', '2025-05-23 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (7, 22, 'Sản phẩm rất đẹp và chất lượng.', '2025-05-17 07:26:10', 'Rất vui khi bạn hài lòng. Mong bạn tiếp tục ủng hộ!', '2025-05-18 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (8, 22, 'Màu không giống ảnh lắm nhưng vẫn ổn.', '2025-05-20 07:26:10', 'Cảm ơn bạn đã phản hồi! Chúng tôi sẽ cố gắng cải thiện hơn nữa.', '2025-05-21 07:26:10', TRUE);
-INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, AdminReply, ReplyDate, IsVisible)
-VALUES (9, 22, 'Size không chuẩn, mặc hơi chật.', '2025-05-20 07:26:10', 'Cảm ơn bạn. Hy vọng sẽ phục vụ bạn ở những lần mua tiếp theo!', '2025-05-21 07:26:10', TRUE);
+-- 8. Product Comments
+INSERT INTO ProductComments (CustomerID, ProductID, Content, CommentDate, IsVisible) VALUES
+(99, 1, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(140, 1, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(122, 1, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(185, 2, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(41, 2, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(109, 2, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(66, 2, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(54, 2, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(180, 3, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(58, 3, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(68, 3, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(185, 3, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(126, 4, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(5, 4, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(19, 4, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(2, 4, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(126, 5, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(59, 5, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(81, 5, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(58, 5, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(191, 6, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(9, 6, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(14, 6, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(168, 6, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(144, 6, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(22, 7, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(66, 7, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(178, 7, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(32, 7, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(67, 7, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(113, 7, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(144, 8, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(81, 8, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(74, 8, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(31, 8, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(42, 8, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(7, 8, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(90, 8, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(183, 8, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 9, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(95, 9, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(153, 9, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(40, 10, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(186, 10, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(68, 10, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(196, 10, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(190, 10, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(34, 10, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(29, 11, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(165, 11, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(183, 11, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(43, 12, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(122, 12, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(62, 12, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(133, 12, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(69, 12, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(109, 13, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(70, 13, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(120, 13, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(141, 13, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(32, 13, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(96, 13, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(73, 14, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(88, 14, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(89, 14, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(68, 14, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(136, 14, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(40, 15, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(5, 15, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(9, 15, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(76, 15, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(182, 16, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(3, 16, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(125, 16, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(120, 16, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(134, 16, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(77, 16, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(45, 16, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(119, 17, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(21, 17, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(101, 17, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(111, 17, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(87, 18, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(48, 18, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(49, 18, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(85, 19, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(57, 19, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(99, 19, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(135, 20, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(12, 20, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(169, 20, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(32, 20, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(182, 20, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(44, 20, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(103, 20, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(175, 20, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(138, 21, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(67, 21, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(63, 21, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(39, 21, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(139, 22, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(24, 22, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(169, 22, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(30, 22, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(183, 22, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(48, 23, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(111, 23, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(128, 23, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(190, 23, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(109, 23, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(9, 23, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(67, 23, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(15, 23, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(28, 24, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(96, 24, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(40, 24, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(101, 24, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(93, 25, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(165, 25, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 25, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(65, 25, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(147, 25, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(13, 25, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(52, 25, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(31, 25, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(19, 26, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(72, 26, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(93, 26, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(111, 26, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(142, 26, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(2, 26, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(96, 27, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(90, 27, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(64, 27, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(120, 27, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(39, 27, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(135, 27, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(61, 27, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(191, 27, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(53, 28, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(128, 28, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(19, 28, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(31, 28, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(39, 28, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 28, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(18, 28, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(103, 29, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(149, 29, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(171, 29, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(20, 29, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(64, 29, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(164, 29, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(156, 30, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(133, 30, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(111, 30, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(130, 30, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(150, 30, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(3, 30, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(93, 30, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(90, 31, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(127, 31, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(45, 31, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(181, 31, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(92, 32, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(34, 32, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(32, 32, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(120, 33, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(145, 33, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(189, 33, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(185, 34, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(120, 34, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(59, 34, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(193, 34, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(163, 34, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(146, 34, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 34, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(61, 34, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(87, 35, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(123, 35, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(192, 35, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(170, 35, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 35, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(70, 35, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(54, 35, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(156, 36, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(18, 36, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(167, 36, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(81, 37, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(37, 37, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(8, 37, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(35, 37, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(156, 37, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(97, 37, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(173, 37, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(24, 38, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(115, 38, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(6, 38, 'Ship về Đà Nẵng mất bao lâu vậy shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(75, 38, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(18, 38, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(49, 39, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(127, 39, 'Shop ơi, bao lâu thì có hàng lại ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(118, 39, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(173, 39, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(42, 39, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(17, 39, 'Sản phẩm này còn size L không shop?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(135, 40, 'Minh cao 1m7 nặng 70kg mặc size nào vừa?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(65, 40, 'Cho mình xin ảnh thật sản phẩm với.', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(52, 40, 'Bên mình có được kiểm tra hàng trước khi thanh toán không?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(131, 40, 'Mẫu này đẹp quá, chốt đơn!', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE),
+(25, 40, 'Có màu xanh dương không ạ?', CURRENT_TIMESTAMP - (random() * 30 || ' days')::interval, TRUE);
 
--- Generate Random Orders for Reports
+-- 9. Orders (1000 Generated via PL/PGSQL)
+
 DO $$
 DECLARE
     v_CustomerId INT;
@@ -418,39 +1331,38 @@ DECLARE
     i INT;
     j INT;
 BEGIN
-    -- Generate 50 orders over the last 2 years
-    FOR i IN 1..50 LOOP
-        -- Random Customer 1-20
-        v_CustomerId := floor(random() * 20 + 1)::int;
-        -- Random Date
-        v_Date := CURRENT_TIMESTAMP - (random() * 700 || ' days')::interval;
+    FOR i IN 1..1000 LOOP
+        v_CustomerId := floor(random() * 199 + 2)::int;
+        v_Date := CURRENT_TIMESTAMP - (random() * 730 || ' days')::interval;
         
         INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, Status, PaymentMethod, ShippingAddress)
-        VALUES (v_CustomerId, v_Date, 0, 'Delivered', 'COD', 'Address')
+        VALUES (v_CustomerId, v_Date, 0, 
+                CASE floor(random() * 4)::int 
+                    WHEN 0 THEN 'Delivered' 
+                    WHEN 1 THEN 'Processing' 
+                    WHEN 2 THEN 'Shipped' 
+                    ELSE 'Delivered' END,
+                CASE floor(random() * 2)::int WHEN 0 THEN 'COD' ELSE 'Bank Transfer' END,
+                'Address Info')
         RETURNING OrderID INTO v_OrderId;
         
-        -- Add 1-3 items
-        FOR j IN 1..floor(random() * 3 + 1)::int LOOP
-            -- Random Product 1-22
-            v_ProductId := floor(random() * 22 + 1)::int;
-            
-            -- Get a Variant for this product
-            SELECT VariantID INTO v_VariantId FROM ProductVariants WHERE ProductID = v_ProductId LIMIT 1;
+        FOR j IN 1..floor(random() * 4 + 1)::int LOOP
+            v_ProductId := floor(random() * 40 + 1)::int;
+            SELECT VariantID INTO v_VariantId FROM ProductVariants WHERE ProductID = v_ProductId AND Quantity > 10 LIMIT 1;
             
             IF v_VariantId IS NOT NULL THEN
                 SELECT Price INTO v_Price FROM Products WHERE ProductID = v_ProductId;
-                
                 INSERT INTO OrderDetails (OrderID, VariantID, Quantity, Price)
                 VALUES (v_OrderId, v_VariantId, floor(random() * 2 + 1)::int, v_Price);
             END IF;
         END LOOP;
         
-        -- Update Total
-        UPDATE Orders SET TotalAmount = (SELECT SUM(Quantity * Price) FROM OrderDetails WHERE OrderID = v_OrderId) WHERE OrderID = v_OrderId;
+        UPDATE Orders SET TotalAmount = COALESCE((SELECT SUM(Quantity * Price) FROM OrderDetails WHERE OrderID = v_OrderId), 0) WHERE OrderID = v_OrderId;
     END LOOP;
 END $$;
 
 
+-- 10. Reset Sequences
 SELECT setval('categories_categoryid_seq', (SELECT MAX(categoryid) FROM categories));
 SELECT setval('colors_colorid_seq', (SELECT MAX(colorid) FROM colors));
 SELECT setval('sizes_sizeid_seq', (SELECT MAX(sizeid) FROM sizes));
@@ -459,5 +1371,3 @@ SELECT setval('products_productid_seq', (SELECT MAX(productid) FROM products));
 SELECT setval('productvariants_variantid_seq', (SELECT MAX(variantid) FROM productvariants));
 SELECT setval('orders_orderid_seq', COALESCE((SELECT MAX(orderid) FROM orders), 1));
 SELECT setval('orderdetails_orderdetailid_seq', COALESCE((SELECT MAX(orderdetailid) FROM orderdetails), 1));
-SELECT setval('reviews_reviewid_seq', (SELECT MAX(reviewid) FROM reviews));
-SELECT setval('productcomments_commentid_seq', (SELECT MAX(commentid) FROM productcomments));

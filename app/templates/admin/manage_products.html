@@ -82,6 +82,16 @@
     <div class="col-md-9 col-lg-10 main-content">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0">Quản lý sản phẩm</h2>
+            <div class="d-flex gap-2">
+                <select id="sortSelect" class="form-select" style="width: auto;">
+                    <option value="newest" {% if sort_by=='newest' %}selected{% endif %}>Mới nhất</option>
+                    <option value="price_asc" {% if sort_by=='price_asc' %}selected{% endif %}>Giá: Thấp đến cao
+                    </option>
+                    <option value="price_desc" {% if sort_by=='price_desc' %}selected{% endif %}>Giá: Cao đến thấp
+                    </option>
+                    <option value="name_asc" {% if sort_by=='name_asc' %}selected{% endif %}>Tên A-Z</option>
+                </select>
+            </div>
         </div>
 
         <div class="form-section">
@@ -115,89 +125,139 @@
             </form>
         </div>
 
-        <div class="table-responsive">
-            <table class="table table-hover align-middle table-bordered">
-                <thead class="table-light text-center">
-                    <tr>
-                        <th>ID</th>
-                        <th>Tên sản phẩm</th>
-                        <th>Danh mục</th>
-                        <th>Biến thể</th>
-                        <th>Tồn kho</th>
-                        <th>Thao tác</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for product in products %}
-                    <tr>
-                        <td class="text-center">{{ product.ProductID }}</td>
-                        <td>{{ product.ProductName }}</td>
-                        <td>{{ product.CategoryName }}</td>
-                        <td class="text-center">{{ product.VariantCount or 0 }}</td>
-                        <td class="text-center">{{ product.TotalStock or 0 }}</td>
-                        <td class="text-center">
-                            <a href="{{ url_for('admin.admin_edit_product', product_id=product.ProductID) }}"
-                                class="btn btn-sm btn-outline-primary btn-icon" title="Chỉnh sửa">
-                                <i class="fas fa-pen"></i>
-                            </a>
-                            <button class="btn btn-sm btn-outline-danger btn-icon btn-delete"
-                                data-product-id="{{ product.ProductID }}" title="Xóa">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" class="text-center text-muted">Không có sản phẩm nào</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+        <div class="card shadow-sm mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center">ID</th>
+                                <th>Tên sản phẩm</th>
+                                <th>Danh mục</th>
+                                <th class="text-center">Biến thể</th>
+                                <th class="text-center">Tồn kho</th>
+                                <th class="text-end">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for product in products %}
+                            <tr>
+                                <td class="text-center">{{ product.ProductID }}</td>
+                                <td><strong>{{ product.ProductName }}</strong></td>
+                                <td>{{ product.CategoryName }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-info text-dark">{{ product.VariantCount or 0 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    <span
+                                        class="badge {% if (product.TotalStock or 0) > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ product.TotalStock or 0 }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-1">
+                                        <a href="{{ url_for('admin.admin_edit_product', product_id=product.ProductID) }}"
+                                            class="btn btn-sm btn-outline-primary" title="Chỉnh sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger btn-delete"
+                                            data-product-id="{{ product.ProductID }}" title="Xóa">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                    <p class="text-muted">Không tìm thấy sản phẩm nào</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-    </div>
 
+        <!-- Advanced Pagination -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <span class="text-muted">
+                            Trang {{ paging.current_page }} / {{ paging.total_pages }}
+                            (Hiển thị {{ paging.start_index }} - {{ paging.end_index }} / {{ paging.total_records }} kết
+                            quả)
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="mb-0 small text-muted">Tới trang:</label>
+                                <input type="number" id="pageJump" class="form-control form-control-sm text-center"
+                                    style="width: 60px;" value="{{ paging.current_page }}" min="1"
+                                    max="{{ paging.total_pages }}">
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;">
+                                    {% for val in [10, 20, 50, 100] %}
+                                    <option value="{{ val }}" {% if paging.per_page==val %}selected{% endif %}>{{ val }}
+                                        dòng</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
+                                        <a class="page-link"
+                                            href="{{ url_for('admin.admin_manage_products', page=paging.current_page-1, per_page=paging.per_page, sort_by=sort_by) }}">Trước</a>
+                                    </li>
+                                    <li
+                                        class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
+                                        <a class="page-link"
+                                            href="{{ url_for('admin.admin_manage_products', page=paging.current_page+1, per_page=paging.per_page, sort_by=sort_by) }}">Sau</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-    <!-- Products Table -->
-    <div class="table-responsive">
-        <table class="table table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>ID</th>
-                    <th>Tên sản phẩm</th>
-                    <th>Danh mục</th>
-                    <th>Số biến thể</th>
-                    <th>Tổng tồn kho</th>
-                    <th>Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for product in products %}
-                <tr>
-                    <td>{{ product.ProductID }}</td>
-                    <td>{{ product.ProductName }}</td>
-                    <td>{{ product.CategoryName }}</td>
-                    <td>{{ product.VariantCount or 0 }}</td>
-                    <td>{{ product.TotalStock or 0 }}</td>
-                    <td>
-                        <a href="{{ url_for('admin.admin_edit_product', product_id=product.ProductID) }}"
-                            class="btn btn-sm btn-outline-secondary btn-icon" title="Chỉnh sửa">
-                            <i class="fas fa-edit"></i>
-                        </a>
-                        <button class="btn btn-sm btn-outline-danger btn-icon btn-delete"
-                            data-product-id="{{ product.ProductID }}" title="Xóa">
-                            <i class="fas fa-trash-alt"></i>
-                        </button>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="6" class="text-center">Không có sản phẩm nào</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+        <script>
+            // Sorting Handler
+            document.getElementById('sortSelect').addEventListener('change', function () {
+                let url = new URL(window.location.href);
+                url.searchParams.set('sort_by', this.value);
+                url.searchParams.set('page', 1);
+                window.location.href = url.href;
+            });
+
+            // Pagination Handlers
+            document.getElementById('perPageSelect').addEventListener('change', function () {
+                let url = new URL(window.location.href);
+                url.searchParams.set('per_page', this.value);
+                url.searchParams.set('page', 1);
+                window.location.href = url.href;
+            });
+
+            document.getElementById('pageJump').addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    let page = parseInt(this.value);
+                    let maxPage = parseInt(this.getAttribute('max'));
+                    if (isNaN(page) || page < 1) page = 1;
+                    if (page > maxPage) page = maxPage;
+
+                    let url = new URL(window.location.href);
+                    url.searchParams.set('page', page);
+                    window.location.href = url.href;
+                }
+            });
+        </script>
     </div>
-</div>
 </div>
 {% endblock %}
 
