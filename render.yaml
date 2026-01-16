@@ -1,6 +1,18 @@
 services:
   - type: web
     name: quan-ly-thoi-trang
-    env: docker
+    env: python
     plan: free
-    dockerfilePath: Dockerfile
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn run:app
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        sync: false
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: "587"
+      - key: PYTHON_VERSION
+        value: "3.11.0"
