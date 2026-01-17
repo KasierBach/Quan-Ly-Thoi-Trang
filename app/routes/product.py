@@ -154,7 +154,6 @@ def product_detail(product_id):
 
     return render_template('product_detail.html',
                           product=product,
-                          original_price=float(product.Price * decimal.Decimal('1.2')),
                           colors=list(colors.values()),
                           sizes=list(sizes.values()),
                           variants=variants_map,

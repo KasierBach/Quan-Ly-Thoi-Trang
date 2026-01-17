@@ -13,7 +13,7 @@ def home():
     categories = cursor.fetchall()
     
     cursor.execute('''
-        SELECT p.ProductID, p.ProductName, p.Price, c.CategoryName, p.ImageURL,
+        SELECT p.ProductID, p.ProductName, p.Price, p.OriginalPrice, c.CategoryName, p.ImageURL,
         (SELECT cl.ColorName FROM Colors cl JOIN ProductVariants pv ON cl.ColorID = pv.ColorID 
          WHERE pv.ProductID = p.ProductID LIMIT 1) AS FirstColor
         FROM Products p
@@ -24,7 +24,7 @@ def home():
     featured_products = cursor.fetchall()
     
     cursor.execute('''
-        SELECT bs.ProductID, bs.ProductName, bs.Price, bs.CategoryName, bs.TotalSold, p.ImageURL
+        SELECT bs.ProductID, bs.ProductName, bs.Price, bs.OriginalPrice, bs.CategoryName, bs.TotalSold, p.ImageURL
         FROM vw_BestSellingProducts bs
         JOIN Products p ON bs.ProductID = p.ProductID
         ORDER BY bs.TotalSold DESC

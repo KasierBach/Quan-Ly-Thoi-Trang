@@ -1,0 +1,267 @@
+{% extends 'base.html' %}
+
+{% block title %}Chi tiết khách hàng - {{ customer.FullName }}{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .stat-card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+
+    .order-status-badge {
+        font-weight: 500;
+        padding: 0.5em 0.8em;
+    }
+
+    .section-title {
+        border-left: 4px solid #0d6efd;
+        padding-left: 15px;
+        margin-bottom: 20px;
+        font-weight: 700;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 p-0 d-none d-md-block">
+        <div class="list-group admin-sidebar">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+            </a>
+            <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Bình luận
+            </a>
+            <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar me-2"></i>Báo cáo
+            </a>
+            <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+            </a>
+            <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action active">
+                <i class="fas fa-users me-2"></i>Quản lý khách hàng
+            </a>
+            <a href="{{ url_for('admin.admin_manage_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
+            </a>
+            <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
+                <i class="fas fa-store me-2"></i>Xem cửa hàng
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10 main-content bg-light">
+        <!-- Breadcrumb & Action -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-0">
+                    <li class="breadcrumb-item"><a href="{{ url_for('admin.admin_customers') }}">Khách hàng</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Chi tiết: #{{ customer.CustomerID }}</li>
+                </ol>
+            </nav>
+            <a href="{{ url_for('admin.admin_customers') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+
+        <div class="row g-4">
+            <!-- Customer Card -->
+            <div class="col-lg-4">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-body text-center p-4">
+                        <div class="avatar-lg bg-primary text-white rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3"
+                            style="width: 80px; height: 80px; font-size: 2rem;">
+                            {{ customer.FullName[:1].upper() }}
+                        </div>
+                        <h4 class="fw-bold mb-1">{{ customer.FullName }}</h4>
+                        <p class="text-muted mb-3">{{ customer.Email }}</p>
+
+                        <div
+                            class="badge {% if customer.IsAdmin %}bg-danger{% else %}bg-info text-dark{% endif %} rounded-pill mb-4 px-3 py-2">
+                            {{ 'Administrator' if customer.IsAdmin else 'Khách hàng' }}
+                        </div>
+
+                        <hr>
+
+                        <div class="text-start mt-4">
+                            <div class="mb-3">
+                                <label class="text-muted small d-block">Số điện thoại</label>
+                                <span class="fw-medium">{{ customer.PhoneNumber or 'N/A' }}</span>
+                            </div>
+                            <div class="mb-3">
+                                <label class="text-muted small d-block">Địa chỉ</label>
+                                <span class="fw-medium">{{ customer.Address or 'Chưa cập nhật' }}</span>
+                            </div>
+                            <div class="mb-0">
+                                <label class="text-muted small d-block">Ngày đăng ký</label>
+                                <span class="fw-medium">{{ customer.CreatedAt.strftime('%d/%m/%Y %H:%M') if
+                                    customer.CreatedAt else 'N/A' }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats & Orders -->
+            <div class="col-lg-8">
+                <!-- Stats Row -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card stat-card bg-white h-100">
+                            <div class="card-body border-start border-primary border-4 rounded">
+                                <p class="text-muted small mb-1 uppercase fw-bold">Tổng đơn hàng</p>
+                                <h3 class="mb-0">{{ stats.totalorders }}</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card stat-card bg-white h-100">
+                            <div class="card-body border-start border-success border-4 rounded">
+                                <p class="text-muted small mb-1 uppercase fw-bold">Tổng chi tiêu</p>
+                                <h3 class="mb-0 text-success">{{ "{:,.0f}".format(stats.totalspent) }} VNĐ</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Orders Table -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 section-title">Lịch sử đơn hàng</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Mã đơn</th>
+                                        <th>Ngày đặt</th>
+                                        <th>Tổng tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th class="text-end pe-4">Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in orders %}
+                                    <tr>
+                                        <td class="ps-4">#{{ order.OrderID }}</td>
+                                        <td>{{ order.OrderDate.strftime('%d/%m/%Y') if order.OrderDate else 'N/A' }}
+                                        </td>
+                                        <td><strong>{{ "{:,.0f}".format(order.TotalAmount) }} VNĐ</strong></td>
+                                        <td>
+                                            {% if order.Status == 'Pending' %}
+                                            <span
+                                                class="badge bg-warning text-dark rounded-pill order-status-badge">Đang
+                                                xử lý</span>
+                                            {% elif order.Status == 'Confirmed' %}
+                                            <span class="badge bg-info text-dark rounded-pill order-status-badge">Đã xác
+                                                nhận</span>
+                                            {% elif order.Status == 'Shipping' %}
+                                            <span class="badge bg-primary rounded-pill order-status-badge">Đang
+                                                giao</span>
+                                            {% elif order.Status == 'Completed' %}
+                                            <span class="badge bg-success rounded-pill order-status-badge">Hoàn
+                                                thành</span>
+                                            {% elif order.Status == 'Cancelled' %}
+                                            <span class="badge bg-danger rounded-pill order-status-badge">Đã hủy</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary rounded-pill order-status-badge">{{
+                                                order.Status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end pe-4">
+                                            <a href="{{ url_for('admin.admin_order_detail', order_id=order.OrderID) }}"
+                                                class="btn btn-sm btn-outline-primary rounded-pill">Chi tiết</a>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4 text-muted">Chưa có đơn hàng nào.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Interactions -->
+            <div class="col-12">
+                <div class="card border-0 shadow-sm mt-2">
+                    <div class="card-header bg-white py-3 border-0">
+                        <h5 class="mb-0 section-title">Bình luận gần đây</h5>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="bg-light">
+                                    <tr>
+                                        <th class="ps-4">Sản phẩm</th>
+                                        <th>Nội dung</th>
+                                        <th>Phản hồi Admin</th>
+                                        <th>Thời gian</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for comment in comments %}
+                                    <tr>
+                                        <td class="ps-4">
+                                            <a href="{{ url_for('admin.admin_edit_product', product_id=comment.ProductID) }}"
+                                                class="text-decoration-none fw-medium">{{ comment.ProductName }}</a>
+                                        </td>
+                                        <td>{{ comment.Content }}</td>
+                                        <td>
+                                            {% if comment.AdminReply %}
+                                            <span class="text-success small"><i class="fas fa-reply me-1"></i>{{
+                                                comment.AdminReply }}</span>
+                                            {% else %}
+                                            <span class="text-muted small">Chưa phản hồi</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><small class="text-muted">{{ comment.CommentDate.strftime('%d/%m/%Y %H:%M')
+                                                if comment.CommentDate else 'N/A' }}</small></td>
+                                    </tr>
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">Chưa có bình luận nào.</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

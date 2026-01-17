@@ -25,7 +25,12 @@
             <div>
                 <h2 class="mb-3">{{ product.ProductName }}</h2>
                 <p class="text-muted mb-2">Danh mục: {{ product.CategoryName }}</p>
-                <h3 class="text-danger mb-4">{{ "{:,.0f}".format(product.Price) }} đ</h3>
+                <div class="d-flex align-items-center mb-4">
+                    <h3 class="text-danger mb-0 me-3">{{ "{:,.0f}".format(product.Price) }} đ</h3>
+                    {% if (product.OriginalPrice or 0) > product.Price %}
+                        <h5 class="text-muted mb-0"><del>{{ "{:,.0f}".format(product.OriginalPrice) }} đ</del></h5>
+                    {% endif %}
+                </div>
 
                 <form action="{{ url_for('cart.add_to_cart') }}" method="post" onsubmit="return validateVariantSelection();">
                     <input type="hidden" name="product_id" value="{{ product.ProductID }}">

@@ -180,22 +180,16 @@ def generate_random_email(full_name, index):
     clean_name = remove_accents(full_name).lower()
     parts = clean_name.split()
     
-    if len(parts) >= 3:
-        # e.g. "nguyen van anh" -> "anh.nv" or "nguyen.anh"
-        variants = [
-            f"{parts[-1]}.{parts[0]}",
-            f"{parts[-1]}{parts[0]}{random.randint(10, 99)}",
-            f"{parts[0]}.{parts[-1]}",
-            f"{parts[-1]}.{parts[1][0]}{parts[0][0]}"
-        ]
-    elif len(parts) == 2:
-        variants = [
-            f"{parts[1]}.{parts[0]}",
-            f"{parts[0]}.{parts[1]}",
-            f"{parts[1]}{parts[0]}{random.randint(10, 99)}"
-        ]
-    else:
-        variants = [f"{parts[0]}{index}"]
+    variants = [
+        f"{parts[-1]}.{parts[0]}{index}",
+        f"{parts[-1]}{parts[0]}{index}{random.randint(10, 99)}",
+        f"{parts[0]}.{parts[-1]}{index}",
+        f"{parts[-1]}.{parts[1][0]}{parts[0][0]}{index}"
+    ] if len(parts) >= 3 else [
+        f"{parts[1]}.{parts[0]}{index}",
+        f"{parts[0]}.{parts[1]}{index}",
+        f"{parts[1]}{parts[0]}{index}{random.randint(10, 99)}"
+    ] if len(parts) == 2 else [f"{parts[0]}{index}"]
 
     domain = random.choice(EMAIL_DOMAINS)
     prefix = random.choice(variants)
@@ -247,15 +241,22 @@ def main():
 
     # 5. Products (Restore 22 Original + Expand 18 = 40)
     sql_lines.append("\n-- 5. Products (40)")
-    sql_lines.append("INSERT INTO Products (ProductID, ProductName, Description, Price, CategoryID, CreatedAt, ImageURL) VALUES")
+    sql_lines.append("INSERT INTO Products (ProductID, ProductName, Description, Price, OriginalPrice, CategoryID, CreatedAt, ImageURL) VALUES")
     products_data = []
     # Add Original 22
     for op in ORIGINAL_PRODUCTS:
-        products_data.append(f"({op[0]}, '{op[1]}', '{op[2]}', {op[3]}, {op[4]}, CURRENT_TIMESTAMP, 'images/{op[0]}.jpg')")
+        # Randomly decide to have a discount for some products
+        original_price = 0
+        if random.random() < 0.4: # 40% chance of a discount
+            original_price = int(op[3] * random.uniform(1.1, 1.4) / 1000) * 1000 # Round to nearest 1000
+        products_data.append(f"({op[0]}, '{op[1]}', '{op[2]}', {op[3]}, {original_price}, {op[4]}, CURRENT_TIMESTAMP, 'images/{op[0]}.jpg')")
     
     # Add Expansion 18
     for i, pt in enumerate(PRODUCT_TEMPLATES, 23):
-        products_data.append(f"({i}, '{pt[1]}', '{pt[2]}', {pt[3]}, {pt[0]}, CURRENT_TIMESTAMP, 'images/{i}.jpg')")
+        original_price = 0
+        if random.random() < 0.4:
+            original_price = int(pt[3] * random.uniform(1.1, 1.4) / 1000) * 1000
+        products_data.append(f"({i}, '{pt[1]}', '{pt[2]}', {pt[3]}, {original_price}, {pt[0]}, CURRENT_TIMESTAMP, 'images/{i}.jpg')")
     
     sql_lines.append(",\n".join(products_data) + ";")
 

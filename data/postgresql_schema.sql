@@ -42,6 +42,7 @@ CREATE TABLE Products (
     ProductName VARCHAR(255) NOT NULL,
     Description TEXT NULL,
     Price DECIMAL(18,2) NOT NULL,
+    OriginalPrice DECIMAL(18,2) DEFAULT 0,
     CategoryID INT REFERENCES Categories(CategoryID),
     ImageURL VARCHAR(255) NULL,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -181,7 +182,8 @@ SELECT
     s.SizeName,
     cl.ColorName,
     pv.Quantity AS AvailableStock,
-    p.Price
+    p.Price,
+    p.OriginalPrice
 FROM 
     Products p
     JOIN Categories c ON p.CategoryID = c.CategoryID
@@ -198,12 +200,13 @@ SELECT
     SUM(od.Quantity) AS TotalSold,
     SUM(od.Quantity * od.Price) AS TotalRevenue,
     p.Price,
+    p.OriginalPrice,
     c.CategoryName
 FROM OrderDetails od
 JOIN ProductVariants pv ON od.VariantID = pv.VariantID
 JOIN Products p ON pv.ProductID = p.ProductID
 JOIN Categories c ON p.CategoryID = c.CategoryID
-GROUP BY p.ProductID, p.ProductName, p.Price, c.CategoryName
+GROUP BY p.ProductID, p.ProductName, p.Price, p.OriginalPrice, c.CategoryName
 ORDER BY TotalSold DESC
 LIMIT 10;
 
@@ -402,6 +405,7 @@ CREATE OR REPLACE FUNCTION sp_SearchProducts(
     ProductName VARCHAR(255),
     Description TEXT,
     Price DECIMAL(18,2),
+    OriginalPrice DECIMAL(18,2),
     CategoryID INT,
     CategoryName VARCHAR(100)
 ) AS $$
@@ -412,6 +416,7 @@ BEGIN
         p.ProductName,
         p.Description,
         p.Price,
+        p.OriginalPrice,
         c.CategoryID,
         c.CategoryName
     FROM 
@@ -554,6 +559,7 @@ CREATE OR REPLACE FUNCTION sp_AddProduct(
     p_ProductName VARCHAR(255),
     p_Description TEXT,
     p_Price DECIMAL(18,2),
+    p_OriginalPrice DECIMAL(18,2),
     p_CategoryID INT
 ) RETURNS INT AS $$
 DECLARE
@@ -563,8 +569,8 @@ BEGIN
         RAISE EXCEPTION 'Danh mục không tồn tại';
     END IF;
     
-    INSERT INTO Products (ProductName, Description, Price, CategoryID)
-    VALUES (p_ProductName, p_Description, p_Price, p_CategoryID)
+    INSERT INTO Products (ProductName, Description, Price, OriginalPrice, CategoryID)
+    VALUES (p_ProductName, p_Description, p_Price, p_OriginalPrice, p_CategoryID)
     RETURNING ProductID INTO v_ProductID;
     
     RETURN v_ProductID;

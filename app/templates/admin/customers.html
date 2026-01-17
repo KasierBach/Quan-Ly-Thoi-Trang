@@ -1,0 +1,356 @@
+{% extends 'base.html' %}
+
+{% block title %}Quản lý khách hàng - Fashion Store Admin{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .table-hover tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .search-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        margin-bottom: 30px;
+    }
+
+    .status-badge {
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 p-0">
+        <div class="list-group admin-sidebar">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+            </a>
+            <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Bình luận
+            </a>
+            <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar me-2"></i>Báo cáo
+            </a>
+            <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+            </a>
+            <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action active">
+                <i class="fas fa-users me-2"></i>Quản lý khách hàng
+            </a>
+            <a href="{{ url_for('admin.admin_manage_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
+            </a>
+            <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
+                <i class="fas fa-store me-2"></i>Xem cửa hàng
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10 main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Quản lý khách hàng</h2>
+            <div class="text-muted">Tổng cộng: <strong>{{ paging.total_records }}</strong> thành viên</div>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="search-section">
+            <form method="GET" action="{{ url_for('admin.admin_customers') }}" class="row g-3" id="filterForm">
+                <div class="col-md-5">
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control border-start-0"
+                            placeholder="Tìm theo tên, email..." value="{{ search }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select name="role" class="form-select" onchange="this.form.submit()">
+                        <option value="all" {% if role=='all' %}selected{% endif %}>Tất cả vai trò</option>
+                        <option value="admin" {% if role=='admin' %}selected{% endif %}>Chỉ Admin</option>
+                        <option value="customer" {% if role=='customer' %}selected{% endif %}>Chỉ Khách hàng</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="sort_by" class="form-select" onchange="this.form.submit()">
+                        <option value="newest" {% if sort_by=='newest' %}selected{% endif %}>Mới nhất</option>
+                        <option value="oldest" {% if sort_by=='oldest' %}selected{% endif %}>Cũ nhất</option>
+                        <option value="name_asc" {% if sort_by=='name_asc' %}selected{% endif %}>Tên A-Z</option>
+                        <option value="name_desc" {% if sort_by=='name_desc' %}selected{% endif %}>Tên Z-A</option>
+                    </select>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button class="btn btn-primary w-100" type="submit">Lọc</button>
+                </div>
+                {% if search or role != 'all' or sort_by != 'newest' %}
+                <div class="col-12 mt-2">
+                    <a href="{{ url_for('admin.admin_customers') }}" class="text-secondary small text-decoration-none">
+                        <i class="fas fa-times me-1"></i>Xóa tất cả bộ lọc
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Table Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted">
+                            <tr>
+                                <th class="ps-4">ID</th>
+                                <th>Họ tên</th>
+                                <th>Liên hệ</th>
+                                <th>Vai trò</th>
+                                <th>Ngày đăng ký</th>
+                                <th class="text-end pe-4">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for customer in customers %}
+                            <tr>
+                                <td class="ps-4 text-muted">#{{ customer.CustomerID }}</td>
+                                <td>
+                                    <div class="d-flex align-items-center">
+                                        <div class="avatar me-3 bg-secondary text-white rounded-circle d-flex align-items-center justify-content-center"
+                                            style="width: 35px; height: 35px;">
+                                            {{ customer.FullName[:1].upper() }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold">
+                                                <a href="{{ url_for('admin.admin_customer_detail', customer_id=customer.CustomerID) }}"
+                                                    class="text-decoration-underline text-dark hover-primary">
+                                                    {{ customer.FullName }}
+                                                </a>
+                                            </div>
+                                            <small class="text-muted">ID: {{ customer.CustomerID }}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div><i class="fas fa-envelope me-2 text-muted small"></i>{{ customer.Email }}</div>
+                                    <div class="small text-muted"><i class="fas fa-phone me-2 small"></i>{{
+                                        customer.PhoneNumber or 'N/A' }}</div>
+                                </td>
+                                <td>
+                                    {% if customer.IsAdmin %}
+                                    <span class="badge bg-danger rounded-pill status-badge">Administrator</span>
+                                    {% else %}
+                                    <span class="badge bg-info text-dark rounded-pill status-badge">Customer</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ customer.CreatedAt.strftime('%H:%M %d/%m/%Y') if customer.CreatedAt else
+                                        'N/A' }}</small>
+                                </td>
+                                <td class="text-end pe-4">
+                                    <a href="{{ url_for('admin.admin_customer_detail', customer_id=customer.CustomerID) }}"
+                                        class="btn btn-sm btn-outline-primary btn-icon me-1" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <button class="btn btn-sm btn-outline-danger btn-icon btn-delete"
+                                        data-id="{{ customer.CustomerID }}" data-name="{{ customer.FullName }}" {% if
+                                        customer.IsAdmin %}disabled{% endif %} title="Xóa khách hàng">
+                                        <i class="fas fa-trash-alt"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <div class="text-muted mb-3">
+                                        <i class="fas fa-user-slash fa-3x"></i>
+                                    </div>
+                                    <p>Không tìm thấy khách hàng nào khớp với tìm kiếm.</p>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Advanced Pagination -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body py-3">
+                <div class="row align-items-center">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <span class="text-muted small">
+                            Trang {{ paging.current_page }} / {{ paging.total_pages }}
+                            (Hiển thị {{ paging.start_index }} - {{ paging.end_index }} / {{ paging.total_records }} kết
+                            quả)
+                        </span>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-3">
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="mb-0 small text-muted">Tới trang:</label>
+                                <input type="number" id="pageJump" class="form-control form-control-sm text-center"
+                                    style="width: 60px;" value="{{ paging.current_page }}" min="1"
+                                    max="{{ paging.total_pages }}">
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;">
+                                    {% for val in [10, 20, 50, 100] %}
+                                    <option value="{{ val }}" {% if paging.per_page==val %}selected{% endif %}>{{ val }}
+                                        dòng</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination pagination-sm mb-0">
+                                    <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
+                                        <a class="page-link"
+                                            href="{{ url_for('admin.admin_customers', page=paging.current_page-1, per_page=paging.per_page, search=search, role=role, sort_by=sort_by) }}">Trước</a>
+                                    </li>
+                                    <li
+                                        class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
+                                        <a class="page-link"
+                                            href="{{ url_for('admin.admin_customers', page=paging.current_page+1, per_page=paging.per_page, search=search, role=role, sort_by=sort_by) }}">Sau</a>
+                                    </li>
+                                </ul>
+                            </nav>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal xác nhận xóa -->
+<div class="modal fade" id="deleteConfirmModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Xác nhận xóa</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body py-4 text-center">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <p class="mb-0">Bạn có chắc chắn muốn xóa khách hàng <strong id="customerName"></strong>?</p>
+                <p class="text-danger small mt-2">Hành động này không thể hoàn tác và chỉ thực hiện được nếu khách hàng
+                    chưa có đơn hàng/bình luận.</p>
+            </div>
+            <div class="modal-footer border-0 pt-0">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger px-4" id="confirmDeleteBtn">Xóa ngay</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        let customerIdToDelete = null;
+
+        // Xử lý nút Xóa
+        document.querySelectorAll('.btn-delete').forEach(btn => {
+            btn.addEventListener('click', function () {
+                customerIdToDelete = this.dataset.id;
+                document.getElementById('customerName').textContent = this.dataset.name;
+                deleteModal.show();
+            });
+        });
+
+        // Xác nhận xóa qua API
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function () {
+            if (!customerIdToDelete) return;
+
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang xử lý...';
+
+            fetch(`/admin/customers/delete/${customerIdToDelete}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        location.reload();
+                    } else {
+                        alert('Lỗi: ' + data.message);
+                        this.disabled = false;
+                        this.innerHTML = 'Xóa ngay';
+                        deleteModal.hide();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi kết nối server.');
+                    this.disabled = false;
+                    this.innerHTML = 'Xóa ngay';
+                });
+        });
+
+        // Pagination Handlers
+        document.getElementById('perPageSelect').addEventListener('change', function () {
+            let url = new URL(window.location.href);
+            url.searchParams.set('per_page', this.value);
+            url.searchParams.set('page', 1);
+            window.location.href = url.href;
+        });
+
+        document.getElementById('pageJump').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                let page = parseInt(this.value);
+                let maxPage = parseInt(this.getAttribute('max'));
+                if (isNaN(page) || page < 1) page = 1;
+                if (page > maxPage) page = maxPage;
+
+                let url = new URL(window.location.href);
+                url.searchParams.set('page', page);
+                window.location.href = url.href;
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -68,6 +68,9 @@
             <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
                 <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
             </a>
+            <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-users me-2"></i>Quản lý khách hàng
+            </a>
             <a href="{{ url_for('admin.admin_manage_products') }}"
                 class="list-group-item list-group-item-action active">
                 <i class="fas fa-box me-2"></i>Quản lý sản phẩm
@@ -104,9 +107,14 @@
                         <label for="product_name" class="form-label">Tên sản phẩm</label>
                         <input type="text" class="form-control" id="product_name" name="product_name" required>
                     </div>
-                    <div class="col-md-6">
-                        <label for="price" class="form-label">Giá</label>
+                    <div class="col-md-3">
+                        <label for="price" class="form-label">Giá bán hiện tại</label>
                         <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" required>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="original_price" class="form-label">Giá gốc (Ví dụ: 99.00)</label>
+                        <input type="number" step="0.01" min="0" class="form-control" id="original_price"
+                            name="original_price" placeholder="0">
                     </div>
                     <div class="col-12">
                         <label for="description" class="form-label">Mô tả</label>
@@ -138,6 +146,7 @@
                                 <th>Tên sản phẩm</th>
                                 <th>Danh mục</th>
                                 <th class="text-center">Biến thể</th>
+                                <th class="text-center">Giá</th>
                                 <th class="text-center">Tồn kho</th>
                                 <th class="text-end">Thao tác</th>
                             </tr>
@@ -150,6 +159,13 @@
                                 <td>{{ product.CategoryName }}</td>
                                 <td class="text-center">
                                     <span class="badge bg-info text-dark">{{ product.VariantCount or 0 }}</span>
+                                </td>
+                                <td class="text-center">
+                                    {% if (product.OriginalPrice or 0) > product.Price %}
+                                    <div class="text-muted small text-decoration-line-through">{{
+                                        "{:,.0f}".format(product.OriginalPrice) }}</div>
+                                    {% endif %}
+                                    <div class="fw-bold text-danger">{{ "{:,.0f}".format(product.Price) }}</div>
                                 </td>
                                 <td class="text-center">
                                     <span

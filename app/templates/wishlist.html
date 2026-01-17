@@ -25,7 +25,12 @@
                     <p class="card-text"><small class="text-muted">Đã thêm vào: {{ item.AddedDate.strftime('%d/%m/%Y')
                             }}</small></p>
                     <div class="d-flex justify-content-between align-items-center">
-                        <span class="text-danger fw-bold">{{ "{:,.0f}".format(item.Price) }} đ</span>
+                        <div class="d-flex flex-column mb-2">
+                            {% if (item.OriginalPrice or 0) > item.Price %}
+                            <del class="text-muted small">{{ "{:,.0f}".format(item.OriginalPrice) }} đ</del>
+                            {% endif %}
+                            <span class="text-danger fw-bold h5 mb-0">{{ "{:,.0f}".format(item.Price) }} đ</span>
+                        </div>
                         <div>
                             <a href="{{ url_for('product.product_detail', product_id=item.ProductID) }}"
                                 class="btn btn-sm btn-outline-primary">

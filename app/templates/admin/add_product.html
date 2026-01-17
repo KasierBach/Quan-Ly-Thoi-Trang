@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Thêm sản phẩm mới - Fashion Store Admin{% endblock %}
+
+{% block styles %}
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .form-section {
+        background: #fff;
+        padding: 30px;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex">
+    <!-- Sidebar -->
+    <div class="col-md-3 col-lg-2 p-0">
+        <div class="list-group admin-sidebar">
+            <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-box me-2"></i>Sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
+            </a>
+            <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Bình luận
+            </a>
+            <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-bar me-2"></i>Báo cáo
+            </a>
+            <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+            </a>
+            <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-users me-2"></i>Quản lý khách hàng
+            </a>
+            <a href="{{ url_for('admin.admin_manage_products') }}"
+                class="list-group-item list-group-item-action active">
+                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+            </a>
+            <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
+            </a>
+            <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
+                <i class="fas fa-store me-2"></i>Xem cửa hàng
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="col-md-9 col-lg-10 main-content">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0">Thêm sản phẩm mới</h2>
+            <a href="{{ url_for('admin.admin_manage_products') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Quay lại
+            </a>
+        </div>
+
+        <div class="form-section">
+            <form method="POST" action="{{ url_for('admin.admin_add_product') }}">
+                <div class="row g-4">
+                    <div class="col-md-12">
+                        <label for="product_name" class="form-label fw-bold">Tên sản phẩm</label>
+                        <input type="text" class="form-control" id="product_name" name="product_name"
+                            placeholder="Nhập tên sản phẩm..." required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="price" class="form-label fw-bold">Giá bán hiện tại (đã giảm)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" class="form-control" id="price" name="price"
+                                required>
+                            <span class="input-group-text">VNĐ</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label for="original_price" class="form-label fw-bold">Giá gốc (chưa giảm - gạch ngang)</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" min="0" class="form-control" id="original_price"
+                                name="original_price" placeholder="0">
+                            <span class="input-group-text">VNĐ</span>
+                        </div>
+                        <small class="text-muted">Để 0 nếu không có giá giảm.</small>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label for="category_id" class="form-label fw-bold">Danh mục</label>
+                        <select class="form-select" id="category_id" name="category_id" required>
+                            <option value="" selected disabled>Chọn danh mục sản phẩm</option>
+                            {% for category in categories %}
+                            <option value="{{ category.CategoryID }}">{{ category.CategoryName }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="col-md-12">
+                        <label for="description" class="form-label fw-bold">Mô tả sản phẩm</label>
+                        <textarea class="form-control" id="description" name="description" rows="5"
+                            placeholder="Mô tả ngắn gọn về sản phẩm..."></textarea>
+                    </div>
+
+                    <div class="col-12 mt-4 text-end">
+                        <button type="reset" class="btn btn-light px-4 me-2">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary px-5">
+                            <i class="fas fa-plus me-1"></i> Tạo sản phẩm
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

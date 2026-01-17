@@ -237,13 +237,14 @@
                                 {% if product.Price is not none %}
                                 <span class="h6 text-primary fw-bold mb-0 price">{{ "{:,.0f}".format(product.Price)
                                     }}đ</span>
-                                {% if loop.index <= 5 %} <br>
-                                    <small class="text-muted price-old">{{ "{:,.0f}".format(product.Price|float * 1.2)
-                                        }}đ</small>
-                                    {% endif %}
-                                    {% else %}
-                                    <span class="h6 text-primary fw-bold mb-0 price">Liên hệ</span>
-                                    {% endif %}
+                                {% if (product.OriginalPrice or 0) > product.Price %}
+                                <small class="text-muted price-old"><del>{{ "{:,.0f}".format(product.OriginalPrice)
+                                        }}đ</del></small>
+                                <br>
+                                {% endif %}
+                                {% else %}
+                                <span class="h6 text-primary fw-bold mb-0 price">Liên hệ</span>
+                                {% endif %}
                             </div>
                             <a href="{{ url_for('product.product_detail', product_id=product.ProductID) }}"
                                 class="btn btn-gradient-green btn-sm btn-rounded">

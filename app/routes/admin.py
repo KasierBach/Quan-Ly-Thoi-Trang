@@ -136,6 +136,7 @@ def admin_add_product():
         product_name = request.form.get('product_name')
         description = request.form.get('description')
         price = request.form.get('price', type=float)
+        original_price = request.form.get('original_price', 0, type=float)
         category_id = request.form.get('category_id', type=int)
         
         if not product_name or not price or not category_id:
@@ -145,7 +146,7 @@ def admin_add_product():
         conn = get_db_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s) AS ProductID', (product_name, description, price, category_id))
+            cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s, %s) AS ProductID', (product_name, description, price, category_id, original_price))
             result = cursor.fetchone()
             product_id = result.ProductID
             conn.commit()
@@ -176,6 +177,7 @@ def admin_edit_product(product_id):
         product_name = request.form.get('product_name')
         description = request.form.get('description')
         price = request.form.get('price', type=float)
+        original_price = request.form.get('original_price', 0, type=float)
         category_id = request.form.get('category_id', type=int)
         
         if not product_name or not price or not category_id:
@@ -185,9 +187,9 @@ def admin_edit_product(product_id):
         try:
             image_url = request.form.get('image_url', '').strip()
             cursor.execute('''
-                UPDATE Products SET ProductName=%s, Description=%s, Price=%s, CategoryID=%s, ImageURL=%s
+                UPDATE Products SET ProductName=%s, Description=%s, Price=%s, OriginalPrice=%s, CategoryID=%s, ImageURL=%s
                 WHERE ProductID=%s
-            ''', (product_name, description, price, category_id, image_url, product_id))
+            ''', (product_name, description, price, original_price, category_id, image_url, product_id))
             conn.commit()
             flash('Cập nhật thành công!', 'success')
         except psycopg2.Error as e:
@@ -683,6 +685,7 @@ def admin_manage_products():
         product_name = request.form.get('product_name')
         description = request.form.get('description')
         price = request.form.get('price', type=float)
+        original_price = request.form.get('original_price', 0, type=float)
         category_id = request.form.get('category_id', type=int)
         
         if not product_name or not price or not category_id:
@@ -691,7 +694,7 @@ def admin_manage_products():
             return redirect(url_for('admin.admin_manage_products'))
         
         try:
-            cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s) AS ProductID', (product_name, description, price, category_id))
+            cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s, %s) AS ProductID', (product_name, description, price, category_id, original_price))
             conn.commit()
             flash('Thêm thành công', 'success')
         except Exception as e:
@@ -859,3 +862,168 @@ def admin_delete_size(size_id):
         flash(f'Lỗi: {str(e)}', 'error')
     finally: conn.close()
     return redirect(request.referrer)
+
+@admin_bp.route('/admin/customers')
+def admin_customers():
+    if not is_admin(): 
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('main.home'))
+    
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '')
+    role = request.args.get('role', 'all')
+    sort_by = request.args.get('sort_by', 'newest')
+    
+    if page < 1: page = 1
+    if per_page not in [10, 20, 50, 100]: per_page = 20
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # Base query
+    query = "SELECT * FROM Customers"
+    count_query = "SELECT COUNT(*) FROM Customers"
+    conditions = []
+    params = []
+    
+    if search:
+        conditions.append("(FullName ILIKE %s OR Email ILIKE %s OR PhoneNumber ILIKE %s)")
+        search_param = f"%{search}%"
+        params.extend([search_param, search_param, search_param])
+    
+    if role == 'admin':
+        conditions.append("IsAdmin = TRUE")
+    elif role == 'customer':
+        conditions.append("IsAdmin = FALSE")
+
+    where_clause = ""
+    if conditions:
+        where_clause = " WHERE " + " AND ".join(conditions)
+        query += where_clause
+        count_query += where_clause
+    
+    cursor.execute(count_query, params)
+    total_records = cursor.fetchone()[0]
+    
+    # Sorting logic
+    sort_query = "CreatedAt DESC"
+    if sort_by == 'oldest': sort_query = "CreatedAt ASC"
+    elif sort_by == 'name_asc': sort_query = "FullName ASC"
+    elif sort_by == 'name_desc': sort_query = "FullName DESC"
+
+    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
+    if page > total_pages: page = total_pages
+    offset = (page - 1) * per_page
+    
+    query += f" ORDER BY {sort_query} LIMIT %s OFFSET %s"
+    final_params = params + [per_page, offset]
+    
+    cursor.execute(query, final_params)
+    customers = cursor.fetchall()
+    
+    conn.close()
+    
+    paging_data = {
+        'total_records': total_records,
+        'total_pages': total_pages,
+        'current_page': page,
+        'per_page': per_page,
+        'start_index': offset + 1 if total_records > 0 else 0,
+        'end_index': min(offset + per_page, total_records)
+    }
+    
+    return render_template('admin/customers.html', customers=customers, paging=paging_data, 
+                           search=search, role=role, sort_by=sort_by)
+
+@admin_bp.route('/admin/customers/delete/<int:customer_id>', methods=['POST'])
+def admin_delete_customer(customer_id):
+    if not is_admin(): return jsonify({'success': False, 'message': 'Không có quyền thực hiện'})
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        # Check if customer is admin
+        cursor.execute("SELECT IsAdmin FROM Customers WHERE CustomerID = %s", (customer_id,))
+        cust = cursor.fetchone()
+        if not cust:
+            return jsonify({'success': False, 'message': 'Không tìm thấy khách hàng'})
+        
+        if cust.isadmin:
+            return jsonify({'success': False, 'message': 'Không thể xóa tài khoản Admin'})
+
+        # Check dependencies
+        cursor.execute("SELECT COUNT(*) FROM Orders WHERE CustomerID = %s", (customer_id,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({'success': False, 'message': 'Khách hàng đã có đơn hàng, không thể xóa.'})
+            
+        cursor.execute("SELECT COUNT(*) FROM ProductComments WHERE CustomerID = %s", (customer_id,))
+        if cursor.fetchone()[0] > 0:
+            return jsonify({'success': False, 'message': 'Khách hàng đã có bình luận, không thể xóa.'})
+
+        # Safe to delete related minor stuff
+        cursor.execute("DELETE FROM Wishlist WHERE CustomerID = %s", (customer_id,))
+        cursor.execute("DELETE FROM PasswordResetTokens WHERE CustomerID = %s", (customer_id,))
+        cursor.execute("DELETE FROM Customers WHERE CustomerID = %s", (customer_id,))
+        
+        conn.commit()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'message': str(e)})
+    finally:
+        conn.close()
+
+@admin_bp.route('/admin/customers/<int:customer_id>')
+def admin_customer_detail(customer_id):
+    if not is_admin(): 
+        flash('Bạn không có quyền truy cập trang này', 'error')
+        return redirect(url_for('main.home'))
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    # 1. Fetch customer info
+    cursor.execute("SELECT * FROM Customers WHERE CustomerID = %s", (customer_id,))
+    customer = cursor.fetchone()
+    if not customer:
+        flash('Không tìm thấy khách hàng', 'error')
+        conn.close()
+        return redirect(url_for('admin.admin_customers'))
+    
+    # 2. Fetch statistics (Total orders, Total spent)
+    cursor.execute("""
+        SELECT 
+            COUNT(OrderID) as TotalOrders,
+            COALESCE(SUM(TotalAmount), 0) as TotalSpent
+        FROM Orders 
+        WHERE CustomerID = %s AND Status != 'Cancelled'
+    """, (customer_id,))
+    stats = cursor.fetchone()
+    
+    # 3. Fetch recent orders
+    cursor.execute("""
+        SELECT * FROM Orders 
+        WHERE CustomerID = %s 
+        ORDER BY OrderDate DESC 
+        LIMIT 50
+    """, (customer_id,))
+    orders = cursor.fetchall()
+    
+    # 4. Fetch recent comments
+    cursor.execute("""
+        SELECT pc.*, p.ProductName 
+        FROM ProductComments pc
+        JOIN Products p ON pc.ProductID = p.ProductID
+        WHERE pc.CustomerID = %s 
+        ORDER BY pc.CommentDate DESC
+    """, (customer_id,))
+    comments = cursor.fetchall()
+
+    conn.close()
+    
+    return render_template('admin/customer_detail.html', 
+                           customer=customer, 
+                           stats=stats, 
+                           orders=orders,
+                           comments=comments)
