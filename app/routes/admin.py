@@ -459,7 +459,6 @@ def admin_send_report_email():
             print(f"Sending email via Resend API to {recipient}...")
             resend.api_key = resend_key
             sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
-            # ...
             
             # Resend requires base64 for attachments
             attachment_b64 = base64.b64encode(csv_data.encode('utf-8')).decode('utf-8')
