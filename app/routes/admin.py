@@ -410,7 +410,15 @@ def admin_send_report_email():
     
     if not recipient:
         return jsonify({'success': False, 'message': 'Email recipient is required'}), 400
+    
+    # Check if mail credentials are set
+    if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
+        return jsonify({
+            'success': False, 
+            'message': 'Hệ thống chưa cấu hình Email (MAIL_USERNAME/MAIL_PASSWORD). Vui lòng cấu hình trên Render Dashboard.'
+        }), 500
         
+    conn = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -448,11 +456,13 @@ def admin_send_report_email():
         # Access mail instance initialized in app factory
         current_app.mail.send(msg)
         
-        conn.close()
         return jsonify({'success': True, 'message': f'Đã gửi báo cáo đến {recipient} thành công!'})
     except Exception as e:
         print(f"Error sending email: {str(e)}")
         return jsonify({'success': False, 'message': f'Lỗi khi gửi email: {str(e)}'}), 500
+    finally:
+        if conn:
+            conn.close()
 
 @admin_bp.route('/admin/api/search_pixabay', methods=['GET'])
 def admin_search_pixabay():
