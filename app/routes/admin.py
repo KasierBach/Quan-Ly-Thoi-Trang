@@ -9,6 +9,7 @@ import requests
 import os
 import psycopg2
 import socket
+import resend
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -412,11 +413,15 @@ def admin_send_report_email():
     if not recipient:
         return jsonify({'success': False, 'message': 'Email recipient is required'}), 400
     
-    # Check if mail credentials are set
-    if not current_app.config.get('MAIL_USERNAME') or not current_app.config.get('MAIL_PASSWORD'):
+    # Check if a mail provider is configured
+    resend_key = current_app.config.get('RESEND_API_KEY')
+    mail_user = current_app.config.get('MAIL_USERNAME')
+    mail_pass = current_app.config.get('MAIL_PASSWORD')
+    
+    if not resend_key and (not mail_user or not mail_pass):
         return jsonify({
             'success': False, 
-            'message': 'Hệ thống chưa cấu hình Email (MAIL_USERNAME/MAIL_PASSWORD). Vui lòng cấu hình trên Render Dashboard.'
+            'message': 'Hệ thống chưa cấu hình Email (RESEND_API_KEY hoặc SMTP credentials).'
         }), 500
         
     conn = None
@@ -431,6 +436,7 @@ def admin_send_report_email():
         # Create CSV content
         import io
         import csv
+        import base64
         
         output = io.StringIO()
         # Add UTF-8 BOM for Excel
@@ -443,25 +449,46 @@ def admin_send_report_email():
             writer.writerow([date_str, row.OrderCount, float(row.DailyRevenue) if row.DailyRevenue else 0])
             
         csv_data = output.getvalue()
-        
-        # Prepare email
-        msg = Message(
-            subject=f"Báo cáo doanh thu FashionStore ({start_date} - {end_date})",
-            recipients=[recipient],
-            body=f"Xin chào,\n\nDưới đây là báo cáo doanh thu từ ngày {start_date} đến ngày {end_date}.\n\nLời nhắn từ quản trị viên: {user_message}\n\nTrân trọng,\nFashionStore Admin Team"
-        )
-        
         filename = f"bao_cao_doanh_thu_{start_date}_den_{end_date}.csv"
-        msg.attach(filename, "text/csv", csv_data)
-        
-        # Access mail instance and send with timeout
-        # Using a socket timeout locally for this request
-        original_timeout = socket.getdefaulttimeout()
-        try:
-            socket.setdefaulttimeout(15) # 15 seconds timeout for mail connect
-            current_app.mail.send(msg)
-        finally:
-            socket.setdefaulttimeout(original_timeout)
+
+        subject = f"Báo cáo doanh thu FashionStore ({start_date} - {end_date})"
+        body_content = f"Xin chào,\n\nDưới đây là báo cáo doanh thu từ ngày {start_date} đến ngày {end_date}.\n\nLời nhắn từ quản trị viên: {user_message}\n\nTrân trọng,\nFashionStore Admin Team"
+
+        # Try Resend API first (Preferred for Render)
+        if resend_key:
+            resend.api_key = resend_key
+            sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
+            
+            # Resend requires base64 for attachments
+            attachment_b64 = base64.b64encode(csv_data.encode('utf-8')).decode('utf-8')
+            
+            resend.Emails.send({
+                "from": f"FashionStore Admin <{sender}>",
+                "to": recipient,
+                "subject": subject,
+                "text": body_content,
+                "attachments": [
+                    {
+                        "filename": filename,
+                        "content": attachment_b64,
+                    }
+                ]
+            })
+        else:
+            # Fallback to Flask-Mail (SMTP)
+            msg = Message(
+                subject=subject,
+                recipients=[recipient],
+                body=body_content
+            )
+            msg.attach(filename, "text/csv", csv_data)
+            
+            original_timeout = socket.getdefaulttimeout()
+            try:
+                socket.setdefaulttimeout(15)
+                current_app.mail.send(msg)
+            finally:
+                socket.setdefaulttimeout(original_timeout)
         
         return jsonify({'success': True, 'message': f'Đã gửi báo cáo đến {recipient} thành công!'})
     except Exception as e:
