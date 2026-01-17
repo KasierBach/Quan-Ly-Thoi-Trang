@@ -42,5 +42,8 @@ venv.bak/
 *.db
 data/*.db
 
+# Temp Files
+products_list.txt
+
 # Logs
 *.log

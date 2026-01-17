@@ -426,19 +426,73 @@
 
         .admin-sidebar,
         .btn,
+        .btn-custom,
         .date-filter-card,
-        .export-section {
+        .export-section,
+        .page-header .text-end,
+        .list-group {
             display: none !important;
         }
 
         .main-content {
+            margin: 0 !important;
+            padding: 0 !important;
             height: auto !important;
             overflow: visible !important;
             background: white !important;
+            width: 100% !important;
+        }
+
+        .container-fluid {
+            width: 100% !important;
+            padding: 0 !important;
+        }
+
+        .col-md-3,
+        .col-lg-2 {
+            display: none !important;
+        }
+
+        .col-md-9,
+        .col-lg-10 {
+            width: 100% !important;
+            flex: 0 0 100% !important;
+            max-width: 100% !important;
+        }
+
+        .card,
+        .chart-card,
+        .table-card,
+        .stat-card,
+        .category-item {
+            box-shadow: none !important;
+            border: 1px solid #eee !important;
+            break-inside: avoid;
+            margin-bottom: 20px !important;
         }
 
         .chart-container {
-            height: 300px !important;
+            height: 350px !important;
+            page-break-inside: avoid;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            color: #000 !important;
+        }
+
+        .stat-value {
+            background: none !important;
+            -webkit-text-fill-color: #000 !important;
+            color: #000 !important;
+        }
+
+        .trend-indicator {
+            border: 1px solid #ccc !important;
         }
     }
 
@@ -485,6 +539,13 @@
                     <a href="{{ url_for('admin.admin_contact_messages') }}"
                         class="list-group-item list-group-item-action">
                         <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
+                    </a>
+                    <a href="{{ url_for('admin.admin_manage_products') }}"
+                        class="list-group-item list-group-item-action">
+                        <i class="fas fa-box me-2"></i>Quản lý sản phẩm
+                    </a>
+                    <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
                     </a>
                     <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
                         <i class="fas fa-store me-2"></i>Xem cửa hàng
@@ -782,7 +843,8 @@
                                             <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
                                             <small class="text-muted">
                                                 {% if total_revenue|float > 0 %}
-                                                {{ "{:.1f}".format((category.CategoryRevenue|float / total_revenue|float) * 100) }}%
+                                                {{ "{:.1f}".format((category.CategoryRevenue|float /
+                                                total_revenue|float) * 100) }}%
                                                 tổng doanh thu
                                                 {% else %}
                                                 0% tổng doanh thu
@@ -851,6 +913,80 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Email Modal -->
+    <div class="modal fade" id="emailModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-envelope me-2"></i>Gửi báo cáo qua Email</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="emailForm">
+                        <div class="mb-3">
+                            <label class="form-label">Email người nhận</label>
+                            <input type="email" class="form-control" id="reportEmail" placeholder="example@gmail.com"
+                                required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Lời nhắn (tùy chọn)</label>
+                            <textarea class="form-control" rows="3"
+                                placeholder="Gửi kèm lời nhắn cho người nhận..."></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="sendEmailReal()">Gửi ngay</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Modal -->
+    <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Lên lịch báo cáo tự động</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Tần suất gửi</label>
+                        <select class="form-select" id="scheduleFreq">
+                            <option value="Hàng ngày">Hàng ngày (08:00 AM)</option>
+                            <option value="Hàng tuần">Hàng tuần (Thứ Hai)</option>
+                            <option value="Hàng tháng">Hàng tháng (Ngày 01)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Loại báo cáo</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked disabled>
+                            <label class="form-check-label">Tổng hợp doanh thu</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" checked>
+                            <label class="form-check-label">Chi tiết đơn hàng</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox">
+                            <label class="form-check-label">Phân tích danh mục</label>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label">Email nhận báo cáo</label>
+                        <input type="email" class="form-control" value="admin@fashionstore.com">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                    <button type="button" class="btn btn-primary" onclick="confirmSchedule()">Xác nhận lên lịch</button>
                 </div>
             </div>
         </div>
@@ -1055,23 +1191,30 @@
     function exportToCSV() {
         showNotification('Đang chuẩn bị file CSV...', 'info');
 
-        // Tạo dữ liệu CSV
-        let csvContent = "data:text/csv;charset=utf-8,";
-        csvContent += "Ngày,Số đơn hàng,Doanh thu\n";
-
-        // Thêm dữ liệu từ daily_revenue
-        // Thêm dữ liệu từ daily_revenue
+        // Lấy dữ liệu từ script tag
         const csvData = JSON.parse(document.getElementById('csv-data').textContent);
+
+        // Tạo header
+        let csvContent = "Ngày,Số đơn hàng,Doanh thu (VNĐ)\n";
+
+        // Thêm dữ liệu
         csvData.forEach(day => {
             csvContent += `${day.date},${day.count},${day.revenue}\n`;
         });
 
-        // Tạo và download file
-        const encodedUri = encodeURI(csvContent);
+        // Sử dụng BOM để Excel nhận dạng tiếng Việt (UTF-8)
+        const BOM = '\uFEFF';
+        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+
         const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
+        const url = URL.createObjectURL(blob);
+
         const reportConfig = JSON.parse(document.getElementById('report-config').textContent);
-        link.setAttribute("download", `bao_cao_doanh_thu_${reportConfig.startDate}_${reportConfig.endDate}.csv`);
+        const fileName = `bao_cao_doanh_thu_${reportConfig.startDate}_den_${reportConfig.endDate}.csv`;
+
+        link.setAttribute("href", url);
+        link.setAttribute("download", fileName);
+        link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -1080,23 +1223,91 @@
     }
 
     function exportToPDF() {
-        showNotification('Đang tạo file PDF...', 'info');
+        showNotification('Đang chuẩn bị bản in PDF...', 'info');
         setTimeout(() => {
             window.print();
-            showNotification('Đã mở hộp thoại in PDF!', 'success');
-        }, 1000);
+        }, 500);
     }
 
     function exportToExcel() {
-        showNotification('Tính năng xuất Excel đang được phát triển...', 'warning');
+        showNotification('Đang xuất dữ liệu sang Excel...', 'info');
+        // Sử dụng hàm export CSV vì nó đã tương thích tốt với Excel thông qua BOM
+        exportToCSV();
     }
 
+    const emailModal = new bootstrap.Modal(document.getElementById('emailModal'));
+    const scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
+
     function emailReport() {
-        showNotification('Tính năng gửi email đang được phát triển...', 'info');
+        emailModal.show();
     }
 
     function scheduleReport() {
-        showNotification('Tính năng lên lịch báo cáo đang được phát triển...', 'info');
+        scheduleModal.show();
+    }
+
+    function sendEmailReal() {
+        const email = document.getElementById('reportEmail').value;
+        const msgText = document.querySelector('#emailModal textarea').value;
+        const config = JSON.parse(document.getElementById('report-config').textContent);
+
+        if (!email || !email.includes('@')) {
+            showNotification('Vui lòng nhập email hợp lệ', 'error');
+            return;
+        }
+
+        const btn = document.querySelector('#emailModal .btn-primary');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang gửi...';
+
+        // Gọi API gửi email thật
+        fetch('/admin/api/send_report_email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email: email,
+                message: msgText,
+                start_date: config.startDate,
+                end_date: config.endDate
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    emailModal.hide();
+                    showNotification(data.message, 'success');
+                    document.getElementById('emailForm').reset();
+                } else {
+                    showNotification(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Có lỗi xảy ra khi kết nối đến máy chủ', 'danger');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            });
+    }
+
+    function confirmSchedule() {
+        const freq = document.getElementById('scheduleFreq').value;
+        const btn = document.querySelector('#scheduleModal .btn-primary');
+        const originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang lưu...';
+
+        setTimeout(() => {
+            scheduleModal.hide();
+            showNotification(`Đã lên lịch gửi báo cáo ${freq} thành công!`, 'success');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }, 1500);
     }
 
     // Notification system

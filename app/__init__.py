@@ -1,6 +1,7 @@
 from flask import Flask, session, render_template, request, jsonify
 from .config import Config
 from .database import db
+from flask_mail import Mail
 from .utils import DecimalEncoder, resolve_image
 import os
 
@@ -10,6 +11,8 @@ def create_app(config_class=Config):
     
     # Initialize extensions
     db.init_app(app)
+    mail = Mail(app)
+    app.mail = mail # Store in app for access in routes
     
     # Register JSON encoder
     app.json_encoder = DecimalEncoder

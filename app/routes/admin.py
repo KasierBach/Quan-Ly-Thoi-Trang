@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, jsonify
+from flask_mail import Message
 from app.database import get_db_connection
 from werkzeug.utils import secure_filename
 from app.utils import resolve_image
@@ -394,8 +395,64 @@ def admin_reports():
                            category_names=json.dumps(cat_names), 
                            category_revenues=json.dumps(cat_revs),
                            total_revenue=total_rev,
-                           total_orders=total_ord,
+                            total_orders=total_ord,
                            new_customers=new_customers_range)
+
+@admin_bp.route('/admin/api/send_report_email', methods=['POST'])
+def admin_send_report_email():
+    if not is_admin(): return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    
+    data = request.get_json()
+    recipient = data.get('email')
+    user_message = data.get('message', '')
+    start_date = data.get('start_date')
+    end_date = data.get('end_date')
+    
+    if not recipient:
+        return jsonify({'success': False, 'message': 'Email recipient is required'}), 400
+        
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # Fetch data similar to admin_reports
+        cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
+        daily_revenue = cursor.fetchall()
+        
+        # Create CSV content
+        import io
+        import csv
+        
+        output = io.StringIO()
+        # Add UTF-8 BOM for Excel
+        output.write('\ufeff')
+        writer = csv.writer(output)
+        writer.writerow(['Ngày', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
+        
+        for row in daily_revenue:
+            date_str = row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else 'N/A'
+            writer.writerow([date_str, row.OrderCount, float(row.DailyRevenue) if row.DailyRevenue else 0])
+            
+        csv_data = output.getvalue()
+        
+        # Prepare email
+        msg = Message(
+            subject=f"Báo cáo doanh thu FashionStore ({start_date} - {end_date})",
+            recipients=[recipient],
+            body=f"Xin chào,\n\nDưới đây là báo cáo doanh thu từ ngày {start_date} đến ngày {end_date}.\n\nLời nhắn từ quản trị viên: {user_message}\n\nTrân trọng,\nFashionStore Admin Team"
+        )
+        
+        filename = f"bao_cao_doanh_thu_{start_date}_den_{end_date}.csv"
+        msg.attach(filename, "text/csv", csv_data)
+        
+        # Access mail instance initialized in app factory
+        current_app.mail.send(msg)
+        
+        conn.close()
+        return jsonify({'success': True, 'message': f'Đã gửi báo cáo đến {recipient} thành công!'})
+    except Exception as e:
+        print(f"Error sending email: {str(e)}")
+        return jsonify({'success': False, 'message': f'Lỗi khi gửi email: {str(e)}'}), 500
 
 @admin_bp.route('/admin/api/search_pixabay', methods=['GET'])
 def admin_search_pixabay():
@@ -645,6 +702,18 @@ def admin_manage_products():
     
     return render_template('admin/manage_products.html', products=products, categories=categories, paging=paging_data, sort_by=sort_by)
 
+@admin_bp.route('/admin/attributes')
+def admin_attributes():
+    if not is_admin(): return redirect(url_for('main.home'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM Colors ORDER BY ColorName')
+    colors = cursor.fetchall()
+    cursor.execute('SELECT * FROM Sizes ORDER BY SizeName')
+    sizes = cursor.fetchall()
+    conn.close()
+    return render_template('admin/attributes.html', colors=colors, sizes=sizes)
+
 @admin_bp.route('/admin/products/delete/<int:product_id>', methods=['POST'])
 def admin_delete_product(product_id):
     if not is_admin(): return redirect(url_for('main.home'))
@@ -691,5 +760,56 @@ def admin_add_size():
         conn.commit()
         flash('Thêm kích thước thành công', 'success')
     except Exception as e: val = e
+    finally: conn.close()
+    return redirect(request.referrer)
+
+@admin_bp.route('/admin/variants/delete/<int:variant_id>', methods=['POST'])
+def admin_delete_variant(variant_id):
+    if not is_admin(): return redirect(url_for('main.home'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM ProductVariants WHERE VariantID = %s', (variant_id,))
+        conn.commit()
+        flash('Đã xóa biến thể thành công', 'success')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Lỗi: {str(e)}', 'error')
+    finally: conn.close()
+    return redirect(request.referrer)
+
+@admin_bp.route('/admin/colors/delete/<int:color_id>', methods=['POST'])
+def admin_delete_color(color_id):
+    if not is_admin(): return redirect(url_for('main.home'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM Colors WHERE ColorID = %s', (color_id,))
+        conn.commit()
+        flash('Đã xóa màu thành công', 'success')
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        flash('Không thể xóa màu này vì đang được sử dụng trong sản phẩm.', 'error')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Lỗi: {str(e)}', 'error')
+    finally: conn.close()
+    return redirect(request.referrer)
+
+@admin_bp.route('/admin/sizes/delete/<int:size_id>', methods=['POST'])
+def admin_delete_size(size_id):
+    if not is_admin(): return redirect(url_for('main.home'))
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('DELETE FROM Sizes WHERE SizeID = %s', (size_id,))
+        conn.commit()
+        flash('Đã xóa kích thước thành công', 'success')
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        flash('Không thể xóa kích thước này vì đang được sử dụng trong sản phẩm.', 'error')
+    except Exception as e:
+        conn.rollback()
+        flash(f'Lỗi: {str(e)}', 'error')
     finally: conn.close()
     return redirect(request.referrer)
