@@ -8,6 +8,7 @@ import json
 import requests
 import os
 import psycopg2
+import socket
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -453,8 +454,14 @@ def admin_send_report_email():
         filename = f"bao_cao_doanh_thu_{start_date}_den_{end_date}.csv"
         msg.attach(filename, "text/csv", csv_data)
         
-        # Access mail instance initialized in app factory
-        current_app.mail.send(msg)
+        # Access mail instance and send with timeout
+        # Using a socket timeout locally for this request
+        original_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(15) # 15 seconds timeout for mail connect
+            current_app.mail.send(msg)
+        finally:
+            socket.setdefaulttimeout(original_timeout)
         
         return jsonify({'success': True, 'message': f'Đã gửi báo cáo đến {recipient} thành công!'})
     except Exception as e:

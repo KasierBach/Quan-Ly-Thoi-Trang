@@ -13,8 +13,10 @@ services:
       - key: MAIL_SERVER
         value: smtp.gmail.com
       - key: MAIL_PORT
-        value: "587"
+        value: "465"
       - key: MAIL_USE_TLS
+        value: "False"
+      - key: MAIL_USE_SSL
         value: "True"
       - key: MAIL_USERNAME
         sync: false
