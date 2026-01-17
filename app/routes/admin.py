@@ -456,8 +456,10 @@ def admin_send_report_email():
 
         # Try Resend API first (Preferred for Render)
         if resend_key:
+            print(f"Sending email via Resend API to {recipient}...")
             resend.api_key = resend_key
             sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
+            # ...
             
             # Resend requires base64 for attachments
             attachment_b64 = base64.b64encode(csv_data.encode('utf-8')).decode('utf-8')
@@ -476,6 +478,7 @@ def admin_send_report_email():
             })
         else:
             # Fallback to Flask-Mail (SMTP)
+            print(f"RESEND_API_KEY not found. Falling back to SMTP for {recipient}...")
             msg = Message(
                 subject=subject,
                 recipients=[recipient],
