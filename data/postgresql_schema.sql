@@ -18,6 +18,16 @@ DROP TABLE IF EXISTS NewsletterSubscribers CASCADE;
 DROP TABLE IF EXISTS PasswordResetTokens CASCADE;
 DROP TABLE IF EXISTS ContactMessages CASCADE;
 
+-- Clear functions and views to avoid return type change errors
+DROP VIEW IF EXISTS vw_AvailableProducts CASCADE;
+DROP VIEW IF EXISTS vw_BestSellingProducts CASCADE;
+DROP VIEW IF EXISTS vw_MonthlyRevenue CASCADE;
+DROP VIEW IF EXISTS vw_CategoryRevenue CASCADE;
+DROP FUNCTION IF EXISTS sp_SearchProducts CASCADE;
+DROP FUNCTION IF EXISTS sp_AddProduct CASCADE;
+DROP FUNCTION IF EXISTS sp_GetOrderDetails_Main CASCADE;
+DROP FUNCTION IF EXISTS sp_GetOrderDetails_Items CASCADE;
+
 -- Tables
 CREATE TABLE Categories (
     CategoryID SERIAL PRIMARY KEY,
