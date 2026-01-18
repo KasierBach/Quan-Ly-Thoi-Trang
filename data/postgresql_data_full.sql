@@ -1,5 +1,3 @@
--- RICH DATA GENERATOR OUTPUT
-TRUNCATE TABLE OrderDetails, Orders, ProductVariants, ProductComments, Reviews, Wishlist, Products, Categories, Colors, Sizes, Customers, NewsletterSubscribers, PasswordResetTokens RESTART IDENTITY CASCADE;
 -- 1. Categories
 INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (1, 'Áo nam', 'Các loại áo dành cho nam giới');
 INSERT INTO Categories (CategoryID, CategoryName, Description) VALUES (2, 'Quần nam', 'Các loại quần dành cho nam giới');

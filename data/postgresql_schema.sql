@@ -1,22 +1,4 @@
--- =============================================
--- Script tạo cấu trúc cơ sở dữ liệu cho FashionStoreDB (PostgreSQL)
--- =============================================
-
--- Xóa các bảng cũ nếu tồn tại (theo thứ tự ngược lại của khóa ngoại)
-DROP TABLE IF EXISTS OrderDetails CASCADE;
-DROP TABLE IF EXISTS Orders CASCADE;
-DROP TABLE IF EXISTS ProductVariants CASCADE;
-DROP TABLE IF EXISTS ProductComments CASCADE;
-DROP TABLE IF EXISTS Reviews CASCADE;
-DROP TABLE IF EXISTS Wishlist CASCADE;
-DROP TABLE IF EXISTS Products CASCADE;
-DROP TABLE IF EXISTS Categories CASCADE;
-DROP TABLE IF EXISTS Colors CASCADE;
-DROP TABLE IF EXISTS Sizes CASCADE;
-DROP TABLE IF EXISTS Customers CASCADE;
-DROP TABLE IF EXISTS NewsletterSubscribers CASCADE;
-DROP TABLE IF EXISTS PasswordResetTokens CASCADE;
-DROP TABLE IF EXISTS ContactMessages CASCADE;
+-- 1. Tables (Use IF NOT EXISTS to prevent overwriting existing data)
 
 -- Clear functions and views to avoid return type change errors
 DROP VIEW IF EXISTS vw_AvailableProducts CASCADE;
@@ -29,13 +11,13 @@ DROP FUNCTION IF EXISTS sp_GetOrderDetails_Main CASCADE;
 DROP FUNCTION IF EXISTS sp_GetOrderDetails_Items CASCADE;
 
 -- Tables
-CREATE TABLE Categories (
+CREATE TABLE IF NOT EXISTS Categories (
     CategoryID SERIAL PRIMARY KEY,
     CategoryName VARCHAR(100) NOT NULL UNIQUE,
     Description VARCHAR(255) NULL
 );
 
-CREATE TABLE Customers (
+CREATE TABLE IF NOT EXISTS Customers (
     CustomerID SERIAL PRIMARY KEY,
     FullName VARCHAR(255) NOT NULL,
     Email VARCHAR(255) NOT NULL UNIQUE,
@@ -47,7 +29,7 @@ CREATE TABLE Customers (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Products (
+CREATE TABLE IF NOT EXISTS Products (
     ProductID SERIAL PRIMARY KEY,
     ProductName VARCHAR(255) NOT NULL,
     Description TEXT NULL,
@@ -58,17 +40,17 @@ CREATE TABLE Products (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE Colors (
+CREATE TABLE IF NOT EXISTS Colors (
     ColorID SERIAL PRIMARY KEY,
     ColorName VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE Sizes (
+CREATE TABLE IF NOT EXISTS Sizes (
     SizeID SERIAL PRIMARY KEY,
     SizeName VARCHAR(50) NOT NULL UNIQUE
 );
 
-CREATE TABLE ProductVariants (
+CREATE TABLE IF NOT EXISTS ProductVariants (
     VariantID SERIAL PRIMARY KEY,
     ProductID INT REFERENCES Products(ProductID),
     ColorID INT REFERENCES Colors(ColorID),
