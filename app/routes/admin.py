@@ -9,7 +9,7 @@ import requests
 import os
 import psycopg2
 import socket
-import resend
+
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -411,19 +411,18 @@ def admin_send_report_email():
     user_message = data.get('message', '')
     start_date = data.get('start_date')
     end_date = data.get('end_date')
+    report_type = data.get('report_type', 'daily_revenue')
     
     if not recipient:
         return jsonify({'success': False, 'message': 'Email recipient is required'}), 400
     
-    # Check if a mail provider is configured
-    resend_key = current_app.config.get('RESEND_API_KEY')
     mail_user = current_app.config.get('MAIL_USERNAME')
     mail_pass = current_app.config.get('MAIL_PASSWORD')
     
-    if not resend_key and (not mail_user or not mail_pass):
+    if not mail_user or not mail_pass:
         return jsonify({
             'success': False, 
-            'message': 'Hệ thống chưa cấu hình Email (RESEND_API_KEY hoặc SMTP credentials).'
+            'message': 'Hệ thống chưa cấu hình Email SMTP.'
         }), 500
         
     conn = None
@@ -431,70 +430,134 @@ def admin_send_report_email():
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        # Fetch data similar to admin_reports
-        cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
-        daily_revenue = cursor.fetchall()
-        
-        # Create CSV content
         import io
         import csv
-        import base64
         
         output = io.StringIO()
-        # Add UTF-8 BOM for Excel
         output.write('\ufeff')
         writer = csv.writer(output)
-        writer.writerow(['Ngày', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
         
-        for row in daily_revenue:
-            date_str = row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else 'N/A'
-            writer.writerow([date_str, row.OrderCount, float(row.DailyRevenue) if row.DailyRevenue else 0])
-            
+        report_names = {
+            'daily_revenue': 'Doanh thu theo ngày',
+            'best_selling': 'Sản phẩm bán chạy',
+            'category_revenue': 'Doanh thu theo danh mục',
+            'top_customers': 'Khách hàng VIP',
+            'low_stock': 'Tồn kho thấp',
+            'order_details': 'Chi tiết đơn hàng'
+        }
+        report_name = report_names.get(report_type, 'Báo cáo')
+        
+        if report_type == 'daily_revenue':
+            cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
+            rows = cursor.fetchall()
+            writer.writerow(['Ngày', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
+            for row in rows:
+                date_str = row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else 'N/A'
+                writer.writerow([date_str, row.OrderCount, float(row.DailyRevenue) if row.DailyRevenue else 0])
+                
+        elif report_type == 'best_selling':
+            cursor.execute('''
+                SELECT p.ProductName, SUM(od.Quantity) as TotalSold, SUM(od.Quantity * od.Price) as Revenue
+                FROM OrderDetails od
+                JOIN ProductVariants pv ON od.VariantID = pv.VariantID
+                JOIN Products p ON pv.ProductID = p.ProductID
+                JOIN Orders o ON od.OrderID = o.OrderID
+                WHERE o.OrderDate BETWEEN %s AND %s
+                GROUP BY p.ProductID, p.ProductName
+                ORDER BY TotalSold DESC
+                LIMIT 20
+            ''', (start_date, end_date))
+            rows = cursor.fetchall()
+            writer.writerow(['Tên sản phẩm', 'Số lượng bán', 'Doanh thu (VNĐ)'])
+            for row in rows:
+                writer.writerow([row[0], row[1], float(row[2]) if row[2] else 0])
+                
+        elif report_type == 'category_revenue':
+            cursor.execute('''
+                SELECT c.CategoryName, COUNT(DISTINCT o.OrderID) as OrderCount, SUM(od.Quantity * od.Price) as Revenue
+                FROM OrderDetails od
+                JOIN ProductVariants pv ON od.VariantID = pv.VariantID
+                JOIN Products p ON pv.ProductID = p.ProductID
+                JOIN Categories c ON p.CategoryID = c.CategoryID
+                JOIN Orders o ON od.OrderID = o.OrderID
+                WHERE o.OrderDate BETWEEN %s AND %s
+                GROUP BY c.CategoryID, c.CategoryName
+                ORDER BY Revenue DESC
+            ''', (start_date, end_date))
+            rows = cursor.fetchall()
+            writer.writerow(['Danh mục', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
+            for row in rows:
+                writer.writerow([row[0], row[1], float(row[2]) if row[2] else 0])
+                
+        elif report_type == 'top_customers':
+            cursor.execute('''
+                SELECT c.FullName, c.Email, COUNT(o.OrderID) as OrderCount, SUM(o.TotalAmount) as TotalSpent
+                FROM Customers c
+                JOIN Orders o ON c.CustomerID = o.CustomerID
+                WHERE o.OrderDate BETWEEN %s AND %s
+                GROUP BY c.CustomerID, c.FullName, c.Email
+                ORDER BY TotalSpent DESC
+                LIMIT 20
+            ''', (start_date, end_date))
+            rows = cursor.fetchall()
+            writer.writerow(['Tên khách hàng', 'Email', 'Số đơn hàng', 'Tổng chi tiêu (VNĐ)'])
+            for row in rows:
+                writer.writerow([row[0], row[1], row[2], float(row[3]) if row[3] else 0])
+                
+        elif report_type == 'low_stock':
+            cursor.execute('''
+                SELECT p.ProductName, c.ColorName, s.SizeName, pv.Quantity
+                FROM ProductVariants pv
+                JOIN Products p ON pv.ProductID = p.ProductID
+                JOIN Colors c ON pv.ColorID = c.ColorID
+                JOIN Sizes s ON pv.SizeID = s.SizeID
+                WHERE pv.Quantity < 20
+                ORDER BY pv.Quantity ASC
+                LIMIT 50
+            ''')
+            rows = cursor.fetchall()
+            writer.writerow(['Sản phẩm', 'Màu', 'Size', 'Số lượng còn'])
+            for row in rows:
+                writer.writerow([row[0], row[1], row[2], row[3]])
+                
+        elif report_type == 'order_details':
+            cursor.execute('''
+                SELECT o.OrderID, c.FullName, o.OrderDate, o.TotalAmount, o.Status, o.PaymentMethod
+                FROM Orders o
+                JOIN Customers c ON o.CustomerID = c.CustomerID
+                WHERE o.OrderDate BETWEEN %s AND %s
+                ORDER BY o.OrderDate DESC
+                LIMIT 100
+            ''', (start_date, end_date))
+            rows = cursor.fetchall()
+            writer.writerow(['Mã đơn', 'Khách hàng', 'Ngày đặt', 'Tổng tiền (VNĐ)', 'Trạng thái', 'Thanh toán'])
+            for row in rows:
+                date_str = row[2].strftime('%d/%m/%Y %H:%M') if row[2] else 'N/A'
+                writer.writerow([row[0], row[1], date_str, float(row[3]) if row[3] else 0, row[4], row[5] or 'N/A'])
+        
         csv_data = output.getvalue()
-        filename = f"bao_cao_doanh_thu_{start_date}_den_{end_date}.csv"
+        csv_bytes = csv_data.encode('utf-8-sig')
+        filename = f"bao_cao_{report_type}_{start_date}_den_{end_date}.csv"
 
-        subject = f"Báo cáo doanh thu FashionStore ({start_date} - {end_date})"
-        body_content = f"Xin chào,\n\nDưới đây là báo cáo doanh thu từ ngày {start_date} đến ngày {end_date}.\n\nLời nhắn từ quản trị viên: {user_message}\n\nTrân trọng,\nFashionStore Admin Team"
+        subject = f"[FashionStore] {report_name} ({start_date} - {end_date})"
+        body_content = f"Xin chào,\n\nĐính kèm là báo cáo: {report_name}\nThời gian: {start_date} đến {end_date}\n\nLời nhắn: {user_message}\n\nTrân trọng,\nFashionStore Admin"
 
-        # Try Resend API first (Preferred for Render)
-        if resend_key:
-            print(f"Sending email via Resend API to {recipient}...")
-            resend.api_key = resend_key
-            sender = current_app.config.get('MAIL_DEFAULT_SENDER', 'onboarding@resend.dev')
-            
-            # Resend requires base64 for attachments
-            attachment_b64 = base64.b64encode(csv_data.encode('utf-8')).decode('utf-8')
-            
-            resend.Emails.send({
-                "from": f"FashionStore Admin <{sender}>",
-                "to": recipient,
-                "subject": subject,
-                "text": body_content,
-                "attachments": [
-                    {
-                        "filename": filename,
-                        "content": attachment_b64,
-                    }
-                ]
-            })
-        else:
-            # Fallback to Flask-Mail (SMTP)
-            print(f"RESEND_API_KEY not found. Falling back to SMTP for {recipient}...")
-            msg = Message(
-                subject=subject,
-                recipients=[recipient],
-                body=body_content
-            )
-            msg.attach(filename, "text/csv", csv_data)
-            
-            original_timeout = socket.getdefaulttimeout()
-            try:
-                socket.setdefaulttimeout(15)
-                current_app.mail.send(msg)
-            finally:
-                socket.setdefaulttimeout(original_timeout)
+        print(f"Sending {report_type} report to {recipient}...")
+        msg = Message(
+            subject=subject,
+            recipients=[recipient],
+            body=body_content
+        )
+        msg.attach(filename, "text/csv; charset=utf-8", csv_bytes)
         
-        return jsonify({'success': True, 'message': f'Đã gửi báo cáo đến {recipient} thành công!'})
+        original_timeout = socket.getdefaulttimeout()
+        try:
+            socket.setdefaulttimeout(15)
+            current_app.mail.send(msg)
+        finally:
+            socket.setdefaulttimeout(original_timeout)
+        
+        return jsonify({'success': True, 'message': f'Đã gửi báo cáo "{report_name}" đến {recipient} thành công!'})
     except Exception as e:
         print(f"Error sending email: {str(e)}")
         return jsonify({'success': False, 'message': f'Lỗi khi gửi email: {str(e)}'}), 500

@@ -931,6 +931,17 @@
                 <div class="modal-body">
                     <form id="emailForm">
                         <div class="mb-3">
+                            <label class="form-label">Loại báo cáo</label>
+                            <select class="form-select" id="reportType">
+                                <option value="daily_revenue">📊 Doanh thu theo ngày</option>
+                                <option value="best_selling">📦 Sản phẩm bán chạy</option>
+                                <option value="category_revenue">📂 Doanh thu theo danh mục</option>
+                                <option value="top_customers">👥 Khách hàng VIP</option>
+                                <option value="low_stock">📉 Tồn kho thấp</option>
+                                <option value="order_details">📋 Chi tiết đơn hàng</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Email người nhận</label>
                             <input type="email" class="form-control" id="reportEmail" placeholder="example@gmail.com"
                                 required>
@@ -1252,6 +1263,7 @@
     function sendEmailReal() {
         const email = document.getElementById('reportEmail').value;
         const msgText = document.querySelector('#emailModal textarea').value;
+        const reportType = document.getElementById('reportType').value;
         const config = JSON.parse(document.getElementById('report-config').textContent);
 
         if (!email || !email.includes('@')) {
@@ -1264,7 +1276,6 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang gửi...';
 
-        // Gọi API gửi email thật
         fetch('/admin/api/send_report_email', {
             method: 'POST',
             headers: {
@@ -1273,6 +1284,7 @@
             body: JSON.stringify({
                 email: email,
                 message: msgText,
+                report_type: reportType,
                 start_date: config.startDate,
                 end_date: config.endDate
             })

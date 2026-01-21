@@ -25,7 +25,6 @@ class Config:
     MAIL_USE_SSL = os.environ.get('MAIL_USE_SSL', 'True') == 'True'
     MAIL_DEFAULT_SENDER = os.environ.get('MAIL_DEFAULT_SENDER') or MAIL_USERNAME
 
-    # Third Party
-    RESEND_API_KEY = os.environ.get('RESEND_API_KEY')
+    # Third Party (Pixabay for image search)
     PIXABAY_API_KEY = os.environ.get('PIXABAY_API_KEY', '50476586-5521aa05792328277ee09bd80')
     PIXABAY_ENDPOINT = 'https://pixabay.com/api/'
