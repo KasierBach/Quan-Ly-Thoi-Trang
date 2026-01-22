@@ -268,17 +268,17 @@ INSERT INTO Products (ProductID, ProductName, Description, Price, OriginalPrice,
 (27, 'Chân váy dập ly', 'Vải voan 2 lớp, độ xòe rộng', 320000, 408000, 5, CURRENT_TIMESTAMP, 'images/27.jpg'),
 (28, 'Kính mắt thời trang', 'Chống tia UV400, gọng nhựa bền bỉ', 150000, 166000, 6, CURRENT_TIMESTAMP, 'images/28.jpg'),
 (29, 'Áo Hoodie nam nỉ', 'Nỉ bông dày dặn, in hình trẻ trung', 330000, 431000, 1, CURRENT_TIMESTAMP, 'images/29.jpg'),
-(30, 'Quần Kaki nam xanh rêu', 'Chất vải bền màu, form đứng dáng', 380000, 0, 2, CURRENT_TIMESTAMP, 'images/30.jpg'),
-(31, 'Áo Croptop nữ cá tính', 'Áo ôm dáng, cổ tim gợi cảm', 180000, 0, 3, CURRENT_TIMESTAMP, 'images/31.jpg'),
+(30, 'Quần Kaki nam xanh rêu', 'Chất vải bền màu, form đứng dáng', 380000, 0, 2, CURRENT_TIMESTAMP, 'images/30.png'),
+(31, 'Áo Croptop nữ cá tính', 'Áo ôm dáng, cổ tim gợi cảm', 180000, 0, 3, CURRENT_TIMESTAMP, 'images/31.png'),
 (32, 'Quần Short nữ lửng', 'Phong cách street style, vải thô', 220000, 0, 4, CURRENT_TIMESTAMP, 'images/32.jpg'),
-(33, 'Đầm suông cổ yếm', 'Váy lụa hở lưng đi tiệc', 590000, 797000, 5, CURRENT_TIMESTAMP, 'images/33.jpg'),
+(33, 'Đầm suông cổ yếm', 'Váy lụa hở lưng đi tiệc', 590000, 797000, 5, CURRENT_TIMESTAMP, 'images/33.png'),
 (34, 'Ví da nữ mini', 'Da bò thật, thiết kế nhỏ gọn', 420000, 0, 6, CURRENT_TIMESTAMP, 'images/34.png'),
 (35, 'Áo Vest nam lịch lãm', 'Form chuẩn doanh nhân, màu đen sọc', 1200000, 0, 1, CURRENT_TIMESTAMP, 'images/35.jpg'),
 (36, 'Áo dạ nữ dáng dài', 'Màu be trung tính, sang trọng', 950000, 1094000, 3, CURRENT_TIMESTAMP, 'images/36.png'),
 (37, 'Chân váy chữ A', 'Vải tuyết mưa, công sở trẻ trung', 280000, 324000, 5, CURRENT_TIMESTAMP, 'images/37.png'),
 (38, 'Dây chuyền bạc Ý', 'Mặt đá lấp lánh, quà tặng ý nghĩa', 450000, 0, 6, CURRENT_TIMESTAMP, 'images/38.png'),
-(39, 'Áo Gió nam 2 lớp', 'Chống thấm nước, có mũ tháo rời', 450000, 0, 1, CURRENT_TIMESTAMP, 'images/39.jpg'),
-(40, 'Quần Tây nam cao cấp', 'Chất liệu vải không nhăn, độ bền cao', 550000, 0, 2, CURRENT_TIMESTAMP, 'images/40.jpg');
+(39, 'Áo Gió nam 2 lớp', 'Chống thấm nước, có mũ tháo rời', 450000, 0, 1, CURRENT_TIMESTAMP, 'images/39.png'),
+(40, 'Quần Tây nam cao cấp', 'Chất liệu vải không nhăn, độ bền cao', 550000, 0, 2, CURRENT_TIMESTAMP, 'images/40.png');
 
 -- 6. Product Variants
 INSERT INTO ProductVariants (ProductID, ColorID, SizeID, Quantity) VALUES

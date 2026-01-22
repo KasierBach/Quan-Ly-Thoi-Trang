@@ -9,10 +9,15 @@ def update_db(db_url, name):
         cur = conn.cursor()
         
         updates = [
+            (30, 'images/30.png'),
+            (31, 'images/31.png'),
+            (33, 'images/33.png'),
             (34, 'images/34.png'),
-            (38, 'images/38.png'),
             (36, 'images/36.png'),
-            (37, 'images/37.png')
+            (37, 'images/37.png'),
+            (38, 'images/38.png'),
+            (39, 'images/39.png'),
+            (40, 'images/40.png')
         ]
         
         for pid, img in updates:
