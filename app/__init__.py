@@ -14,6 +14,10 @@ def create_app(config_class=Config):
     mail = Mail(app)
     app.mail = mail # Store in app for access in routes
     
+    # Initialize CSRF Protection
+    from flask_wtf.csrf import CSRFProtect
+    csrf = CSRFProtect(app)
+    
     # Register JSON encoder
     app.json_encoder = DecimalEncoder
     
@@ -35,6 +39,12 @@ def create_app(config_class=Config):
         if 'cart' in session:
             count = sum(item['quantity'] for item in session['cart'])
         return dict(cart_count=count)
+
+    # Inject Categories globally (Refactored to Service Layer)
+    from app.services.category_service import CategoryService
+    @app.context_processor
+    def inject_categories():
+        return dict(categories=CategoryService.get_all_categories())
 
     # Global Before Request (Backwards compatibility logic)
     @app.before_request

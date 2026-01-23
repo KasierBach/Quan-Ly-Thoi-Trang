@@ -144,6 +144,7 @@
                         </div>
                         <div class="card-body">
                             <form action="{{ url_for('admin.admin_update_order_status') }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="order_id" value="{{ order.OrderID }}">
                                 <div class="mb-3">
                                     <label for="status" class="form-label">Cập nhật trạng thái:</label>

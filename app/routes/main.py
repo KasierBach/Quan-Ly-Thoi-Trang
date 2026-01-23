@@ -9,8 +9,9 @@ main_bp = Blueprint('main', __name__)
 def home():
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM Categories')
-    categories = cursor.fetchall()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # categories fetching removed - handled by context processor
     
     cursor.execute('''
         SELECT p.ProductID, p.ProductName, p.Price, p.OriginalPrice, c.CategoryName, p.ImageURL,
@@ -33,7 +34,6 @@ def home():
     conn.close()
     
     return render_template('index.html', 
-                          categories=categories, 
                           featured_products=featured_products,
                           best_selling=best_selling)
 
@@ -71,11 +71,12 @@ def contact():
     
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute('SELECT * FROM Categories')
-    categories = cursor.fetchall()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    # categories fetching removed - handled by context processor
     conn.close()
     
-    return render_template('contact.html', categories=categories)
+    return render_template('contact.html')
 
 @main_bp.route('/subscribe_newsletter', methods=['POST'])
 def subscribe_newsletter():

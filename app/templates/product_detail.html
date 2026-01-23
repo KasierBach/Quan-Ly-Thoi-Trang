@@ -33,6 +33,7 @@
                 </div>
 
                 <form action="{{ url_for('cart.add_to_cart') }}" method="post" onsubmit="return validateVariantSelection();">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="product_id" value="{{ product.ProductID }}">
 
                     <!-- Color Selection -->
@@ -596,6 +597,13 @@
         quantityInput.value = document.getElementById('quantity').value;
         form.appendChild(quantityInput);
 
+        // Thêm csrf_token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+        form.appendChild(csrfInput);
+
         // Thêm form vào document và submit
         document.body.appendChild(form);
         form.submit();
@@ -610,6 +618,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': document.querySelector("meta[name='csrf-token']").getAttribute("content")
             },
             body: 'product_id=' + encodeURIComponent(productId)
         })
@@ -911,6 +920,9 @@
 
         fetch('{{ url_for("product.add_review") }}', {
             method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector("meta[name='csrf-token']").getAttribute("content")
+            },
             body: formData
         })
             .then(response => response.json())
@@ -1037,6 +1049,9 @@
 
             fetch('{{ url_for("product.add_comment") }}', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector("meta[name='csrf-token']").getAttribute("content")
+                },
                 body: formData
             })
                 .then(response => response.json())
@@ -1190,6 +1205,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector("meta[name='csrf-token']").getAttribute("content")
             },
             body: JSON.stringify({
                 product_id: productId

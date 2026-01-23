@@ -12,6 +12,7 @@
                 </div>
                 <div class="card-body p-4">
                     <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
                             <input type="email" class="form-control" id="email" name="email" required>

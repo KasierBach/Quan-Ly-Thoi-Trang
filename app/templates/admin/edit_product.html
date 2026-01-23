@@ -87,6 +87,7 @@
             <h4>Thông tin sản phẩm</h4>
             <form method="POST" id="editProductForm"
                 action="{{ url_for('admin.admin_edit_product', product_id=product.ProductID) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3">
                     <div class="col-md-6">
                         <label for="product_name" class="form-label">Tên sản phẩm</label>
@@ -160,6 +161,7 @@
                             <form method="POST"
                                 action="{{ url_for('admin.admin_delete_variant', variant_id=variant.VariantID) }}"
                                 class="d-inline" onsubmit="return confirm('Xóa biến thể này?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -176,6 +178,7 @@
 
             <h5>Thêm biến thể mới</h5>
             <form method="POST" action="{{ url_for('admin.admin_add_variant') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="product_id" value="{{ product.ProductID }}">
                 <div class="row g-3 align-items-center mb-3">
                     <div class="col-auto">
@@ -340,6 +343,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector("meta[name='csrf-token']").getAttribute("content")
             },
             body: JSON.stringify({
                 image_url: url,

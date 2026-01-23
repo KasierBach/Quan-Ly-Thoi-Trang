@@ -77,6 +77,7 @@
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ url_for('admin.admin_add_color') }}" class="mb-4">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="input-group">
                                 <input type="text" class="form-control" name="color_name" placeholder="Nhập tên màu mới"
                                     required>
@@ -93,6 +94,7 @@
                                 <form method="POST"
                                     action="{{ url_for('admin.admin_delete_color', color_id=color.ColorID) }}"
                                     onsubmit="return confirm('Bạn chắc chắn muốn xóa màu {{ color.ColorName }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger border-0">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>
@@ -114,6 +116,7 @@
                     </div>
                     <div class="card-body">
                         <form method="POST" action="{{ url_for('admin.admin_add_size') }}" class="mb-4">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="input-group">
                                 <input type="text" class="form-control" name="size_name"
                                     placeholder="Nhập tên kích thước mới" required>
@@ -130,6 +133,7 @@
                                 <form method="POST"
                                     action="{{ url_for('admin.admin_delete_size', size_id=size.SizeID) }}"
                                     onsubmit="return confirm('Bạn chắc chắn muốn xóa kích thước {{ size.SizeName }}?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger border-0">
                                         <i class="fas fa-trash-alt"></i>
                                     </button>

@@ -1025,10 +1025,10 @@
     src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
 <script type="text/template" id="chart-data">
     {
-        "dailyLabels": {{ dates|safe }},
-        "dailyData": {{ revenues|safe }},
-        "categoryLabels": {{ category_names|safe }},
-        "categoryData": {{ category_revenues|safe }}
+        "dailyLabels": {{ dates|tojson }},
+        "dailyData": {{ revenues|tojson }},
+        "categoryLabels": {{ category_names|tojson }},
+        "categoryData": {{ category_revenues|tojson }}
     }
 </script>
 <script type="text/template" id="report-config">

@@ -73,6 +73,7 @@
 
         <div class="form-section">
             <form method="POST" action="{{ url_for('admin.admin_add_product') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-4">
                     <div class="col-md-12">
                         <label for="product_name" class="form-label fw-bold">Tên sản phẩm</label>

@@ -11,6 +11,11 @@ import psycopg2
 import socket
 
 
+from app.services.product_service import ProductService
+from app.services.report_service import ReportService
+from app.services.order_service import OrderService
+from app.services.feedback_service import FeedbackService
+
 admin_bp = Blueprint('admin', __name__)
 
 @admin_bp.before_request
@@ -31,47 +36,17 @@ def admin_dashboard():
         flash('Bạn không có quyền truy cập trang này', 'error')
         return redirect(url_for('main.home'))
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM vw_MonthlyRevenue ORDER BY Year DESC, Month DESC')
-    monthly_revenue = cursor.fetchall()
-    cursor.execute('SELECT * FROM vw_CategoryRevenue ORDER BY TotalRevenue DESC')
-    category_revenue = cursor.fetchall()
-    cursor.execute('SELECT * FROM vw_BestSellingProducts')
-    best_selling = cursor.fetchall()
-    
-    today = datetime.now()
-    current_month_revenue = 0
-    current_month_orders = 0
-    
-    for r in monthly_revenue:
-        try:
-            r_year = int(r.Year)
-            r_month = int(r.Month)
-            if r_year == today.year and r_month == today.month:
-                current_month_revenue = r.TotalRevenue
-                current_month_orders = r.OrderCount
-                break
-        except (ValueError, TypeError, AttributeError):
-            continue
-            
-    total_sold = sum(p.TotalSold for p in best_selling)
-    
-    # Get new customers count for current month
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM Customers WHERE EXTRACT(YEAR FROM CreatedAt) = %s AND EXTRACT(MONTH FROM CreatedAt) = %s', (today.year, today.month))
-    new_customers = cursor.fetchone()[0]
-    conn.close()
+    stats = ReportService.get_dashboard_stats()
     
     return render_template('admin/dashboard.html', 
-                           monthly_revenue=monthly_revenue, 
-                           category_revenue=category_revenue, 
-                           best_selling=best_selling, 
-                           now=today,
-                           current_month_revenue=current_month_revenue,
-                           current_month_orders=current_month_orders,
-                           total_sold=total_sold,
-                           new_customers=new_customers)
+                           monthly_revenue=stats['monthly_revenue'], 
+                           category_revenue=stats['category_revenue'], 
+                           best_selling=stats['best_selling'], 
+                           now=datetime.now(),
+                           current_month_revenue=stats['current_month_revenue'],
+                           current_month_orders=stats['current_month_orders'],
+                           total_sold=stats['total_sold'],
+                           new_customers=stats['new_customers'])
 
 
 @admin_bp.route('/admin/products')
@@ -113,8 +88,7 @@ def admin_products():
     ''', (per_page, offset))
     products = cursor.fetchall()
     
-    cursor.execute('SELECT * FROM Categories')
-    categories = cursor.fetchall()
+    # categories fetching removed
     conn.close()
     
     paging_data = {
@@ -126,7 +100,7 @@ def admin_products():
         'end_index': min(offset + per_page, total_records)
     }
     
-    return render_template('products.html', products=products, categories=categories, paging=paging_data, sort=sort_by)
+    return render_template('products.html', products=products, paging=paging_data, sort=sort_by)
 
 @admin_bp.route('/admin/products/add', methods=['GET', 'POST'])
 def admin_add_product():
@@ -160,11 +134,9 @@ def admin_add_product():
             conn.close()
             
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM Categories')
-    categories = cursor.fetchall()
+    # categories fetching removed
     conn.close()
-    return render_template('admin/add_product.html', categories=categories)
+    return render_template('admin/add_product.html')
 
 @admin_bp.route('/admin/products/edit/<int:product_id>', methods=['GET', 'POST'])
 def admin_edit_product(product_id):
@@ -184,17 +156,12 @@ def admin_edit_product(product_id):
             flash('Thiếu thông tin', 'error')
             return redirect(url_for('admin.admin_edit_product', product_id=product_id))
         
-        try:
-            image_url = request.form.get('image_url', '').strip()
-            cursor.execute('''
-                UPDATE Products SET ProductName=%s, Description=%s, Price=%s, OriginalPrice=%s, CategoryID=%s, ImageURL=%s
-                WHERE ProductID=%s
-            ''', (product_name, description, price, original_price, category_id, image_url, product_id))
-            conn.commit()
+        image_url = request.form.get('image_url', '').strip()
+        result = ProductService.update_product(product_id, product_name, description, price, category_id, original_price, image_url)
+        if result['success']:
             flash('Cập nhật thành công!', 'success')
-        except psycopg2.Error as e:
-            conn.rollback()
-            flash(f'Lỗi: {str(e)}', 'error')
+        else:
+            flash(f'Lỗi: {result["message"]}', 'error')
     
     cursor.execute('''
         SELECT p.*, c.CategoryName FROM Products p
@@ -207,23 +174,14 @@ def admin_edit_product(product_id):
         flash('Sản phẩm không tồn tại', 'error')
         return redirect(url_for('admin.admin_products'))
     
-    cursor.execute('SELECT * FROM Categories')
-    categories = cursor.fetchall()
-    
-    cursor.execute('''
-        SELECT pv.*, c.ColorName, s.SizeName FROM ProductVariants pv
-        JOIN Colors c ON pv.ColorID = c.ColorID
-        JOIN Sizes s ON pv.SizeID = s.SizeID WHERE pv.ProductID = %s
-    ''', (product_id,))
-    variants = cursor.fetchall()
-    
-    cursor.execute('SELECT * FROM Colors')
-    colors = cursor.fetchall()
-    cursor.execute('SELECT * FROM Sizes')
-    sizes = cursor.fetchall()
     conn.close()
     
-    return render_template('admin/edit_product.html', product=product, categories=categories, variants=variants, colors=colors, sizes=sizes)
+    # Use ProductService for variants and attributes
+    variants = ProductService.get_product_variants(product_id)
+    colors = ProductService.get_all_colors()
+    sizes = ProductService.get_all_sizes()
+    
+    return render_template('admin/edit_product.html', product=product, variants=variants, colors=colors, sizes=sizes)
 
 @admin_bp.route('/admin/products/add_variant', methods=['POST'])
 def admin_add_variant():
@@ -238,17 +196,11 @@ def admin_add_variant():
         flash('Thiếu thông tin biến thể', 'error')
         return redirect(url_for('admin.admin_edit_product', product_id=product_id))
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT sp_AddProductVariant(%s, %s, %s, %s) AS VariantID', (product_id, color_id, size_id, quantity))
-        conn.commit()
+    result = ProductService.add_variant(product_id, color_id, size_id, quantity)
+    if result['success']:
         flash('Thêm biến thể thành công!', 'success')
-    except psycopg2.Error as e:
-        conn.rollback()
-        flash(f'Lỗi: {str(e)}', 'error')
-    finally:
-        conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
     return redirect(url_for('admin.admin_edit_product', product_id=product_id))
 
 @admin_bp.route('/admin/orders')
@@ -262,37 +214,16 @@ def admin_orders():
     if page < 1: page = 1
     if per_page not in [10, 20, 50, 100]: per_page = 20
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
-    # Base query parts
-    base_query = 'FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID'
-    where_clause = f" WHERE o.Status = '{status}'" if status else ""
-    
-    # Count total records
-    cursor.execute(f"SELECT COUNT(*) {base_query} {where_clause}")
-    total_records = cursor.fetchone()[0]
-    
-    total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
-    
-    # Boundary logic: cap page at total_pages
-    if page > total_pages: page = total_pages
-    
-    offset = (page - 1) * per_page
-    
-    query = f"SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail {base_query} {where_clause} ORDER BY o.OrderDate DESC LIMIT %s OFFSET %s"
-    
-    cursor.execute(query, (per_page, offset))
-    orders = cursor.fetchall()
-    conn.close()
+    data = OrderService.get_orders(status, page, per_page)
+    orders = data['orders']
     
     paging_data = {
-        'total_records': total_records,
-        'total_pages': total_pages,
-        'current_page': page,
-        'per_page': per_page,
-        'start_index': offset + 1 if total_records > 0 else 0,
-        'end_index': min(offset + per_page, total_records)
+        'total_records': data['total_records'],
+        'total_pages': data['total_pages'],
+        'current_page': data['current_page'],
+        'per_page': data['per_page'],
+        'start_index': data['start_index'],
+        'end_index': data['end_index']
     }
     
     return render_template('admin/orders.html', orders=orders, current_status=status, paging=paging_data)
@@ -300,16 +231,13 @@ def admin_orders():
 @admin_bp.route('/admin/orders/<int:order_id>')
 def admin_order_detail(order_id):
     if not is_admin(): return redirect(url_for('main.home'))
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM sp_GetOrderDetails_Main(%s)', (order_id,))
-    order = cursor.fetchone()
-    cursor.execute('SELECT * FROM sp_GetOrderDetails_Items(%s)', (order_id,))
-    order_details = cursor.fetchall()
-    conn.close()
-    if not order:
+    detail = OrderService.get_order_detail(order_id)
+    if not detail:
         flash('Đơn hàng không tồn tại', 'error')
         return redirect(url_for('admin.admin_orders'))
+        
+    order = detail['order']
+    order_details = detail['items']
     return render_template('admin/order_detail.html', order=order, order_details=order_details)
 
 @admin_bp.route('/admin/orders/update_status', methods=['POST'])
@@ -425,118 +353,19 @@ def admin_send_report_email():
             'message': 'Hệ thống chưa cấu hình Email SMTP.'
         }), 500
         
-    conn = None
+    # Friendly names for reports
+    report_names = {
+        'daily_revenue': 'Doanh thu theo ngày',
+        'best_selling': 'Sản phẩm bán chạy',
+        'category_revenue': 'Doanh thu theo danh mục',
+        'top_customers': 'Khách hàng VIP',
+        'low_stock': 'Tồn kho thấp',
+        'order_details': 'Chi tiết đơn hàng'
+    }
+    report_name = report_names.get(report_type, 'Báo cáo')
+
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        import io
-        import csv
-        
-        output = io.StringIO()
-        output.write('\ufeff')
-        writer = csv.writer(output)
-        
-        report_names = {
-            'daily_revenue': 'Doanh thu theo ngày',
-            'best_selling': 'Sản phẩm bán chạy',
-            'category_revenue': 'Doanh thu theo danh mục',
-            'top_customers': 'Khách hàng VIP',
-            'low_stock': 'Tồn kho thấp',
-            'order_details': 'Chi tiết đơn hàng'
-        }
-        report_name = report_names.get(report_type, 'Báo cáo')
-        
-        if report_type == 'daily_revenue':
-            cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
-            rows = cursor.fetchall()
-            writer.writerow(['Ngày', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
-            for row in rows:
-                date_str = row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else 'N/A'
-                writer.writerow([date_str, row.OrderCount, float(row.DailyRevenue) if row.DailyRevenue else 0])
-                
-        elif report_type == 'best_selling':
-            cursor.execute('''
-                SELECT p.ProductName, SUM(od.Quantity) as TotalSold, SUM(od.Quantity * od.Price) as Revenue
-                FROM OrderDetails od
-                JOIN ProductVariants pv ON od.VariantID = pv.VariantID
-                JOIN Products p ON pv.ProductID = p.ProductID
-                JOIN Orders o ON od.OrderID = o.OrderID
-                WHERE o.OrderDate BETWEEN %s AND %s
-                GROUP BY p.ProductID, p.ProductName
-                ORDER BY TotalSold DESC
-                LIMIT 20
-            ''', (start_date, end_date))
-            rows = cursor.fetchall()
-            writer.writerow(['Tên sản phẩm', 'Số lượng bán', 'Doanh thu (VNĐ)'])
-            for row in rows:
-                writer.writerow([row[0], row[1], float(row[2]) if row[2] else 0])
-                
-        elif report_type == 'category_revenue':
-            cursor.execute('''
-                SELECT c.CategoryName, COUNT(DISTINCT o.OrderID) as OrderCount, SUM(od.Quantity * od.Price) as Revenue
-                FROM OrderDetails od
-                JOIN ProductVariants pv ON od.VariantID = pv.VariantID
-                JOIN Products p ON pv.ProductID = p.ProductID
-                JOIN Categories c ON p.CategoryID = c.CategoryID
-                JOIN Orders o ON od.OrderID = o.OrderID
-                WHERE o.OrderDate BETWEEN %s AND %s
-                GROUP BY c.CategoryID, c.CategoryName
-                ORDER BY Revenue DESC
-            ''', (start_date, end_date))
-            rows = cursor.fetchall()
-            writer.writerow(['Danh mục', 'Số đơn hàng', 'Doanh thu (VNĐ)'])
-            for row in rows:
-                writer.writerow([row[0], row[1], float(row[2]) if row[2] else 0])
-                
-        elif report_type == 'top_customers':
-            cursor.execute('''
-                SELECT c.FullName, c.Email, COUNT(o.OrderID) as OrderCount, SUM(o.TotalAmount) as TotalSpent
-                FROM Customers c
-                JOIN Orders o ON c.CustomerID = o.CustomerID
-                WHERE o.OrderDate BETWEEN %s AND %s
-                GROUP BY c.CustomerID, c.FullName, c.Email
-                ORDER BY TotalSpent DESC
-                LIMIT 20
-            ''', (start_date, end_date))
-            rows = cursor.fetchall()
-            writer.writerow(['Tên khách hàng', 'Email', 'Số đơn hàng', 'Tổng chi tiêu (VNĐ)'])
-            for row in rows:
-                writer.writerow([row[0], row[1], row[2], float(row[3]) if row[3] else 0])
-                
-        elif report_type == 'low_stock':
-            cursor.execute('''
-                SELECT p.ProductName, c.ColorName, s.SizeName, pv.Quantity
-                FROM ProductVariants pv
-                JOIN Products p ON pv.ProductID = p.ProductID
-                JOIN Colors c ON pv.ColorID = c.ColorID
-                JOIN Sizes s ON pv.SizeID = s.SizeID
-                WHERE pv.Quantity < 20
-                ORDER BY pv.Quantity ASC
-                LIMIT 50
-            ''')
-            rows = cursor.fetchall()
-            writer.writerow(['Sản phẩm', 'Màu', 'Size', 'Số lượng còn'])
-            for row in rows:
-                writer.writerow([row[0], row[1], row[2], row[3]])
-                
-        elif report_type == 'order_details':
-            cursor.execute('''
-                SELECT o.OrderID, c.FullName, o.OrderDate, o.TotalAmount, o.Status, o.PaymentMethod
-                FROM Orders o
-                JOIN Customers c ON o.CustomerID = c.CustomerID
-                WHERE o.OrderDate BETWEEN %s AND %s
-                ORDER BY o.OrderDate DESC
-                LIMIT 100
-            ''', (start_date, end_date))
-            rows = cursor.fetchall()
-            writer.writerow(['Mã đơn', 'Khách hàng', 'Ngày đặt', 'Tổng tiền (VNĐ)', 'Trạng thái', 'Thanh toán'])
-            for row in rows:
-                date_str = row[2].strftime('%d/%m/%Y %H:%M') if row[2] else 'N/A'
-                writer.writerow([row[0], row[1], date_str, float(row[3]) if row[3] else 0, row[4], row[5] or 'N/A'])
-        
-        csv_data = output.getvalue()
-        csv_bytes = csv_data.encode('utf-8-sig')
+        csv_bytes = ReportService.generate_csv_report(report_type, start_date, end_date)
         filename = f"bao_cao_{report_type}_{start_date}_den_{end_date}.csv"
 
         subject = f"[FashionStore] {report_name} ({start_date} - {end_date})"
@@ -561,9 +390,6 @@ def admin_send_report_email():
     except Exception as e:
         print(f"Error sending email: {str(e)}")
         return jsonify({'success': False, 'message': f'Lỗi khi gửi email: {str(e)}'}), 500
-    finally:
-        if conn:
-            conn.close()
 
 @admin_bp.route('/admin/api/search_pixabay', methods=['GET'])
 def admin_search_pixabay():

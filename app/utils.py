@@ -72,11 +72,12 @@ def resolve_image(obj):
          obj_id = obj.get('CategoryID') if is_dict else getattr(obj, 'CategoryID', None)
          
     if obj_id:
-        filename = f"images/{obj_id}.jpg"
-        # Access root_path via current_app
-        filepath = os.path.join(current_app.root_path, 'static', filename)
-        if os.path.exists(filepath):
-            return filename
+        # Check standard extensions
+        for ext in ['.jpg', '.png', '.jpeg']:
+            filename = f"images/{obj_id}{ext}"
+            filepath = os.path.join(current_app.root_path, 'static', filename)
+            if os.path.exists(filepath):
+                return filename
 
     # 3. Check by Name (Slug)
     name = obj.get('ProductName') if is_dict else getattr(obj, 'ProductName', None)
@@ -85,11 +86,11 @@ def resolve_image(obj):
         
     if name:
         slug = slugify(name)
-        # Try exact slug match
-        filename = f"images/{slug}.jpg"
-        filepath = os.path.join(current_app.root_path, 'static', filename)
-        if os.path.exists(filepath):
-            return filename
+        for ext in ['.jpg', '.png', '.jpeg']:
+            filename = f"images/{slug}{ext}"
+            filepath = os.path.join(current_app.root_path, 'static', filename)
+            if os.path.exists(filepath):
+                return filename
             
         # Try common variations if needed (optional)
         
