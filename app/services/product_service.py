@@ -1,4 +1,5 @@
 from app.services.base_service import BaseService
+from app.cache import cached, cache
 
 class ProductService(BaseService):
     @staticmethod
@@ -92,23 +93,25 @@ class ProductService(BaseService):
             conn.close()
 
     @staticmethod
+    @cached(timeout=600, key_prefix='colors:')  # Cache for 10 minutes
     def get_all_colors():
         conn = BaseService.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT * FROM Colors')
-            return cursor.fetchall()
+            return [dict(r) for r in cursor.fetchall()]
         finally:
             cursor.close()
             conn.close()
 
     @staticmethod
+    @cached(timeout=600, key_prefix='sizes:')  # Cache for 10 minutes
     def get_all_sizes():
         conn = BaseService.get_connection()
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT * FROM Sizes')
-            return cursor.fetchall()
+            return [dict(r) for r in cursor.fetchall()]
         finally:
             cursor.close()
             conn.close()

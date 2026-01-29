@@ -146,6 +146,17 @@ CREATE TABLE IF NOT EXISTS Messages (
 CREATE INDEX IF NOT EXISTS idx_messages_session ON Messages(session_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user ON Messages(user_id);
 
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_products_category ON Products(CategoryID);
+CREATE INDEX IF NOT EXISTS idx_products_name ON Products(ProductName);
+CREATE INDEX IF NOT EXISTS idx_products_price ON Products(Price);
+CREATE INDEX IF NOT EXISTS idx_orders_customer ON Orders(CustomerID);
+CREATE INDEX IF NOT EXISTS idx_orders_date ON Orders(OrderDate DESC);
+CREATE INDEX IF NOT EXISTS idx_orders_status ON Orders(Status);
+CREATE INDEX IF NOT EXISTS idx_reviews_product ON Reviews(ProductID);
+CREATE INDEX IF NOT EXISTS idx_productvariants_product ON ProductVariants(ProductID);
+CREATE INDEX IF NOT EXISTS idx_wishlist_customer ON Wishlist(CustomerID);
+
 -- =============================================
 -- Views
 -- =============================================
