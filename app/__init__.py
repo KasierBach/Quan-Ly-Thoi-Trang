@@ -16,6 +16,16 @@ def create_app(config_class=Config):
     
     # Initialize extensions
     db.init_app(app)
+    
+    # Initialize DB Pool
+    from .database import init_db_pool
+    with app.app_context():
+        # Wrap in try-except in case of missing config/env during build
+        try:
+             init_db_pool(app)
+        except Exception as e:
+             print(f"Warning: Could not initialize DB Pool: {e}")
+
     mail = Mail(app)
     app.mail = mail # Store in app for access in routes
     

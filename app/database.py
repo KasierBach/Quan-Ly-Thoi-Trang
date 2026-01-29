@@ -59,8 +59,55 @@ class CaseInsensitiveCursor(psycopg2.extensions.cursor):
         rows = super().fetchmany(size if size is not None else self.arraysize)
         return [self._wrap_row(r) for r in rows]
 
-# Hàm kết nối trực tiếp đến PostgreSQL
+from psycopg2.pool import ThreadedConnectionPool
+
+# Global pool variable
+db_pool = None
+
+class PooledConnection:
+    def __init__(self, pool, conn):
+        self.pool = pool
+        self.conn = conn
+    
+    def close(self):
+        """Override close to return connection to pool instead of closing TCP"""
+        if self.pool and self.conn:
+            self.pool.putconn(self.conn)
+            self.conn = None
+
+    def commit(self):
+        return self.conn.commit()
+
+    def rollback(self):
+        return self.conn.rollback()
+
+    def cursor(self, *args, **kwargs):
+        return self.conn.cursor(*args, **kwargs)
+
+    def __getattr__(self, name):
+        """Delegate other attributes to real connection"""
+        return getattr(self.conn, name)
+
+def init_db_pool(app):
+    global db_pool
+    if not db_pool:
+        db_pool = ThreadedConnectionPool(
+            minconn=1,
+            maxconn=10, # Conservative limit for Supabase free tier
+            dsn=app.config['SQLALCHEMY_DATABASE_URI'],
+            cursor_factory=CaseInsensitiveCursor
+        )
+
 def get_db_connection():
-    # Use current_app to access config instead of global variable
-    conn = psycopg2.connect(current_app.config['SQLALCHEMY_DATABASE_URI'], cursor_factory=CaseInsensitiveCursor)
-    return conn
+    global db_pool
+    if not db_pool:
+         # Lazy init fallback or script usage
+         conn = psycopg2.connect(current_app.config['SQLALCHEMY_DATABASE_URI'], cursor_factory=CaseInsensitiveCursor)
+         return conn
+         
+    real_conn = db_pool.getconn()
+    return PooledConnection(db_pool, real_conn)
+
+def close_db_connection(conn):
+    # Backward compatibility helper
+    conn.close()
