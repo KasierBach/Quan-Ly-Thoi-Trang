@@ -132,6 +132,20 @@ CREATE TABLE IF NOT EXISTS PasswordResetTokens (
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Messages table for chat feature
+CREATE TABLE IF NOT EXISTS Messages (
+    id SERIAL PRIMARY KEY,
+    sender_type VARCHAR(20) NOT NULL, -- 'user' or 'admin'
+    content TEXT NOT NULL,
+    session_id VARCHAR(100) NOT NULL,
+    user_id INT REFERENCES Customers(CustomerID) NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_session ON Messages(session_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user ON Messages(user_id);
+
 -- =============================================
 -- Views
 -- =============================================
