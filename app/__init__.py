@@ -4,6 +4,11 @@ from .database import db
 from flask_mail import Mail
 from .utils import DecimalEncoder, resolve_image
 import os
+import json
+import flask.json
+
+# Monkey patch for flask-wtf/recaptcha compatibility
+flask.json.JSONEncoder = json.JSONEncoder
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -19,7 +24,16 @@ def create_app(config_class=Config):
     csrf = CSRFProtect(app)
     
     # Register JSON encoder
-    app.json_encoder = DecimalEncoder
+    import decimal
+    from flask.json.provider import DefaultJSONProvider
+    
+    class CustomJSONProvider(DefaultJSONProvider):
+        def default(self, o):
+            if isinstance(o, decimal.Decimal):
+                return float(o)
+            return super().default(o)
+            
+    app.json = CustomJSONProvider(app)
     
     # Register template filters
     app.jinja_env.filters['resolve_image'] = resolve_image
@@ -30,6 +44,7 @@ def create_app(config_class=Config):
         return dict(
             user_name=session.get('user_name'),
             is_admin=session.get('is_admin'),
+            role=session.get('role'),
             dark_mode=session.get('dark_mode', False)
         )
     
@@ -46,13 +61,11 @@ def create_app(config_class=Config):
     def inject_categories():
         return dict(categories=CategoryService.get_all_categories())
 
-    # Global Before Request (Backwards compatibility logic)
+    # Global Before Request
     @app.before_request
     def before_request_logic():
-        # Check admin hardcoded logic from old app.py, moved here for compatibility
-        if 'user_id' in session and session.get('is_admin') is None:
-             if session['user_id'] == 19:
-                 session['is_admin'] = True
+        # Place any global before_request logic here if needed
+        pass
 
     # Register Blueprints
     from .routes.auth import auth_bp
@@ -60,12 +73,14 @@ def create_app(config_class=Config):
     from .routes.product import product_bp
     from .routes.cart import cart_bp
     from .routes.admin import admin_bp
+    from .routes.chat import chat_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(product_bp)
     app.register_blueprint(cart_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(chat_bp)
 
     # 404 Handler
     @app.errorhandler(404)

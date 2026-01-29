@@ -60,16 +60,24 @@ def resolve_image(obj):
     # Check if object is a dict
     is_dict = isinstance(obj, dict)
     
-    # 1. Check direct ImageURL
+    # 1. Check direct ImageURL (PascalCase or snake_case)
     image_url = obj.get('ImageURL') if is_dict else getattr(obj, 'ImageURL', None)
+    if not image_url and is_dict:
+        image_url = obj.get('image_url')
+    
     if image_url:
         return image_url
         
     # 2. Check by ID
     obj_id = obj.get('ProductID') if is_dict else getattr(obj, 'ProductID', None)
+    if not obj_id and is_dict:
+        obj_id = obj.get('product_id')
+
     if not obj_id:
          # Try category ID
          obj_id = obj.get('CategoryID') if is_dict else getattr(obj, 'CategoryID', None)
+         if not obj_id and is_dict:
+             obj_id = obj.get('category_id')
          
     if obj_id:
         # Check standard extensions
@@ -81,8 +89,13 @@ def resolve_image(obj):
 
     # 3. Check by Name (Slug)
     name = obj.get('ProductName') if is_dict else getattr(obj, 'ProductName', None)
+    if not name and is_dict:
+        name = obj.get('product_name')
+
     if not name:
         name = obj.get('CategoryName') if is_dict else getattr(obj, 'CategoryName', None)
+        if not name and is_dict:
+            name = obj.get('category_name')
         
     if name:
         slug = slugify(name)

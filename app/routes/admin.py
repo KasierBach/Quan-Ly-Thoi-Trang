@@ -15,18 +15,12 @@ from app.services.product_service import ProductService
 from app.services.report_service import ReportService
 from app.services.order_service import OrderService
 from app.services.feedback_service import FeedbackService
+from app.services.attribute_service import AttributeService
 
 admin_bp = Blueprint('admin', __name__)
 
-@admin_bp.before_request
-def check_admin():
-    # Allow login redirection or static files, but for API/pages we check
-    pass 
-    # Logic in app.py was app.before_request to check if user_id=19 => is_admin=True
-    # We should keep that logic or move it here. 
-    # Since it's global, let's put it in app.py middleware or here as a helper.
-    # But individual routes check is_admin too. 
 
+# Legacy check_admin removed. Uses is_admin() helper or route decorators in future.
 def is_admin():
     return 'user_id' in session and session.get('is_admin') == True
 
@@ -264,40 +258,45 @@ def admin_update_order_status():
 def admin_reports():
     if not is_admin(): return redirect(url_for('main.home'))
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    
     start_date = request.args.get('start_date')
     end_date = request.args.get('end_date')
+    group_by = request.args.get('group_by', 'day')
     
-    if not start_date: 
-        # Default to all time (earliest order)
-        try:
-            cursor.execute("SELECT MIN(OrderDate) FROM Orders")
-            min_date_row = cursor.fetchone()
-            if min_date_row and min_date_row[0]:
-                start_date = min_date_row[0].strftime('%Y-%m-%d')
-            else:
-                start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-        except:
-             start_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
-
-    if not end_date: end_date = datetime.now().strftime('%Y-%m-%d')
+    # Use ReportService to get aggregated data
+    report_data = ReportService.get_revenue_report(start_date, end_date, group_by)
     
-    cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
-    daily_revenue = cursor.fetchall()
-    cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Category(%s, %s)', (start_date, end_date))
-    category_revenue = cursor.fetchall()
-    cursor.execute('SELECT * FROM vw_BestSellingProducts')
-    best_selling = cursor.fetchall()
+    # Unpack data
+    daily_revenue = report_data['daily_revenue']
+    category_revenue = report_data['category_revenue']
+    best_selling = report_data['best_selling']
+    start_date = report_data['start_date']
+    end_date = report_data['end_date']
+    new_customers_range = report_data['new_customers_range']
+    
     today = datetime.now()
+    
+    # Prepare data for charts
     dates = []
     revenues = []
     total_rev = 0
     total_ord = 0
     
     for row in daily_revenue:
-        dates.append(row.OrderDate.strftime('%d/%m/%Y') if row.OrderDate else '')
+        # Format date for chart labels based on granularity
+        if group_by == 'month':
+            d_str = row.OrderDate.strftime('%m/%Y')
+        elif group_by == 'year':
+            d_str = row.OrderDate.strftime('%Y')
+        elif group_by == 'week':
+            try:
+                # Handle possible date objects or strings if aggregation returns different things
+                d_str = row.OrderDate.strftime('W%W-%Y')
+            except:
+                d_str = str(row.OrderDate)
+        else:
+            d_str = row.OrderDate.strftime('%d/%m/%Y')
+            
+        dates.append(d_str)
         rev = float(row.DailyRevenue) if row.DailyRevenue else 0.0
         total_rev += rev
         total_ord += (row.OrderCount or 0)
@@ -308,12 +307,6 @@ def admin_reports():
     for row in category_revenue:
         cat_names.append(row.CategoryName)
         cat_revs.append(float(row.CategoryRevenue) if row.CategoryRevenue else 0.0)
-    
-    # Get new customers count for the date range
-    cursor = conn.cursor()
-    cursor.execute('SELECT COUNT(*) FROM Customers WHERE CAST(CreatedAt AS DATE) BETWEEN %s AND %s', (start_date, end_date))
-    new_customers_range = cursor.fetchone()[0]
-    conn.close()
         
     return render_template('admin/reports.html', 
                            daily_revenue=daily_revenue, 
@@ -322,13 +315,14 @@ def admin_reports():
                            now=today,
                            start_date=start_date, 
                            end_date=end_date, 
-                           dates=json.dumps(dates), 
-                           revenues=json.dumps(revenues), 
-                           category_names=json.dumps(cat_names), 
-                           category_revenues=json.dumps(cat_revs),
+                           dates=dates, 
+                           revenues=revenues, 
+                           category_names=cat_names, 
+                           category_revenues=cat_revs,
                            total_revenue=total_rev,
                             total_orders=total_ord,
-                           new_customers=new_customers_range)
+                           new_customers=new_customers_range,
+                           group_by=group_by)
 
 @admin_bp.route('/admin/api/send_report_email', methods=['POST'])
 def admin_send_report_email():
@@ -675,14 +669,12 @@ def admin_add_color():
     color_name = request.form.get('color_name')
     if not color_name: return redirect(request.referrer)
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('INSERT INTO Colors (ColorName) VALUES (%s)', (color_name,))
-        conn.commit()
+    result = AttributeService.add_color(color_name)
+    if result['success']:
         flash('Thêm màu thành công', 'success')
-    except Exception as e: val = e
-    finally: conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
+        
     return redirect(request.referrer)
 
 @admin_bp.route('/admin/sizes/add', methods=['POST'])
@@ -691,65 +683,48 @@ def admin_add_size():
     size_name = request.form.get('size_name')
     if not size_name: return redirect(request.referrer)
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('INSERT INTO Sizes (SizeName) VALUES (%s)', (size_name,))
-        conn.commit()
+    result = AttributeService.add_size(size_name)
+    if result['success']:
         flash('Thêm kích thước thành công', 'success')
-    except Exception as e: val = e
-    finally: conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
+
     return redirect(request.referrer)
 
 @admin_bp.route('/admin/variants/delete/<int:variant_id>', methods=['POST'])
 def admin_delete_variant(variant_id):
     if not is_admin(): return redirect(url_for('main.home'))
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('DELETE FROM ProductVariants WHERE VariantID = %s', (variant_id,))
-        conn.commit()
+    
+    result = ProductService.delete_variant(variant_id)
+    if result['success']:
         flash('Đã xóa biến thể thành công', 'success')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Lỗi: {str(e)}', 'error')
-    finally: conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
+        
     return redirect(request.referrer)
 
 @admin_bp.route('/admin/colors/delete/<int:color_id>', methods=['POST'])
 def admin_delete_color(color_id):
     if not is_admin(): return redirect(url_for('main.home'))
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('DELETE FROM Colors WHERE ColorID = %s', (color_id,))
-        conn.commit()
+    
+    result = AttributeService.delete_color(color_id)
+    if result['success']:
         flash('Đã xóa màu thành công', 'success')
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        flash('Không thể xóa màu này vì đang được sử dụng trong sản phẩm.', 'error')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Lỗi: {str(e)}', 'error')
-    finally: conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
+        
     return redirect(request.referrer)
 
 @admin_bp.route('/admin/sizes/delete/<int:size_id>', methods=['POST'])
 def admin_delete_size(size_id):
     if not is_admin(): return redirect(url_for('main.home'))
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('DELETE FROM Sizes WHERE SizeID = %s', (size_id,))
-        conn.commit()
+    
+    result = AttributeService.delete_size(size_id)
+    if result['success']:
         flash('Đã xóa kích thước thành công', 'success')
-    except psycopg2.IntegrityError:
-        conn.rollback()
-        flash('Không thể xóa kích thước này vì đang được sử dụng trong sản phẩm.', 'error')
-    except Exception as e:
-        conn.rollback()
-        flash(f'Lỗi: {str(e)}', 'error')
-    finally: conn.close()
+    else:
+        flash(f'Lỗi: {result["message"]}', 'error')
+        
     return redirect(request.referrer)
 
 @admin_bp.route('/admin/customers')

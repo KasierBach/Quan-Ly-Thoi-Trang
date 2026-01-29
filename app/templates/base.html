@@ -703,6 +703,7 @@
         /* Search Bar */
         .search-bar {
             max-width: 400px;
+            position: relative;
         }
 
         .search-bar .form-control {
@@ -713,6 +714,93 @@
         .search-bar .btn {
             border-top-left-radius: 0;
             border-bottom-left-radius: 0;
+        }
+
+        /* Autocomplete Dropdown */
+        .search-autocomplete {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--gray-200);
+            border-top: none;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            box-shadow: var(--shadow);
+            z-index: 1060;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .search-autocomplete.show {
+            display: block;
+        }
+
+        .search-autocomplete-item {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            text-decoration: none;
+            color: var(--gray-800);
+            border-bottom: 1px solid var(--gray-100);
+            transition: background-color 0.2s;
+        }
+
+        .search-autocomplete-item:hover {
+            background-color: var(--gray-50);
+        }
+
+        .search-autocomplete-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-autocomplete-img {
+            width: 45px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 6px;
+            margin-right: 12px;
+        }
+
+        .search-autocomplete-info {
+            flex: 1;
+        }
+
+        .search-autocomplete-name {
+            font-weight: 500;
+            font-size: 0.95rem;
+            margin-bottom: 2px;
+        }
+
+        .search-autocomplete-meta {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+        }
+
+        .search-autocomplete-price {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .search-no-results {
+            padding: 15px;
+            text-align: center;
+            color: var(--gray-500);
+        }
+
+        [data-bs-theme="dark"] .search-autocomplete {
+            background: #2d2d2d;
+            border-color: #404040;
+        }
+
+        [data-bs-theme="dark"] .search-autocomplete-item {
+            color: #f8f9fa;
+            border-bottom-color: #404040;
+        }
+
+        [data-bs-theme="dark"] .search-autocomplete-item:hover {
+            background-color: #404040;
         }
 
         /* Cart Badge */
@@ -816,6 +904,126 @@
                 box-shadow: 0 0 0 0 rgba(238, 77, 45, 0);
             }
         }
+
+        /* Floating Contact Widget */
+        .floating-contact {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: flex-end;
+            gap: 15px;
+        }
+
+        .contact-btn-main {
+            width: 60px;
+            height: 60px;
+            background: var(--primary-color);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(238, 77, 45, 0.4);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .contact-btn-main:hover {
+            transform: scale(1.1);
+        }
+
+        .contact-btn-main.active {
+            transform: rotate(45deg);
+            background: var(--gray-700);
+        }
+
+        .contact-pulse {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 2px solid var(--primary-color);
+            opacity: 0;
+            animation: contact-pulse 2s infinite;
+        }
+
+        @keyframes contact-pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .contact-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            align-items: flex-end;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(20px);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .contact-menu.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s;
+            font-weight: 500;
+        }
+
+        .contact-item:hover {
+            transform: translateX(-5px);
+            color: white;
+        }
+
+        .contact-item i {
+            font-size: 20px;
+            width: 25px;
+            text-align: center;
+        }
+
+        .contact-item span {
+            margin-right: 10px;
+        }
+
+        .c-zalo {
+            background: #0068ff;
+        }
+
+        .c-messenger {
+            background: #0084ff;
+        }
+
+        .c-hotline {
+            background: #ce0c0e;
+        }
+
+        .c-livechat {
+            background: linear-gradient(135deg, #FF6B6B 0%, #EE4D2D 100%);
+            cursor: pointer;
+        }
     </style>
     {% block styles %}{% endblock %}
 </head>
@@ -857,11 +1065,14 @@
                 </ul>
 
                 <!-- Search Bar -->
-                <form class="d-flex me-3 search-bar" action="{{ url_for('product.products') }}" method="get">
-                    <input class="form-control" type="search" name="search" placeholder="Tìm kiếm sản phẩm...">
+                <form class="d-flex me-3 search-bar" action="{{ url_for('product.products') }}" method="get"
+                    id="searchForm">
+                    <input class="form-control" type="search" name="search" id="searchInput"
+                        placeholder="Tìm kiếm sản phẩm..." autocomplete="off">
                     <button class="btn btn-outline-primary" type="submit">
                         <i class="fas fa-search"></i>
                     </button>
+                    <div class="search-autocomplete" id="searchAutocomplete"></div>
                 </form>
 
                 <ul class="navbar-nav">
@@ -882,6 +1093,10 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-1"></i>{{ session.user_name }}
+                            {% if role %}
+                            <span class="badge bg-{{ 'danger' if role == 'admin' else 'info' }} ms-1"
+                                style="font-size: 0.7em; vertical-align: middle;">{{ role|capitalize }}</span>
+                            {% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ url_for('auth.my_account') }}">
@@ -1056,6 +1271,32 @@
         </div>
     </footer>
 
+    <!-- Floating Contact Widget -->
+    <div class="floating-contact">
+        <div class="contact-btn-main btn-pulse" id="contactBtn">
+            <i class="fas fa-comment-dots"></i>
+            <div class="contact-pulse"></div>
+        </div>
+        <div class="contact-menu" id="contactMenu">
+            <div onclick="toggleLiveChat()" class="contact-item c-livechat">
+                <span>Chat Trực Tiếp</span>
+                <i class="fas fa-headset"></i>
+            </div>
+            <a href="https://zalo.me/0123456789" target="_blank" class="contact-item c-zalo">
+                <span>Chat Zalo</span>
+                <i class="fas fa-comment"></i>
+            </a>
+            <a href="https://m.me/fashionstore" target="_blank" class="contact-item c-messenger">
+                <span>Messenger</span>
+                <i class="fab fa-facebook-messenger"></i>
+            </a>
+            <a href="tel:0123456789" class="contact-item c-hotline">
+                <span>Hotline: 0123.456.789</span>
+                <i class="fas fa-phone-alt"></i>
+            </a>
+        </div>
+    </div>
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- jQuery -->
@@ -1068,6 +1309,20 @@
         }
     </script>
     <script>
+        // Floating Contact Widget Logic
+        document.getElementById('contactBtn').addEventListener('click', function () {
+            this.classList.toggle('active');
+            document.getElementById('contactMenu').classList.toggle('show');
+            const icon = this.querySelector('i');
+            if (this.classList.contains('active')) {
+                icon.classList.remove('fa-comment-dots');
+                icon.classList.add('fa-times');
+            } else {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-comment-dots');
+            }
+        });
+
         const baseData = JSON.parse(document.getElementById('base-data').textContent);
         const isUserLoggedIn = baseData.isLoggedIn;
 
@@ -1167,7 +1422,76 @@
                 document.getElementById('lightIcon').style.display = currentTheme === 'light' ? 'inline' : 'none';
             }
         });
+
+        // Live Search Autocomplete
+        (function () {
+            const searchInput = document.getElementById('searchInput');
+            const autocomplete = document.getElementById('searchAutocomplete');
+            let debounceTimer;
+
+            if (!searchInput || !autocomplete) return;
+
+            searchInput.addEventListener('input', function () {
+                const query = this.value.trim();
+
+                clearTimeout(debounceTimer);
+
+                if (query.length < 1) {
+                    autocomplete.classList.remove('show');
+                    autocomplete.innerHTML = '';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/api/search_autocomplete?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success && data.products.length > 0) {
+                                autocomplete.innerHTML = data.products.map(p => `
+                                    <a href="/product/${p.id}" class="search-autocomplete-item">
+                                        <img src="${p.image || '/static/images/placeholder.jpg'}" 
+                                             alt="${p.name}" 
+                                             class="search-autocomplete-img"
+                                             onerror="this.onerror=null;this.src='/static/images/placeholder.jpg'">
+                                        <div class="search-autocomplete-info">
+                                            <div class="search-autocomplete-name">${p.name}</div>
+                                            <div class="search-autocomplete-meta">
+                                                <span class="search-autocomplete-price">${new Intl.NumberFormat('vi-VN').format(p.price)}₫</span>
+                                                <span class="ms-2">${p.category}</span>
+                                            </div>
+                                        </div>
+                                    </a>
+                                `).join('');
+                                autocomplete.classList.add('show');
+                            } else if (data.success && data.products.length === 0) {
+                                autocomplete.innerHTML = '<div class="search-no-results"><i class="fas fa-search me-2"></i>Không tìm thấy sản phẩm</div>';
+                                autocomplete.classList.add('show');
+                            } else {
+                                autocomplete.classList.remove('show');
+                            }
+                        })
+                        .catch(() => {
+                            autocomplete.classList.remove('show');
+                        });
+                }, 250);
+            });
+
+            // Hide on click outside
+            document.addEventListener('click', function (e) {
+                if (!searchInput.contains(e.target) && !autocomplete.contains(e.target)) {
+                    autocomplete.classList.remove('show');
+                }
+            });
+
+            // Show again on focus if has content
+            searchInput.addEventListener('focus', function () {
+                if (this.value.trim().length >= 1 && autocomplete.innerHTML) {
+                    autocomplete.classList.add('show');
+                }
+            });
+        })();
     </script>
+    {% include 'chat_widget.html' %}
     {% block scripts %}{% endblock %}
 </body>
 

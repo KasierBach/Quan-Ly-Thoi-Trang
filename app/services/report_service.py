@@ -53,7 +53,7 @@ class ReportService(BaseService):
             conn.close()
 
     @staticmethod
-    def get_revenue_report(start_date, end_date):
+    def get_revenue_report(start_date, end_date, group_by='day'):
         conn = BaseService.get_connection()
         cursor = conn.cursor()
         try:
@@ -67,9 +67,60 @@ class ReportService(BaseService):
 
             if not end_date: end_date = datetime.now().strftime('%Y-%m-%d')
 
+            # Always fetch daily data first
             cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Daily(%s, %s)', (start_date, end_date))
-            daily_revenue = cursor.fetchall()
+            daily_rows = cursor.fetchall()
             
+            # Aggregate based on group_by
+            aggregated_data = {} # Key: Date/Week/Month string, Value: {revenue, orders, date_obj}
+            
+            for row in daily_rows:
+                if not row.OrderDate: continue
+                
+                date_key = ''
+                display_date = row.OrderDate
+                
+                if group_by == 'week':
+                    # ISO Week
+                    year, week, _ = row.OrderDate.isocalendar()
+                    date_key = f"{year}-W{week}"
+                    # Use Monday of that week as display date
+                    display_date = datetime.strptime(f'{year}-W{week}-1', "%Y-W%W-%w").date()
+                elif group_by == 'month':
+                    date_key = row.OrderDate.strftime('%Y-%m')
+                    display_date = row.OrderDate.replace(day=1)
+                elif group_by == 'year':
+                    date_key = row.OrderDate.strftime('%Y')
+                    display_date = row.OrderDate.replace(month=1, day=1)
+                else: # day
+                    date_key = row.OrderDate.strftime('%Y-%m-%d')
+                
+                if date_key not in aggregated_data:
+                    aggregated_data[date_key] = {
+                        'OrderDate': display_date,
+                        'DailyRevenue': 0,
+                        'OrderCount': 0
+                    }
+                
+                aggregated_data[date_key]['DailyRevenue'] += (float(row.DailyRevenue) if row.DailyRevenue else 0)
+                aggregated_data[date_key]['OrderCount'] += (row.OrderCount or 0)
+            
+            # Convert back to list and sort
+            daily_revenue = []
+            for key in sorted(aggregated_data.keys()):
+                item = aggregated_data[key]
+                # Mock object to match row interface if needed, or just dict
+                # The template accesses .OrderDate, .DailyRevenue
+                # Let's use a simple class or namedtuple, or just ensure template handles dicts?
+                # The existing template uses dot notation (row.OrderDate). 
+                # Let's return a list of objects that support dot notation.
+                class ReportRow:
+                    def __init__(self, data):
+                        self.OrderDate = data['OrderDate']
+                        self.DailyRevenue = data['DailyRevenue']
+                        self.OrderCount = data['OrderCount']
+                daily_revenue.append(ReportRow(item))
+
             cursor.execute('SELECT * FROM sp_GetRevenueByDateRange_Category(%s, %s)', (start_date, end_date))
             category_revenue = cursor.fetchall()
             
@@ -85,7 +136,8 @@ class ReportService(BaseService):
                 'daily_revenue': daily_revenue,
                 'category_revenue': category_revenue,
                 'best_selling': best_selling,
-                'new_customers_range': new_customers_range
+                'new_customers_range': new_customers_range,
+                'group_by': group_by
             }
         finally:
             cursor.close()

@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     UNIQUE (ProductID, ColorID, SizeID)
 );
 
-CREATE TABLE Orders (
+CREATE TABLE IF NOT EXISTS Orders (
     OrderID SERIAL PRIMARY KEY,
     CustomerID INT REFERENCES Customers(CustomerID),
     OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -69,7 +69,7 @@ CREATE TABLE Orders (
     ShippingAddress VARCHAR(500) NULL
 );
 
-CREATE TABLE OrderDetails (
+CREATE TABLE IF NOT EXISTS OrderDetails (
     OrderDetailID SERIAL PRIMARY KEY,
     OrderID INT REFERENCES Orders(OrderID) ON DELETE CASCADE,
     VariantID INT REFERENCES ProductVariants(VariantID),
@@ -77,7 +77,7 @@ CREATE TABLE OrderDetails (
     Price DECIMAL(18,2) NOT NULL
 );
 
-CREATE TABLE Wishlist (
+CREATE TABLE IF NOT EXISTS Wishlist (
     WishlistID SERIAL PRIMARY KEY,
     CustomerID INT REFERENCES Customers(CustomerID),
     ProductID INT REFERENCES Products(ProductID),
@@ -85,7 +85,7 @@ CREATE TABLE Wishlist (
     UNIQUE (CustomerID, ProductID)
 );
 
-CREATE TABLE Reviews (
+CREATE TABLE IF NOT EXISTS Reviews (
     ReviewID SERIAL PRIMARY KEY,
     CustomerID INT REFERENCES Customers(CustomerID),
     ProductID INT REFERENCES Products(ProductID),
@@ -95,7 +95,7 @@ CREATE TABLE Reviews (
     UNIQUE (CustomerID, ProductID)
 );
 
-CREATE TABLE ContactMessages (
+CREATE TABLE IF NOT EXISTS ContactMessages (
     MessageID SERIAL PRIMARY KEY,
     Name VARCHAR(255) NOT NULL,
     Email VARCHAR(255) NOT NULL,
@@ -105,14 +105,14 @@ CREATE TABLE ContactMessages (
     Status VARCHAR(50) DEFAULT 'New'
 );
 
-CREATE TABLE NewsletterSubscribers (
+CREATE TABLE IF NOT EXISTS NewsletterSubscribers (
     SubscriberID SERIAL PRIMARY KEY,
     Email VARCHAR(255) NOT NULL UNIQUE,
     SubscribeDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     IsActive BOOLEAN DEFAULT TRUE
 );
 
-CREATE TABLE ProductComments (
+CREATE TABLE IF NOT EXISTS ProductComments (
     CommentID SERIAL PRIMARY KEY,
     CustomerID INT REFERENCES Customers(CustomerID),
     ProductID INT REFERENCES Products(ProductID),
@@ -123,7 +123,7 @@ CREATE TABLE ProductComments (
     IsVisible BOOLEAN DEFAULT TRUE
 );
 
-CREATE TABLE PasswordResetTokens (
+CREATE TABLE IF NOT EXISTS PasswordResetTokens (
     TokenID SERIAL PRIMARY KEY,
     CustomerID INT REFERENCES Customers(CustomerID),
     Token VARCHAR(100) NOT NULL,
@@ -693,6 +693,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_UpdateInventory ON OrderDetails;
 CREATE TRIGGER trg_UpdateInventory
 BEFORE INSERT OR DELETE ON OrderDetails
 FOR EACH ROW EXECUTE FUNCTION func_UpdateInventoryOnOrder();
@@ -715,6 +716,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_UpdateOrderTotal ON OrderDetails;
 CREATE TRIGGER trg_UpdateOrderTotal
 AFTER INSERT OR UPDATE OR DELETE ON OrderDetails
 FOR EACH ROW EXECUTE FUNCTION func_UpdateOrderTotal();

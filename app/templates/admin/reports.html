@@ -4,6 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
+
 <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
 <style>
     :root {
@@ -159,13 +160,16 @@
     }
 
     .stat-value {
-        font-size: 2.5rem;
+        font-size: 1.8rem;
         font-weight: 700;
         margin-bottom: 10px;
         background: linear-gradient(45deg, #667eea, #764ba2);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .stat-label {
@@ -569,9 +573,57 @@
                             <button class="btn btn-light btn-custom me-2" onclick="window.print()">
                                 <i class="fas fa-print me-2"></i>In báo cáo
                             </button>
+                            <button class="btn btn-info btn-custom me-2" data-bs-toggle="modal"
+                                data-bs-target="#emailReportModal">
+                                <i class="fas fa-envelope me-2"></i>Gửi Email
+                            </button>
                             <button class="btn btn-warning btn-custom" onclick="exportToExcel()">
                                 <i class="fas fa-download me-2"></i>Xuất Excel
                             </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Email Report Modal -->
+                <div class="modal fade" id="emailReportModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="fas fa-envelope-open-text me-2"></i>Gửi báo cáo qua
+                                    Email</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="emailReportForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Email người nhận</label>
+                                        <input type="email" class="form-control" name="email" required
+                                            placeholder="nhanvien@example.com">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Loại báo cáo</label>
+                                        <select class="form-select" name="report_type">
+                                            <option value="daily_revenue">Doanh thu theo ngày</option>
+                                            <option value="category_revenue">Doanh thu theo danh mục</option>
+                                            <option value="best_selling">Sản phẩm bán chạy</option>
+                                            <option value="top_customers">Khách hàng VIP</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Lời nhắn (tùy chọn)</label>
+                                        <textarea class="form-control" name="message" rows="3"
+                                            placeholder="Gửi sếp báo cáo tháng này..."></textarea>
+                                    </div>
+                                    <input type="hidden" name="start_date" value="{{ start_date }}">
+                                    <input type="hidden" name="end_date" value="{{ end_date }}">
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                <button type="button" class="btn btn-primary" onclick="sendEmailReport()">
+                                    <i class="fas fa-paper-plane me-2"></i>Gửi ngay
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -580,22 +632,37 @@
                 <div class="date-filter-card animate__animated animate__fadeInUp">
                     <div class="row align-items-end">
                         <div class="col-md-8">
-                            <form method="GET" class="row g-3" id="dateFilterForm">
-                                <div class="col-md-4">
+                            <form method="GET" class="row g-3 align-items-end" id="dateFilterForm">
+                                <div class="col-md-3">
                                     <label for="start_date" class="form-label fw-bold">
                                         <i class="fas fa-calendar-alt me-2"></i>Từ ngày
                                     </label>
                                     <input type="date" class="form-control" id="start_date" name="start_date"
                                         value="{{ start_date }}" onchange="updateReport()">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
                                     <label for="end_date" class="form-label fw-bold">
                                         <i class="fas fa-calendar-alt me-2"></i>Đến ngày
                                     </label>
                                     <input type="date" class="form-control" id="end_date" name="end_date"
                                         value="{{ end_date }}" onchange="updateReport()">
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-3">
+                                    <label for="group_by" class="form-label fw-bold">
+                                        <i class="fas fa-layer-group me-2"></i>Thống kê theo
+                                    </label>
+                                    <select class="form-select" id="group_by" name="group_by" onchange="updateReport()">
+                                        <option value="day" {% if group_by=='day' %}selected{% endif %}>Theo Ngày
+                                        </option>
+                                        <option value="week" {% if group_by=='week' %}selected{% endif %}>Theo Tuần
+                                        </option>
+                                        <option value="month" {% if group_by=='month' %}selected{% endif %}>Theo Tháng
+                                        </option>
+                                        <option value="year" {% if group_by=='year' %}selected{% endif %}>Theo Năm
+                                        </option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
                                     <button type="submit" class="btn btn-primary-custom btn-custom w-100">
                                         <i class="fas fa-search me-2"></i>Tạo báo cáo
                                     </button>
@@ -646,8 +713,8 @@
                             <i class="fas fa-users"></i>
                         </div>
                         <div class="stat-value">
-                            {% if total_orders > 0 %}
-                            {{ (total_orders * 0.85)|round|int }}
+                            {% if new_customers %}
+                            {{ new_customers }}
                             {% else %}
                             0
                             {% endif %}
@@ -834,48 +901,52 @@
                         </h5>
                     </div>
                     <div class="chart-body">
-                        <div class="row">
-                            {% for category in category_revenue %}
-                            {% set colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD',
-                            '#98D8C8', '#F7DC6F'] %}
-                            <div class="col-md-6 col-lg-4 mb-3">
-                                <div class="category-item"
-                                    data-border-color="{{ colors[loop.index0 % colors|length] }}">
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <div>
-                                            <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
-                                            <small class="text-muted">
-                                                {% if total_revenue|float > 0 %}
-                                                {{ "{:.1f}".format((category.CategoryRevenue|float /
-                                                total_revenue|float) * 100) }}%
-                                                tổng doanh thu
-                                                {% else %}
-                                                0% tổng doanh thu
-                                                {% endif %}
-                                            </small>
-                                        </div>
-                                        <div class="text-end">
-                                            <strong class="text-primary">{{ "{:,.0f}".format(category.CategoryRevenue)
-                                                }} đ</strong>
-                                        </div>
-                                    </div>
-                                    <div class="progress mt-2" style="height: 6px;">
-                                        <div class="progress-bar"
-                                            data-width="{% if total_revenue|float > 0 %}{{ (category.CategoryRevenue|float / total_revenue|float) * 100 }}{% else %}0{% endif %}"
-                                            data-bg-color="{{ colors[loop.index0 % colors|length] }}">
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endfor %}
-                            {% if not category_revenue %}
+                        <div class="row align-items-center">
                             <div class="col-12">
-                                <div class="text-center text-muted py-4">
-                                    <i class="fas fa-chart-pie fa-3x mb-3 opacity-50"></i>
-                                    <p>Không có dữ liệu danh mục trong khoảng thời gian này</p>
+                                <div class="row">
+                                    {% for category in category_revenue %}
+                                    {% set colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD',
+                                    '#98D8C8', '#F7DC6F'] %}
+                                    <div class="col-md-4 mb-3">
+                                        <div class="category-item"
+                                            data-border-color="{{ colors[loop.index0 % colors|length] }}">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <div>
+                                                    <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
+                                                    <small class="text-muted">
+                                                        {% if total_revenue|float > 0 %}
+                                                        {{ "{:.1f}".format((category.CategoryRevenue|float /
+                                                        total_revenue|float) * 100) }}%
+                                                        tổng doanh thu
+                                                        {% else %}
+                                                        0% tổng doanh thu
+                                                        {% endif %}
+                                                    </small>
+                                                </div>
+                                                <div class="text-end">
+                                                    <strong class="text-primary">{{
+                                                        "{:,.0f}".format(category.CategoryRevenue) }} đ</strong>
+                                                </div>
+                                            </div>
+                                            <div class="progress mt-2" style="height: 6px;">
+                                                <div class="progress-bar"
+                                                    data-width="{% if total_revenue|float > 0 %}{{ (category.CategoryRevenue|float / total_revenue|float) * 100 }}{% else %}0{% endif %}"
+                                                    data-bg-color="{{ colors[loop.index0 % colors|length] }}">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% if not category_revenue %}
+                                    <div class="col-12">
+                                        <div class="text-center text-muted py-4">
+                                            <i class="fas fa-chart-pie fa-3x mb-3 opacity-50"></i>
+                                            <p>Không có dữ liệu danh mục trong khoảng thời gian này</p>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </div>
-                            {% endif %}
                         </div>
                     </div>
                 </div>
@@ -1010,6 +1081,7 @@
 
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 <script type="text/template" id="csv-data">
     [
         {% for day in daily_revenue %}
@@ -1065,11 +1137,12 @@
                     backgroundColor: 'rgba(102, 126, 234, 0.1)',
                     fill: true,
                     tension: 0.4,
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
+                    // Hide points if too many data points (e.g. > 50)
+                    pointRadius: dailyLabels.length > 50 ? 0 : 4,
+                    pointHoverRadius: 6,
                     pointBackgroundColor: '#667eea',
                     pointBorderColor: '#fff',
-                    pointBorderWidth: 2
+                    pointBorderWidth: 1.5
                 }]
             },
             options: {
@@ -1080,14 +1153,20 @@
                         display: false
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
-                        borderColor: '#667eea',
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#333',
+                        bodyColor: '#667eea',
+                        borderColor: '#e2e8f0',
                         borderWidth: 1,
+                        padding: 10,
+                        titleFont: { size: 13, weight: 'bold' },
+                        bodyFont: { size: 14 },
+                        displayColors: false,
                         callbacks: {
                             label: function (context) {
-                                return 'Doanh thu: ' + new Intl.NumberFormat('vi-VN').format(context.raw) + ' đ';
+                                return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(context.raw);
                             }
                         }
                     }
@@ -1096,26 +1175,35 @@
                     y: {
                         beginAtZero: true,
                         grid: {
-                            color: 'rgba(0,0,0,0.1)'
+                            color: '#f1f5f9',
+                            drawBorder: false
                         },
                         ticks: {
+                            font: { size: 11, family: "'Inter', sans-serif" },
                             callback: function (value) {
-                                return new Intl.NumberFormat('vi-VN', {
-                                    notation: 'compact',
-                                    compactDisplay: 'short'
-                                }).format(value) + ' đ';
+                                if (value >= 1000000000) return (value / 1000000000).toFixed(1) + 'B';
+                                if (value >= 1000000) return (value / 1000000).toFixed(1) + 'M';
+                                if (value >= 1000) return (value / 1000).toFixed(0) + 'k';
+                                return value;
                             }
                         }
                     },
                     x: {
                         grid: {
-                            color: 'rgba(0,0,0,0.1)'
+                            display: false
+                        },
+                        ticks: {
+                            font: { size: 11 },
+                            maxTicksLimit: 12, // More spread out
+                            maxRotation: 0,
+                            autoSkip: true
                         }
                     }
                 },
                 interaction: {
                     intersect: false,
-                    mode: 'index'
+                    mode: 'nearest',
+                    axis: 'x'
                 }
             }
         }
@@ -1131,53 +1219,113 @@
                 datasets: [{
                     data: categoryData,
                     backgroundColor: chartColors,
-                    borderWidth: 3,
-                    borderColor: '#fff',
-                    hoverOffset: 15
+                    borderWidth: 0,
+                    hoverOffset: 4
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                cutout: '70%',
                 plugins: {
+                    datalabels: {
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: 12
+                        },
+                        formatter: function (value, context) {
+                            let sum = 0;
+                            let dataArr = context.chart.data.datasets[0].data;
+                            dataArr.map(data => {
+                                sum += data;
+                            });
+                            const percentage = sum > 0 ? ((value / sum) * 100).toFixed(1) + '%' : '0%';
+                            return percentage;
+                        },
+                        display: function (context) {
+                            return context.dataset.data[context.dataIndex] > 0;
+                        }
+                    },
                     legend: {
-                        position: 'bottom',
+                        position: 'right',
                         labels: {
-                            padding: 20,
                             usePointStyle: true,
+                            padding: 20,
                             font: {
-                                size: 12
+                                size: 12,
+                                family: "'Inter', sans-serif"
+                            },
+                            generateLabels: function (chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    const dataset = data.datasets[0];
+                                    const total = dataset.data.reduce((acc, val) => acc + val, 0);
+
+                                    return data.labels.map((label, i) => {
+                                        const value = dataset.data[i];
+                                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                        return {
+                                            text: `${label} (${percentage})`,
+                                            fillStyle: dataset.backgroundColor[i],
+                                            hidden: isNaN(dataset.data[i]) || chart.getDatasetMeta(0).data[i].hidden,
+                                            index: i,
+                                            strokeStyle: dataset.backgroundColor[i],
+                                            lineWidth: 0
+                                        };
+                                    });
+                                }
+                                return [];
                             }
                         }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(0,0,0,0.8)',
-                        titleColor: '#fff',
-                        bodyColor: '#fff',
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        titleColor: '#333',
+                        bodyColor: '#667eea',
+                        borderColor: '#e2e8f0',
+                        borderWidth: 1,
+                        padding: 10,
+                        bodyFont: { size: 14 },
+                        displayColors: true,
                         callbacks: {
                             label: function (context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.raw / total) * 100).toFixed(1);
-                                return context.label + ': ' +
-                                    new Intl.NumberFormat('vi-VN').format(context.raw) + ' đ (' + percentage + '%)';
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                const value = context.raw;
+                                const total = context.chart._metasets[context.datasetIndex].total;
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
+                                label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+                                return `${label} (${percentage})`;
                             }
                         }
                     }
                 }
-            }
+            },
+            plugins: [ChartDataLabels]
         }
     );
 
     // Utility functions
     function setDateRange(days) {
         const endDate = new Date();
+        const groupBySelect = document.getElementById('group_by');
 
         if (days === 'all') {
             document.getElementById('start_date').value = '';
+            // Auto-switch to Month if "All Time" is selected for better readability
+            groupBySelect.value = 'month';
         } else {
             const startDate = new Date();
             startDate.setDate(endDate.getDate() - days);
             document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
+
+            // Auto-switch back to Day for short ranges (e.g. 7 or 30 days)
+            if (days <= 60) {
+                groupBySelect.value = 'day';
+            }
         }
 
         document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
@@ -1260,18 +1408,19 @@
         scheduleModal.show();
     }
 
-    function sendEmailReal() {
-        const email = document.getElementById('reportEmail').value;
-        const msgText = document.querySelector('#emailModal textarea').value;
-        const reportType = document.getElementById('reportType').value;
-        const config = JSON.parse(document.getElementById('report-config').textContent);
+    function sendEmailReport() {
+        const form = document.getElementById('emailReportForm');
+        const formData = new FormData(form);
+        const data = Object.fromEntries(formData.entries());
+        const emailModalElement = document.getElementById('emailReportModal');
+        const modal = bootstrap.Modal.getInstance(emailModalElement) || new bootstrap.Modal(emailModalElement);
 
-        if (!email || !email.includes('@')) {
-            showNotification('Vui lòng nhập email hợp lệ', 'error');
+        if (!data.email || !data.email.includes('@')) {
+            showNotification('Vui lòng nhập email hợp lệ', 'warning');
             return;
         }
 
-        const btn = document.querySelector('#emailModal .btn-primary');
+        const btn = document.querySelector('#emailReportModal .btn-primary');
         const originalText = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang gửi...';
@@ -1281,27 +1430,21 @@
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-                email: email,
-                message: msgText,
-                report_type: reportType,
-                start_date: config.startDate,
-                end_date: config.endDate
-            })
+            body: JSON.stringify(data)
         })
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    emailModal.hide();
-                    showNotification(data.message, 'success');
-                    document.getElementById('emailForm').reset();
+            .then(result => {
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    modal.hide();
+                    form.reset();
                 } else {
-                    showNotification(data.message, 'danger');
+                    showNotification(result.message, 'danger');
                 }
             })
-            .catch(error => {
-                console.error('Error:', error);
-                showNotification('Có lỗi xảy ra khi kết nối đến máy chủ', 'danger');
+            .catch(err => {
+                console.error(err);
+                showNotification('Lỗi khi gửi báo cáo: ' + err, 'danger');
             })
             .finally(() => {
                 btn.disabled = false;
@@ -1310,19 +1453,10 @@
     }
 
     function confirmSchedule() {
+        // Mock function for future schedule feature
         const freq = document.getElementById('scheduleFreq').value;
-        const btn = document.querySelector('#scheduleModal .btn-primary');
-        const originalText = btn.innerHTML;
-
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Đang lưu...';
-
-        setTimeout(() => {
-            scheduleModal.hide();
-            showNotification(`Đã lên lịch gửi báo cáo ${freq} thành công!`, 'success');
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }, 1500);
+        showNotification(`Tính năng lên lịch báo cáo ${freq} đang được phát triển!`, 'info');
+        bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
     }
 
     // Notification system

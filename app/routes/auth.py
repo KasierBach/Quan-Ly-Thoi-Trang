@@ -1,5 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from werkzeug.security import generate_password_hash, check_password_hash
+from app.services.auth_service import AuthService
+from app.decorators import login_required
+
 from app.database import get_db_connection
 from app.utils import send_email
 import re
@@ -19,20 +21,17 @@ def login():
             flash('Vui lòng nhập email và mật khẩu', 'error')
             return redirect(url_for('auth.login'))
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT CustomerID, FullName, Password, IsAdmin, DarkModeEnabled FROM Customers WHERE Email = %s', (email,))
-        user = cursor.fetchone()
-        conn.close()
+        user = AuthService.login_user(email, password)
         
-        if not user or not check_password_hash(user.Password, password):
+        if not user:
             flash('Email hoặc mật khẩu không đúng', 'error')
             return redirect(url_for('auth.login'))
         
         # Lưu thông tin đăng nhập vào session
         session['user_id'] = user.CustomerID
         session['user_name'] = user.FullName
-        session['is_admin'] = user.IsAdmin
+        session['is_admin'] = user.IsAdmin # Keep for backward compatibility
+        session['role'] = user.Role
         session['dark_mode'] = user.DarkModeEnabled
         
         # Chuyển hướng đến trang tiếp theo (nếu có)
@@ -40,6 +39,9 @@ def login():
         if next_page:
             return redirect(next_page)
         
+        if user.Role == 'admin':
+             return redirect(url_for('admin.admin_dashboard'))
+
         flash('Đăng nhập thành công!', 'success')
         return redirect(url_for('main.home'))
     
@@ -58,44 +60,20 @@ def register():
             flash('Vui lòng điền đầy đủ thông tin bắt buộc', 'error')
             return redirect(url_for('auth.register'))
         
-        # Mã hóa mật khẩu
-        hashed_password = generate_password_hash(password)
+        result = AuthService.register_user(full_name, email, password, phone, address)
         
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
-        try:
-            # Gọi stored procedure thêm khách hàng mới (Postgres function returns ID)
-            cursor.execute('''
-                SELECT sp_AddCustomer(%s, %s, %s, %s, %s) AS CustomerID
-            ''', (full_name, email, hashed_password, phone, address))
-            
-            result = cursor.fetchone()
-            customer_id = result.CustomerID
-            
-            conn.commit()
-            
+        if result['success']:
             # Đăng nhập tự động sau khi đăng ký
-            session['user_id'] = customer_id
-            session['user_name'] = full_name
+            session['user_id'] = result['customer_id']
+            session['user_name'] = result['full_name']
+            session['role'] = 'customer' # Default role
             session['dark_mode'] = False
             
             flash('Đăng ký thành công!', 'success')
             return redirect(url_for('main.home'))
-            
-        except Exception as e:
-            conn.rollback()
-            error_message = str(e)
-            if 'Email đã tồn tại' in error_message:
-                flash('Email đã được sử dụng, vui lòng chọn email khác', 'error')
-            elif 'Số điện thoại đã tồn tại' in error_message:
-                flash('Số điện thoại đã được sử dụng, vui lòng chọn số khác', 'error')
-            else:
-                flash(f'Đã xảy ra lỗi: {error_message}', 'error')
-            
+        else:
+            flash(result['message'], 'error')
             return redirect(url_for('auth.register'))
-        finally:
-            conn.close()
     
     return render_template('register.html')
 

@@ -7,31 +7,11 @@ main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
 def home():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    # categories fetching removed - handled by context processor
+    # Use ProductService to fetch data
+    from app.services.product_service import ProductService
     
-    cursor.execute('''
-        SELECT p.ProductID, p.ProductName, p.Price, p.OriginalPrice, c.CategoryName, p.ImageURL,
-        (SELECT cl.ColorName FROM Colors cl JOIN ProductVariants pv ON cl.ColorID = pv.ColorID 
-         WHERE pv.ProductID = p.ProductID LIMIT 1) AS FirstColor
-        FROM Products p
-        JOIN Categories c ON p.CategoryID = c.CategoryID
-        ORDER BY p.CreatedAt DESC
-        LIMIT 8
-    ''')
-    featured_products = cursor.fetchall()
-    
-    cursor.execute('''
-        SELECT bs.ProductID, bs.ProductName, bs.Price, bs.OriginalPrice, bs.CategoryName, bs.TotalSold, p.ImageURL
-        FROM vw_BestSellingProducts bs
-        JOIN Products p ON bs.ProductID = p.ProductID
-        ORDER BY bs.TotalSold DESC
-    ''')
-    best_selling = cursor.fetchall()
-    conn.close()
+    featured_products = ProductService.get_featured_products(8)
+    best_selling = ProductService.get_best_selling_products(8)
     
     return render_template('index.html', 
                           featured_products=featured_products,

@@ -38,12 +38,41 @@ def main():
         else:
             print(f"Warning: {schema_path} not found.")
 
+        # 1.5. Clear existing data to avoid duplicates
+        print("Clearing existing data...")
+        tables = [
+            'OrderDetails', 'Orders', 'ProductVariants', 'Products', 
+            'Categories', 'Customers', 'Colors', 'Sizes', 'Wishlist', 
+            'Reviews', 'ContactMessages', 'NewsletterSubscribers', 
+            'ProductComments', 'PasswordResetTokens'
+        ]
+        for table in tables:
+             # Use CASCADE to handle FKs
+             try:
+                 cursor.execute(f"TRUNCATE TABLE {table} CASCADE;")
+             except psycopg2.errors.UndefinedTable:
+                 pass # Table might not exist yet
+                 
+        print("Data cleared.")
+
         # 2. Run Data
         data_path = os.path.join('data', 'postgresql_data_full.sql')
         if os.path.exists(data_path):
             run_sql_file(cursor, data_path)
         else:
             print(f"Warning: {data_path} not found.")
+
+        # 3. Apply RBAC Migration (Role column)
+        print("Applying RBAC Migration...")
+        # Check if Role column exists to avoid error if re-running
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='customers' AND column_name='role';")
+        if not cursor.fetchone():
+            print("Adding Role column...")
+            cursor.execute("ALTER TABLE Customers ADD COLUMN Role VARCHAR(50) DEFAULT 'customer';")
+            cursor.execute("UPDATE Customers SET Role = 'admin' WHERE IsAdmin = TRUE;")
+            print("RBAC Migration applied.")
+        else:
+            print("Role column already exists. Skipping.")
 
         cursor.close()
         conn.close()

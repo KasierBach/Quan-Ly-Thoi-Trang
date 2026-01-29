@@ -1,0 +1,299 @@
+<!-- Chat Widget -->
+<style>
+    /* Chat Window */
+    .chat-window {
+        position: fixed;
+        bottom: 100px;
+        right: 20px;
+        width: 350px;
+        height: 500px;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.15);
+        z-index: 9999;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        transform: translateY(20px);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-window.active {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+        bottom: 110px;
+        /* Aligned with floating menu */
+    }
+
+    /* Header */
+    .chat-header {
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE4D2D 100%);
+        padding: 15px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    }
+
+    .chat-header h5 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .chat-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.2rem;
+        cursor: pointer;
+        opacity: 0.8;
+        padding: 5px;
+        transition: opacity 0.2s;
+    }
+
+    .chat-close:hover {
+        opacity: 1;
+    }
+
+    /* Messages Body */
+    .chat-body {
+        flex: 1;
+        padding: 15px;
+        overflow-y: auto;
+        background-color: #f8f9fa;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .message {
+        max-width: 80%;
+        padding: 10px 12px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        line-height: 1.4;
+        position: relative;
+        word-wrap: break-word;
+    }
+
+    .message.user {
+        align-self: flex-end;
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE4D2D 100%);
+        color: white;
+        border-bottom-right-radius: 2px;
+    }
+
+    .message.admin {
+        align-self: flex-start;
+        background: white;
+        color: #333;
+        border: 1px solid #e9ecef;
+        border-bottom-left-radius: 2px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+
+    .message-time {
+        font-size: 0.7rem;
+        margin-top: 4px;
+        opacity: 0.7;
+        text-align: right;
+    }
+
+    /* Input Area */
+    .chat-footer {
+        padding: 15px;
+        background: white;
+        border-top: 1px solid #e9ecef;
+        display: flex;
+        gap: 10px;
+    }
+
+    .chat-input {
+        flex: 1;
+        border: 1px solid #dee2e6;
+        border-radius: 20px;
+        padding: 10px 15px;
+        outline: none;
+        transition: border-color 0.2s;
+        font-family: inherit;
+    }
+
+    .chat-input:focus {
+        border-color: #EE4D2D;
+    }
+
+    .chat-send {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #FF6B6B 0%, #EE4D2D 100%);
+        border: none;
+        border-radius: 50%;
+        color: white;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: transform 0.2s;
+    }
+
+    .chat-send:hover {
+        transform: scale(1.05);
+    }
+</style>
+
+<div class="chat-window" id="chatWindow">
+    <div class="chat-header">
+        <h5><i class="fas fa-headset"></i> Hỗ trợ trực tuyến</h5>
+        <button class="chat-close" id="chatClose"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="chat-body" id="chatBody">
+        <div class="message admin">
+            Chào bạn! Shop có thể giúp gì cho bạn hôm nay?
+            <div class="message-time">Vừa xong</div>
+        </div>
+    </div>
+    <div class="chat-footer">
+        <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..."
+            onkeypress="handleKeyPress(event)">
+        <button class="chat-send" onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+    </div>
+</div>
+
+<script>
+    // Generate or retrieve Session ID
+    function getSessionId() {
+        let sessionId = localStorage.getItem('chat_session_id');
+        if (!sessionId) {
+            sessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+            localStorage.setItem('chat_session_id', sessionId);
+        }
+        return sessionId;
+    }
+
+    const sessionId = getSessionId();
+    const chatWindow = document.getElementById('chatWindow');
+    const chatClose = document.getElementById('chatClose');
+    const chatBody = document.getElementById('chatBody');
+    const chatInput = document.getElementById('chatInput');
+    let isChatOpen = false;
+    let lastMessageId = 0;
+
+    // Global Toggle Function
+    window.toggleLiveChat = function () {
+        isChatOpen = !isChatOpen;
+        chatWindow.classList.toggle('active', isChatOpen);
+        if (isChatOpen) {
+            scrollToBottom();
+        }
+    }
+
+    chatClose.addEventListener('click', () => {
+        isChatOpen = false;
+        chatWindow.classList.remove('active');
+    });
+
+    function scrollToBottom() {
+        chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    }
+
+    async function sendMessage() {
+        const content = chatInput.value.trim();
+        if (!content) return;
+
+        // Optimistic UI update
+        appendMessage('user', content, 'Đang gửi...');
+        chatInput.value = '';
+
+        try {
+            const response = await fetch('/api/chat/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify({
+                    content: content,
+                    session_id: sessionId
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to send');
+
+            // Reload history to sync
+            fetchMessages();
+        } catch (error) {
+            console.error('Error:', error);
+            // Show error state if needed
+        }
+    }
+
+    function appendMessage(sender, content, time) {
+        const div = document.createElement('div');
+        div.className = `message ${sender}`;
+        div.innerHTML = `
+            ${content}
+            <div class="message-time">${time}</div>
+        `;
+        chatBody.appendChild(div);
+        scrollToBottom();
+    }
+
+    async function fetchMessages() {
+        try {
+            const response = await fetch(`/api/chat/history?session_id=${sessionId}`);
+            const data = await response.json();
+
+            if (data.messages) {
+                // Clear current messages to avoid dups (naive approach, better to diff)
+                // For simplicity, we only clear if we have new messages or first load
+                // Or better: filter messages > lastMessageId
+
+                // Simple Render:
+                chatBody.innerHTML = '';
+                // Default welcome
+                chatBody.innerHTML = `
+                    <div class="message admin">
+                        Chào bạn! Shop có thể giúp gì cho bạn hôm nay?
+                        <div class="message-time">Hệ thống</div>
+                    </div>
+                `;
+
+                data.messages.forEach(msg => {
+                    const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    appendMessage(msg.sender_type, msg.content, time);
+                    lastMessageId = msg.id;
+                });
+            }
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+        }
+    }
+
+    // Poll for new messages every 3s
+    setInterval(() => {
+        if (isChatOpen) {
+            fetchMessages();
+        }
+    }, 3000);
+
+    // Initial load
+    fetchMessages();
+</script>

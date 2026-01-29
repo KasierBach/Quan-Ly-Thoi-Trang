@@ -176,6 +176,16 @@ def get_product_reviews():
     result = FeedbackService.get_product_reviews(product_id)
     return jsonify(result)
 
+@product_bp.route('/api/search_autocomplete')
+def search_autocomplete():
+    """API endpoint for live search autocomplete"""
+    query = request.args.get('q', '').strip()
+    if len(query) < 1:
+        return jsonify({'success': True, 'products': []})
+    
+    products = ProductService.search_autocomplete(query, limit=8)
+    return jsonify({'success': True, 'products': products})
+
 @product_bp.route('/api/track_product_view', methods=['POST'])
 def track_product_view():
     product_id = request.form.get('product_id', type=int)
