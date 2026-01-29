@@ -99,7 +99,7 @@ class ProductService(BaseService):
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT * FROM Colors')
-            return [dict(r) for r in cursor.fetchall()]
+            return list(cursor.fetchall())
         finally:
             cursor.close()
             conn.close()
@@ -111,7 +111,7 @@ class ProductService(BaseService):
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT * FROM Sizes')
-            return [dict(r) for r in cursor.fetchall()]
+            return list(cursor.fetchall())
         finally:
             cursor.close()
             conn.close()

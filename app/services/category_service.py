@@ -14,12 +14,11 @@ class CategoryService(BaseService):
         try:
             cursor.execute('SELECT * FROM Categories')
             categories = cursor.fetchall()
-            # Convert to list of dicts for caching
-            return [dict(c) for c in categories]
+            # Return as list (CaseInsensitiveRecord already works with Jinja2)
+            return list(categories)
         except Exception as e:
             print(f"Error fetching categories: {e}")
             return []
         finally:
             cursor.close()
             conn.close()
-
