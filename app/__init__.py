@@ -3,12 +3,16 @@ from .config import Config
 from .database import db
 from flask_mail import Mail
 from .utils import DecimalEncoder, resolve_image
+from flask_socketio import SocketIO
 import os
 import json
 import flask.json
 
 # Monkey patch for flask-wtf/recaptcha compatibility
 flask.json.JSONEncoder = json.JSONEncoder
+
+# Initialize SocketIO as global variable for import
+socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -32,6 +36,11 @@ def create_app(config_class=Config):
     # Initialize CSRF Protection
     from flask_wtf.csrf import CSRFProtect
     csrf = CSRFProtect(app)
+
+    # Initialize SocketIO with app
+    socketio.init_app(app)
+    app.socketio = socketio
+
     
     # Register JSON encoder
     import decimal
@@ -96,5 +105,9 @@ def create_app(config_class=Config):
     @app.errorhandler(404)
     def page_not_found(e):
         return render_template('404.html'), 404
+
+    # Register Socket Events
+    from .sockets import register_socket_events
+    register_socket_events(socketio)
 
     return app

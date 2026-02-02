@@ -3,18 +3,7 @@
 {% block title %}Chi tiết đơn hàng #{{ order.OrderID }} - Admin{% endblock %}
 
 {% block styles %}
-<style>
-    .admin-sidebar {
-        min-height: calc(100vh - 56px);
-    }
-
-    .order-status-card {
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -25,6 +14,9 @@
             <div class="list-group admin-sidebar mb-4">
                 <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="{{ url_for('chat.admin_chat_dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-comments me-2"></i>Hỗ trợ trực tuyến
                 </a>
                 <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
                     <i class="fas fa-box me-2"></i>Sản phẩm

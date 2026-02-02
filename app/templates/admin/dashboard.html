@@ -4,44 +4,7 @@
 
 {% block styles %}
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
-<style>
-    .admin-sidebar {
-        min-height: calc(100vh - 56px - 300px);
-    }
-
-    .stats-card {
-        border-left: 4px solid;
-        transition: transform 0.3s;
-    }
-
-    .stats-card:hover {
-        transform: translateY(-5px);
-    }
-
-    .stats-card.primary {
-        border-left-color: var(--primary-color);
-    }
-
-    .stats-card.success {
-        border-left-color: #28a745;
-    }
-
-    .stats-card.info {
-        border-left-color: #17a2b8;
-    }
-
-    .stats-card.warning {
-        border-left-color: #ffc107;
-    }
-
-    /* Thêm CSS cho wrapper cuộn riêng */
-    .main-content {
-        height: calc(100vh - 56px);
-        /* trừ navbar cao ~56px */
-        overflow-y: auto;
-        /* bật scroll dọc riêng */
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}

@@ -350,50 +350,6 @@
     {% endif %}
 </div>
 
-<style>
-    .shipping-option:hover,
-    .payment-option:hover {
-        background-color: #f8f9fa;
-        border-color: #007bff !important;
-    }
-
-    .shipping-option input:checked+label,
-    .payment-option input:checked+label {
-        background-color: #e3f2fd;
-    }
-
-    .order-items {
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    .sticky-top {
-        z-index: 1020;
-    }
-
-    .form-control:focus {
-        border-color: #007bff;
-        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
-    }
-
-    .btn-primary {
-        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
-        border: none;
-    }
-
-    .btn-primary:hover {
-        background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
-    }
-
-    .card {
-        transition: all 0.3s ease;
-    }
-
-    .card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
-    }
-</style>
 
 {% if cart %}
 <script type="text/template" id="checkout-data">

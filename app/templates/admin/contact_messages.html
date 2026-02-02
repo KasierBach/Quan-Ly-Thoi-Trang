@@ -3,20 +3,7 @@
 {% block title %}Quản lý tin nhắn liên hệ - Fashion Store{% endblock %}
 
 {% block styles %}
-<style>
-    .admin-sidebar {
-        min-height: calc(100vh - 56px - 300px);
-    }
-
-    .notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        display: none;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -33,6 +20,9 @@
             <div class="list-group admin-sidebar mb-4">
                 <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
                     <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                </a>
+                <a href="{{ url_for('chat.admin_chat_dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-comments me-2"></i>Hỗ trợ trực tuyến
                 </a>
                 <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
                     <i class="fas fa-box me-2"></i>Sản phẩm

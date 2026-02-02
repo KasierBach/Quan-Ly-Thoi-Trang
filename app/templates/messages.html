@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+
+{% block title %}Tin nhắn{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+{% endblock %}
+
+{% block chat_widget %}{% endblock %}
+{% block floating_contact_widget %}{% endblock %}
+
+{% block content %}
+<div class="messenger-container">
+    <!-- Sidebar -->
+    <div class="msg-sidebar">
+        <div class="sidebar-header">
+            <div class="header-top">
+                <h4>Chat</h4>
+                <div class="header-actions">
+                    <button class="header-btn" title="New Message" id="btnCreateGroup">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="header-btn" title="Settings">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" placeholder="Tìm kiếm trên Messenger" id="sidebarSearchInput">
+                <div class="search-results" id="searchResults">
+                    <!-- Results populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <div class="conversation-list" id="conversationList">
+            <!-- Conversations populated by JS -->
+            <div class="text-center p-4 text-muted">
+                <i class="fas fa-spinner fa-spin"></i> Đang tải...
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Chat Area -->
+    <div class="msg-main">
+        <div class="welcome-screen" id="welcomeScreen">
+            <i class="fab fa-facebook-messenger"></i>
+            <h3>Chào mừng đến với Messenger</h3>
+            <p>Chọn một đoạn chat để bắt đầu nhắn tin.</p>
+        </div>
+
+        <div id="activeChatContainer">
+            <div class="msg-chat-header">
+                <div class="header-avatar" id="currentChatAvatar">?</div>
+                <div class="chat-header-info">
+                    <h5 id="currentChatName">User Name</h5>
+                    <span class="status" id="headerStatus">Đang hoạt động</span>
+                </div>
+                <div class="chat-header-actions">
+                    <button title="Call"><i class="fas fa-phone-alt"></i></button>
+                    <button title="Video Call"><i class="fas fa-video"></i></button>
+                    <button title="Information" id="toggleInfoBtn"><i class="fas fa-info-circle"></i></button>
+                </div>
+            </div>
+
+            <div class="pinned-shelf" id="pinnedShelf">
+                <div class="pinned-icon"><i class="fas fa-thumbtack"></i></div>
+                <div class="pinned-content" id="pinnedContent"></div>
+                <div class="pinned-close" id="closePinnedBtn"><i class="fas fa-times"></i></div>
+            </div>
+
+            <div class="messages-area" id="messagesArea">
+                <!-- Messages populated by JS -->
+            </div>
+
+            <div class="typing-indicator" id="typingIndicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+
+            <div class="chat-input-area">
+                <div class="reply-preview-shelf" id="replyShelf">
+                    <div class="reply-content">
+                        <i class="fas fa-reply"></i>
+                        <div class="reply-text">
+                            <span class="reply-user" id="replyUserName">Ghé thăm</span>
+                            <span class="reply-msg" id="replyMsgPreview">Nội dung...</span>
+                        </div>
+                    </div>
+                    <button class="cancel-reply" id="cancelReplyBtn"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="input-main-row">
+                    <div class="input-actions">
+                        <button title="Add File" id="attachFileBtn"><i class="fas fa-plus-circle"></i></button>
+                        <input type="file" id="fileInput" hidden>
+                        <input type="file" id="imageInput" accept="image/*" hidden>
+                        <button title="Choose Image" id="attachImageBtn"><i class="fas fa-image"></i></button>
+                        <button title="Choose Sticker" id="stickerBtn"><i class="fas fa-sticky-note"></i></button>
+                        <button title="Choose GIF"><i class="fas fa-gift"></i></button>
+                        <button title="Voice Message" id="micBtn"><i class="fas fa-microphone"></i></button>
+                    </div>
+
+                    <!-- Recording UI -->
+                    <div class="recording-ui" id="recordingUI">
+                        <button class="btn-cancel-record" id="cancelRecordBtn"><i class="fas fa-times"></i></button>
+                        <div class="recording-timer" id="recordingTimer">00:00</div>
+                        <button class="btn-send-record" id="sendRecordBtn"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+
+                    <div class="message-input-wrapper">
+                        <input type="text" class="message-input" placeholder="Aa" id="messageInput">
+                        <div class="input-right-actions">
+                            <button title="Choose Emoji" id="emojiBtn"><i class="fas fa-smile"></i></button>
+                            <button title="Send Like" id="likeBtn"><i class="fas fa-thumbs-up"></i></button>
+                        </div>
+                        <!-- Emoji Picker -->
+                        <div class="emoji-picker" id="emojiPicker">
+                            <div class="emoji-picker-header">
+                                <input type="text" class="emoji-search" placeholder="Search emoji...">
+                            </div>
+                            <div class="emoji-grid-container">
+                                <div class="emoji-grid" id="emojiGrid"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                </div>
+
+                <!-- Sticker Picker -->
+                <div class="sticker-picker" id="stickerPicker">
+                    <div class="sticker-grid" id="stickerGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Info Panel -->
+    <div class="msg-info-panel" id="infoPanel">
+        <div class="info-header">
+            <div class="info-avatar" id="infoPanelAvatar">?</div>
+            <div class="info-name" id="infoPanelName">User Name</div>
+            <div class="info-status" id="infoPanelStatus">Đang hoạt động</div>
+        </div>
+        <div class="info-actions">
+            <div class="info-action-btn">
+                <div class="icon"><i class="fas fa-user"></i></div>
+                <span>Trang cá nhân</span>
+            </div>
+            <div class="info-action-btn">
+                <div class="icon"><i class="fas fa-bell"></i></div>
+                <span>Tắt thông báo</span>
+            </div>
+            <div class="info-action-btn">
+                <div class="icon"><i class="fas fa-search"></i></div>
+                <span>Tìm kiếm</span>
+            </div>
+        </div>
+        <!-- Info Sections -->
+        <div class="info-section open">
+            <div class="info-section-title">
+                <span>Tùy chỉnh đoạn chat</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="info-section-content">
+                <div class="info-item"><i class="fas fa-circle" style="color: var(--messenger-blue)"></i> Đổi chủ đề
+                </div>
+                <div class="info-item"><i class="fas fa-thumbs-up"></i> Thay đổi biểu tượng cảm xúc</div>
+                <div class="info-item"><i class="fas fa-pen"></i> Biệt danh</div>
+            </div>
+        </div>
+
+        <div class="info-section" id="groupMembersSection" style="display: none;">
+            <div class="info-section-title">
+                <span>Thành viên nhóm</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="info-section-content" id="groupMembersList">
+                <!-- Managed by JS -->
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-section-title">
+                <span>File phương tiện & file</span>
+                <i class="fas fa-chevron-down"></i>
+            </div>
+            <div class="info-section-content">
+                <div class="info-item"><i class="fas fa-image"></i> File phương tiện</div>
+                <div class="info-item"><i class="fas fa-file"></i> File</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Image Viewer Modal -->
+<div class="image-viewer-modal" id="imageViewerModal">
+    <div class="viewer-header">
+        <div class="viewer-info" id="viewerInfo">1 / 1</div>
+    </div>
+
+    <div class="viewer-content" id="viewerContent">
+        <img src="" alt="Full size" id="viewerImage">
+    </div>
+
+    <button class="viewer-nav prev" id="viewerPrevBtn" title="Ảnh trước (Mũi tên trái)"><i
+            class="fas fa-chevron-left"></i></button>
+    <button class="viewer-nav next" id="viewerNextBtn" title="Ảnh sau (Mũi tên phải)"><i
+            class="fas fa-chevron-right"></i></button>
+
+    <button class="viewer-close" id="viewerCloseBtn" title="Đóng (Esc)"><i class="fas fa-times"></i></button>
+
+    <div class="viewer-controls">
+        <button id="zoomInBtn" title="Phóng to"><i class="fas fa-search-plus"></i></button>
+        <button id="zoomOutBtn" title="Thu nhỏ"><i class="fas fa-search-minus"></i></button>
+        <button id="resetBtn" title="Đặt lại"><i class="fas fa-sync-alt"></i></button>
+        <button id="rotateLeftBtn" title="Xoay trái (L)"><i class="fas fa-undo"></i></button>
+        <button id="rotateRightBtn" title="Xoay phải (R)"><i class="fas fa-redo"></i></button>
+        <button id="flipHBtn" title="Lật ngang (H)"><i class="fas fa-arrows-alt-h"></i></button>
+        <button id="downloadBtn" title="Tải xuống"><i class="fas fa-download"></i></button>
+    </div>
+</div>
+
+<!-- Context Custom Menus -->
+<div class="context-menu" id="msgContextMenu">
+    <div class="context-menu-item" onclick="window.reactMsg('❤️')"><i class="fas fa-heart"></i> Thả tim</div>
+    <div class="context-menu-item" onclick="window.reactMsg('😆')"><i class="fas fa-laugh"></i> Haha</div>
+    <div class="context-menu-item" id="ctxPinBtn" onclick="window.handlePin()"><i class="fas fa-thumbtack"></i> Ghim tin
+        nhắn</div>
+    <div class="context-menu-item" id="ctxUnpinBtn" onclick="window.handleUnpin()"><i class="fas fa-thumbtack"></i> Bỏ
+        ghim</div>
+    <div class="context-menu-item danger" onclick="window.handleRecall()"><i class="fas fa-trash"></i> Thu hồi</div>
+</div>
+
+<div class="context-menu" id="convContextMenu">
+    <div class="context-menu-item" onclick="window.handleMarkRead()"><i class="fas fa-check-double"></i> Đánh dấu đã đọc
+    </div>
+    <div class="context-menu-item danger" onclick="window.handleDeleteConv()"><i class="fas fa-trash"></i> Xóa cuộc trò
+        chuyện</div>
+</div>
+
+<!-- Group Modal -->
+<div id="groupModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Tạo nhóm mới</h3>
+            <span class="close" id="closeGroupModal" style="cursor:pointer; font-size:24px;">&times;</span>
+        </div>
+        <div class="modal-body">
+            <input type="text" id="groupName" placeholder="Tên nhóm...">
+            <!-- Future: Member selection list -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-secondary" id="closeGroupModal">Hủy</button>
+            <button class="btn-primary" id="btnSubmitGroup">Tạo nhóm</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script>
+    (function () {
+        window.chatUserId = Number('{{ session.get("user_id", 0) }}') || 0;
+        window.chatSessionId = localStorage.getItem('chat_session_id');
+        window.isChatAdmin = '{{ session.get("is_admin", False) }}'.toLowerCase() === 'true';
+    })();
+</script>
+<script type="module" src="{{ url_for('static', filename='js/chat/app.js') }}"></script>
+{% endblock %}

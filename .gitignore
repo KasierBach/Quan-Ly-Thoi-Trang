@@ -37,10 +37,12 @@ venv.bak/
 .vscode/
 .idea/
 
-# Database
+# Database & Scripts
 *.sqlite3
 *.db
 data/*.db
+.data/
+.scripts/
 
 # Temp Files
 products_list.txt

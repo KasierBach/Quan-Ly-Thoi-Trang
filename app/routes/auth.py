@@ -109,6 +109,51 @@ def my_account():
     
     return render_template('my_account.html', customer=customer, orders=orders)
 
+@auth_bp.route('/api/profile/avatar', methods=['POST'])
+def upload_avatar():
+    """Handle avatar upload."""
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Chưa đăng nhập'}), 401
+    
+    if 'avatar' not in request.files:
+        return jsonify({'success': False, 'error': 'Không có file'}), 400
+    
+    file = request.files['avatar']
+    if file.filename == '':
+        return jsonify({'success': False, 'error': 'Chưa chọn file'}), 400
+    
+    # Validate file type
+    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+    if ext not in allowed_extensions:
+        return jsonify({'success': False, 'error': 'Định dạng file không hợp lệ'}), 400
+    
+    # Generate unique filename
+    import os
+    from flask import current_app
+    filename = f"avatar_{session['user_id']}_{uuid.uuid4().hex[:8]}.{ext}"
+    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'avatars')
+    os.makedirs(upload_folder, exist_ok=True)
+    
+    filepath = os.path.join(upload_folder, filename)
+    file.save(filepath)
+    
+    # Update database
+    avatar_url = f"/static/uploads/avatars/{filename}"
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute('UPDATE Customers SET AvatarUrl = %s WHERE CustomerID = %s', 
+                      (avatar_url, session['user_id']))
+        conn.commit()
+        return jsonify({'success': True, 'avatar_url': avatar_url})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        conn.close()
+
 @auth_bp.route('/update_profile', methods=['POST'])
 def update_profile():
     if 'user_id' not in session:

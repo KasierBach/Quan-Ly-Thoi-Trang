@@ -3,46 +3,7 @@
 {% block title %}Quản lý sản phẩm - Fashion Store Admin{% endblock %}
 
 {% block styles %}
-<style>
-    .admin-sidebar {
-        min-height: calc(100vh - 56px);
-    }
-
-    .main-content {
-        height: calc(100vh - 56px);
-        overflow-y: auto;
-        padding: 20px;
-    }
-
-    .table-hover tbody tr:hover {
-        background-color: #f1f1f1;
-        cursor: pointer;
-    }
-
-    .btn-icon {
-        padding: 6px 10px;
-        font-size: 14px;
-        border-radius: 4px;
-        transition: background-color 0.3s ease;
-    }
-
-    .btn-icon:hover {
-        background-color: #e2e6ea;
-    }
-
-    .form-section {
-        background: #fff;
-        padding: 20px;
-        border-radius: 6px;
-        box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
-        margin-bottom: 30px;
-    }
-
-    .form-section h4 {
-        margin-bottom: 15px;
-        color: #343a40;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -52,6 +13,9 @@
         <div class="list-group admin-sidebar">
             <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
                 <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+            </a>
+            <a href="{{ url_for('chat.admin_chat_dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-comments me-2"></i>Hỗ trợ trực tuyến
             </a>
             <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
                 <i class="fas fa-box me-2"></i>Sản phẩm
@@ -100,30 +64,31 @@
             </div>
         </div>
 
-        <div class="form-section">
+        <div class="form-section glass-card mb-4 p-4">
+            <h5 class="mb-3 text-primary"><i class="fas fa-plus-circle me-2"></i>Thêm sản phẩm mới</h5>
             <form method="POST" id="addProductForm" action="{{ url_for('admin.admin_manage_products') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label for="product_name" class="form-label">Tên sản phẩm</label>
-                        <input type="text" class="form-control" id="product_name" name="product_name" required>
+                    <div class="col-md-5">
+                        <label for="product_name" class="form-label small text-muted">Tên sản phẩm</label>
+                        <input type="text" class="form-control border-0 bg-light rounded-pill px-3" id="product_name"
+                            name="product_name" placeholder="Ví dụ: Áo thun Basic" required>
                     </div>
-                    <div class="col-md-3">
-                        <label for="price" class="form-label">Giá bán hiện tại</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="price" name="price" required>
+                    <div class="col-md-2">
+                        <label for="price" class="form-label small text-muted">Giá bán hiện tại</label>
+                        <input type="number" step="0.01" min="0"
+                            class="form-control border-0 bg-light rounded-pill px-3" id="price" name="price" required>
                     </div>
-                    <div class="col-md-3">
-                        <label for="original_price" class="form-label">Giá gốc (Ví dụ: 99.00)</label>
-                        <input type="number" step="0.01" min="0" class="form-control" id="original_price"
+                    <div class="col-md-2">
+                        <label for="original_price" class="form-label small text-muted">Giá gốc</label>
+                        <input type="number" step="0.01" min="0"
+                            class="form-control border-0 bg-light rounded-pill px-3" id="original_price"
                             name="original_price" placeholder="0">
                     </div>
-                    <div class="col-12">
-                        <label for="description" class="form-label">Mô tả</label>
-                        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="category_id" class="form-label">Danh mục</label>
-                        <select class="form-select" id="category_id" name="category_id" required>
+                    <div class="col-md-3">
+                        <label for="category_id" class="form-label small text-muted">Danh mục</label>
+                        <select class="form-select border-0 bg-light rounded-pill px-3" id="category_id"
+                            name="category_id" required>
                             <option value="" selected disabled>Chọn danh mục</option>
                             {% for category in categories %}
                             <option value="{{ category.CategoryID }}">{{ category.CategoryName }}</option>
@@ -131,25 +96,32 @@
                         </select>
                     </div>
                     <div class="col-12">
-                        <button type="submit" class="btn btn-success">+ Thêm sản phẩm</button>
+                        <label for="description" class="form-label small text-muted">Mô tả ngắn</label>
+                        <textarea class="form-control border-0 bg-light rounded-4 px-3" id="description"
+                            name="description" rows="1" placeholder="Mô tả tóm tắt về sản phẩm..."></textarea>
+                    </div>
+                    <div class="col-12 text-end mt-3">
+                        <button type="submit" class="btn btn-success rounded-pill px-4 shadow-sm">
+                            <i class="fas fa-plus me-1"></i>Thêm sản phẩm
+                        </button>
                     </div>
                 </div>
             </form>
         </div>
 
-        <div class="card shadow-sm mb-4">
-            <div class="card-body p-0">
+        <div class="border-0 bg-transparent mb-4">
+            <div class="p-0">
                 <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
+                    <table class="table premium-table align-middle mb-0">
+                        <thead class="text-muted">
+                            <tr class="bg-transparent">
                                 <th class="text-center">ID</th>
                                 <th>Tên sản phẩm</th>
                                 <th>Danh mục</th>
                                 <th class="text-center">Biến thể</th>
                                 <th class="text-center">Giá</th>
                                 <th class="text-center">Tồn kho</th>
-                                <th class="text-end">Thao tác</th>
+                                <th class="text-end pe-4">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>

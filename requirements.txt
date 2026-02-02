@@ -8,3 +8,6 @@ requests
 Flask-Mail==0.10.0
 Flask-WTF
 locust
+flask-socketio
+gevent
+gevent-websocket

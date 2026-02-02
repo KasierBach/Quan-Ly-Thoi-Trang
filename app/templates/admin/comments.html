@@ -3,32 +3,7 @@
 {% block title %}Quản lý bình luận - Fashion Store{% endblock %}
 
 {% block styles %}
-<style>
-    .admin-sidebar {
-        min-height: calc(100vh - 56px - 300px);
-    }
-
-    .notification {
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        opacity: 0;
-        transform: translateX(100%);
-        transition: all 0.3s ease;
-    }
-
-    .notification.show {
-        opacity: 1;
-        transform: translateX(0);
-    }
-
-    .processing {
-        opacity: 0.6;
-        pointer-events: none;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}
@@ -41,6 +16,11 @@
                     class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin.admin_dashboard' %}active{% endif %}">
                     <i class="fas fa-tachometer-alt"></i>
                     <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('chat.admin_chat_dashboard') }}"
+                    class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'chat.admin_chat_dashboard' %}active{% endif %}">
+                    <i class="fas fa-comments"></i>
+                    <span>Hỗ trợ trực tuyến</span>
                 </a>
                 <a href="{{ url_for('admin.admin_products') }}"
                     class="list-group-item list-group-item-action d-flex align-items-center gap-2 {% if request.endpoint == 'admin.admin_products' %}active{% endif %}">
