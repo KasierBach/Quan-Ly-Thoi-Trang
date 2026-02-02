@@ -19,8 +19,13 @@
                     <h5 class="card-title mb-4">Trạng thái đơn hàng</h5>
                     <div class="position-relative m-4">
                         <div class="progress" style="height: 2px;">
-                            <div class="progress-bar bg-success" role="progressbar"
-                                style="width: {% if order.Status == 'Pending' %}25%{% elif order.Status == 'Processing' %}50%{% elif order.Status == 'Shipped' %}75%{% elif order.Status == 'Delivered' %}100%{% else %}0%{% endif %};"
+                            {% set progress_width = '0%' %}
+                            {% if order.Status == 'Pending' %}{% set progress_width = '25%' %}
+                            {% elif order.Status == 'Processing' %}{% set progress_width = '50%' %}
+                            {% elif order.Status == 'Shipped' %}{% set progress_width = '75%' %}
+                            {% elif order.Status == 'Delivered' %}{% set progress_width = '100%' %}
+                            {% endif %}
+                            <div class="progress-bar bg-success" role="progressbar" style="width: {{ progress_width }};"
                                 aria-valuenow="50" aria-valuemin="0" aria-valuemax="100"></div>
                         </div>
                         <div class="position-absolute top-0 start-0 translate-middle btn btn-sm btn-{% if order.Status in ['Pending', 'Processing', 'Shipped', 'Delivered'] %}success{% else %}secondary{% endif %} rounded-pill"
@@ -85,8 +90,8 @@
                                     </td>
                                     <td>{{ "{:,.0f}".format(item.UnitPrice|default(0, true)) }} ₫</td>
                                     <td>x{{ item.Quantity }}</td>
-                                    <td class="text-end fw-bold">{{ ((item.Quantity|default(0, true)) *
-                                        (item.UnitPrice|default(0, true))) | int | string | replace(",", ".") }} ₫</td>
+                                    <td class="text-end fw-bold">{{ "{:,.0f}".format((item.Quantity|default(0, true)) *
+                                        (item.UnitPrice|default(0, true))) }} ₫</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
@@ -327,16 +332,16 @@
                         .openOn(map);
 
                     // Simulate Truck for 'Shipped' status
-                    {% if order.Status == 'Shipped' %}
-                    // Find a point ~60% along the path
-                    const coordinates = route.geometry.coordinates;
-                    const midIndex = Math.floor(coordinates.length * 0.6);
-                    // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
-                    const truckLoc = [coordinates[midIndex][1], coordinates[midIndex][0]];
+                    if ("{{ order.Status }}" === 'Shipped') {
+                        // Find a point ~60% along the path
+                        const coordinates = route.geometry.coordinates;
+                        const midIndex = Math.floor(coordinates.length * 0.6);
+                        // GeoJSON is [lon, lat], Leaflet needs [lat, lon]
+                        const truckLoc = [coordinates[midIndex][1], coordinates[midIndex][0]];
 
-                    L.marker(truckLoc, { icon: truckIcon, zIndexOffset: 1000 }).addTo(map)
-                        .bindPopup('<b>Shipper đang giao</b><br>Đã rời kho phân loại').openPopup();
-                    {% endif %}
+                        L.marker(truckLoc, { icon: truckIcon, zIndexOffset: 1000 }).addTo(map)
+                            .bindPopup('<b>Shipper đang giao</b><br>Đã rời kho phân loại').openPopup();
+                    }
 
                 } else {
                     throw new Error("No route found");
