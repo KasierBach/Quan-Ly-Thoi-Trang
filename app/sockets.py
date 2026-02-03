@@ -31,6 +31,8 @@ class ChatSocketHandlers:
         self.socketio.on('pin_message')(self.handle_pin_message)
         self.socketio.on('unpin_message')(self.handle_unpin_message)
         self.socketio.on('mark_read')(self.handle_mark_read)
+        self.socketio.on('update_conversation_settings')(self.handle_update_conversation_settings)
+        self.socketio.on('update_participant_settings')(self.handle_update_participant_settings)
 
     def handle_connect(self):
         session_id = request.args.get('session_id')
@@ -212,6 +214,20 @@ class ChatSocketHandlers:
             ChatService.mark_as_read(cid, uid)
             self.socketio.emit('messages_read', {'conversation_id': cid, 'user_id': uid}, room=f'conv_{cid}')
 
+    def handle_update_conversation_settings(self, data):
+        cid = data.get('conversation_id')
+        settings = data.get('settings')
+        if cid and settings:
+            self.socketio.emit('conversation_settings_updated', {'conversation_id': cid, 'settings': settings}, room=f'conv_{cid}')
+
+    def handle_update_participant_settings(self, data):
+        cid = data.get('conversation_id')
+        uid = data.get('user_id')
+        settings = data.get('settings')
+        if cid and uid and settings:
+            self.socketio.emit('participant_settings_updated', {'conversation_id': cid, 'user_id': uid, 'settings': settings}, room=f'conv_{cid}')
+
 def register_socket_events(socketio):
+
     handlers = ChatSocketHandlers(socketio)
     handlers.register_all()

@@ -164,7 +164,7 @@ class ConversationService(BaseService):
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                SELECT p.user_id as id, c.FullName as name, c.Email as email, p.role
+                SELECT p.user_id as id, c.FullName as name, c.Email as email, p.role, p.nickname, p.is_muted
                 FROM Participants p
                 JOIN Customers c ON p.user_id = c.CustomerID
                 WHERE p.conversation_id = %s
@@ -172,6 +172,7 @@ class ConversationService(BaseService):
             return cursor.fetchall()
         finally:
             conn.close()
+
     @staticmethod
     def get_suggested_users(exclude_user_id: int, limit: int = 5) -> List[Dict[str, Any]]:
         """Get a few random/recent users for discovery."""
@@ -252,3 +253,64 @@ class ConversationService(BaseService):
             return False
         finally:
             conn.close()
+
+    @staticmethod
+    def update_conversation_settings(conversation_id: int, settings: Dict[str, Any]) -> bool:
+        """Update global conversation settings like theme_color or default_emoji."""
+        if not settings: return False
+        conn = ConversationService.get_connection()
+        cursor = conn.cursor()
+        try:
+            fields = []
+            values = []
+            for k, v in settings.items():
+                if k in ['theme_color', 'default_emoji', 'name', 'avatar_url']:
+                    fields.append(f"{k} = %s")
+                    values.append(v)
+            
+            if not fields: return False
+            values.append(conversation_id)
+            
+            cursor.execute(f'''
+                UPDATE Conversations 
+                SET {", ".join(fields)}, updated_at = CURRENT_TIMESTAMP
+                WHERE id = %s
+            ''', tuple(values))
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+
+    @staticmethod
+    def update_participant_settings(conversation_id: int, user_id: int, settings: Dict[str, Any]) -> bool:
+        """Update participant-specific settings like nickname or is_muted."""
+        if not settings: return False
+        conn = ConversationService.get_connection()
+        cursor = conn.cursor()
+        try:
+            fields = []
+            values = []
+            for k, v in settings.items():
+                if k in ['nickname', 'is_muted', 'role']:
+                    fields.append(f"{k} = %s")
+                    values.append(v)
+            
+            if not fields: return False
+            values.extend([conversation_id, user_id])
+            
+            cursor.execute(f'''
+                UPDATE Participants 
+                SET {", ".join(fields)}
+                WHERE conversation_id = %s AND user_id = %s
+            ''', tuple(values))
+            conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            return False
+        finally:
+            conn.close()
+

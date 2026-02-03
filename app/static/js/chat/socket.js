@@ -79,7 +79,26 @@ class ChatSocket {
                 this.app.handleMessagesRead(data);
             }
         });
+
+        // Settings updates
+        this.socket.on('conversation_settings_updated', (data) => {
+            if (data.conversation_id === this.app.currentConversationId) {
+                this.app.ui.renderSettings(data.settings);
+                this.app.ui.showToast('Thông tin cuộc trò chuyện đã được cập nhật');
+            }
+        });
+
+        this.socket.on('participant_settings_updated', (data) => {
+            if (data.conversation_id === this.app.currentConversationId) {
+                this.app.loadParticipants(this.app.currentConversationId);
+                if (data.user_id === this.app.userId && data.settings.is_muted !== undefined) {
+                    const muteText = document.getElementById('muteText');
+                    if (muteText) muteText.textContent = data.settings.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
+                }
+            }
+        });
     }
+
 
     emit(event, data) {
         if (this.socket) {

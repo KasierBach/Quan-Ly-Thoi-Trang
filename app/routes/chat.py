@@ -346,3 +346,42 @@ def mark_read(cid):
 def get_participants(cid):
     if not str(cid).isdigit(): return jsonify({'participants': []})
     return jsonify({'participants': ConversationService.get_participants(int(cid))})
+
+@chat_bp.route('/api/conversations/<int:cid>/settings', methods=['PATCH'])
+def update_conversation_settings(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+    
+    # Check if user is a participant (optional but recommended)
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants):
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    data = request.json
+    if ConversationService.update_conversation_settings(cid, data):
+        return jsonify({'status': 'success'})
+    return jsonify({'error': 'Fail'}), 500
+
+@chat_bp.route('/api/conversations/<int:cid>/participants/me', methods=['PATCH'])
+def update_my_participant_settings(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+    
+    data = request.json
+    if ConversationService.update_participant_settings(cid, uid, data):
+        return jsonify({'status': 'success'})
+    return jsonify({'error': 'Fail'}), 500
+
+@chat_bp.route('/api/conversations/<int:cid>/attachments', methods=['GET'])
+def get_conversation_attachments(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+    
+    # Check if user is a participant
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants):
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    ftype = request.args.get('type')
+    attachments = ChatService.get_attachments(cid, ftype)
+    return jsonify({'attachments': attachments})

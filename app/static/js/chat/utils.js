@@ -54,6 +54,12 @@ export function initEmojiPicker() {
     });
 
     function insertEmoji(emoji) {
+        if (window.chatApp && window.chatApp.pickingForSetting === 'emoji') {
+            window.chatApp.handleDefaultEmojiChange(emoji);
+            window.chatApp.pickingForSetting = null;
+            picker.classList.remove('active');
+            return;
+        }
         const input = document.getElementById('messageInput');
         if (input) {
             input.value += emoji;
@@ -69,6 +75,7 @@ export function initEmojiPicker() {
         }
     });
 }
+
 
 export function initStickerPicker() {
     const stickers = [

@@ -12,6 +12,12 @@ class ChatAPI {
         return await res.json();
     }
 
+    async getConversation(id) {
+        const res = await fetch(`/api/conversations/${id}`);
+        return await res.json();
+    }
+
+
     async getHistory(sessionId, conversationId = null) {
         let url = `/api/chat/history?session_id=${sessionId}`;
         if (conversationId) url += `&conversation_id=${conversationId}`;
@@ -102,6 +108,37 @@ class ChatAPI {
             },
             body: JSON.stringify({ user_id: userId })
         });
+        return await res.json();
+    }
+
+    async updateConversationSettings(convId, settings) {
+        const res = await fetch(`/api/conversations/${convId}/settings`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': this.csrfToken
+            },
+            body: JSON.stringify(settings)
+        });
+        return await res.json();
+    }
+
+    async updateMySettings(convId, settings) {
+        const res = await fetch(`/api/conversations/${convId}/participants/me`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': this.csrfToken
+            },
+            body: JSON.stringify(settings)
+        });
+        return await res.json();
+    }
+
+    async getAttachments(convId, type = null) {
+        let url = `/api/conversations/${convId}/attachments`;
+        if (type) url += `?type=${type}`;
+        const res = await fetch(url);
         return await res.json();
     }
 }

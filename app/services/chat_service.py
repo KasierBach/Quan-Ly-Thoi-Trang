@@ -315,3 +315,32 @@ class ChatService(BaseService):
             return pinned
         finally:
             conn.close()
+    @staticmethod
+    def get_attachments(conversation_id: int, file_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Fetch all attachments for a conversation, optionally filtered by type."""
+        conn = ChatService.get_connection()
+        cursor = conn.cursor()
+        try:
+            query = '''
+                SELECT a.*, m.created_at
+                FROM Attachments a
+                JOIN Messages m ON a.message_id = m.id
+                WHERE m.conversation_id = %s AND m.is_deleted = FALSE
+            '''
+            params = [conversation_id]
+            if file_type:
+                query += " AND a.file_type = %s"
+                params.append(file_type)
+            
+            query += " ORDER BY m.created_at DESC"
+            cursor.execute(query, params)
+            
+            attachments = []
+            for row in cursor.fetchall():
+                att = dict(row)
+                if att.get('created_at'):
+                    att['created_at'] = att['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                attachments.append(att)
+            return attachments
+        finally:
+            conn.close()

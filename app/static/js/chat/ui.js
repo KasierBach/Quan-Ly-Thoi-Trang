@@ -326,6 +326,54 @@ class ChatUI {
         div.textContent = text;
         return div.innerHTML;
     }
+
+    applyTheme(color) {
+        if (!color) return;
+        document.documentElement.style.setProperty('--messenger-blue', color);
+        document.documentElement.style.setProperty('--messenger-primary', color);
+    }
+
+    renderSettings(data) {
+        if (data.theme_color) this.applyTheme(data.theme_color);
+        if (data.default_emoji) {
+            const likeBtn = document.getElementById('likeBtn');
+            if (likeBtn) {
+                let iconClass = 'fas fa-thumbs-up';
+                if (data.default_emoji === '❤️') iconClass = 'fas fa-heart';
+                else if (data.default_emoji === '😆') iconClass = 'fas fa-laugh';
+                else if (data.default_emoji === '😮') iconClass = 'fas fa-surprise';
+
+                if (['👍', '❤️', '😆', '😮'].includes(data.default_emoji)) {
+                    likeBtn.innerHTML = `<i class="${iconClass}"></i>`;
+                } else {
+                    likeBtn.innerHTML = `<span>${data.default_emoji}</span>`;
+                }
+            }
+        }
+    }
+
+    openMediaBrowser(type, attachments) {
+        const modal = document.getElementById('mediaBrowserModal');
+        const title = document.getElementById('mediaBrowserTitle');
+        const grid = document.getElementById('mediaGridBody');
+        if (!modal || !grid) return;
+
+        title.textContent = type === 'image' ? 'File phương tiện' : 'File';
+        grid.innerHTML = attachments.length > 0
+            ? attachments.map(a => `
+                <div class="media-item" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer;" onclick="window.chatApp.viewer.show(['${a.file_url}'])">
+                    ${a.file_type === 'image'
+                    ? `<img src="${a.file_url}" style="width: 100%; height: 100px; object-fit: cover;">`
+                    : `<div style="height: 100px; display: flex; align-items: center; justify-content: center; background: #f0f2f5;"><i class="fas fa-file-alt fa-2x"></i></div>`
+                }
+                    <div style="padding: 5px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; text-align: center;">${a.file_name}</div>
+                </div>
+            `).join('')
+            : '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">Không có file nào</div>';
+
+        modal.style.display = 'block';
+    }
 }
+
 
 export default ChatUI;

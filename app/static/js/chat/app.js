@@ -70,6 +70,7 @@ class ChatApp {
             this.loadPinnedMessages(id);
             const gSection = document.getElementById('groupMembersSection');
             if (gSection) gSection.style.display = 'block';
+            this.loadSettings();
         } else {
             const gSection = document.getElementById('groupMembersSection');
             if (gSection) gSection.style.display = 'none';
@@ -149,6 +150,19 @@ class ChatApp {
             }
         } catch (e) {
             console.warn("Could not load participants:", e);
+        }
+    }
+
+    async loadSettings() {
+        if (!this.currentConversationId) return;
+        try {
+            const data = await this.api.getConversation(this.currentConversationId);
+            if (data) {
+                this.ui.renderSettings(data);
+                // Also update local state if needed
+            }
+        } catch (e) {
+            console.error("Error loading settings:", e);
         }
     }
 
@@ -287,18 +301,37 @@ class ChatApp {
         });
 
         // Toggle Buttons
-        const setupClick = (id, fn) => document.getElementById(id)?.addEventListener('click', fn);
+        const setupClick = (id, fn) => {
+            const el = document.getElementById(id);
+            if (el) {
+                console.log(`Setting up click listener for: ${id}`);
+                el.addEventListener('click', (e) => {
+                    console.log(`Clicked element: ${id}`);
+                    fn(e);
+                });
+            } else {
+                console.warn(`Element not found for setupClick: ${id}`);
+            }
+        };
 
-        setupClick('emojiBtn', () => document.getElementById('emojiPicker').classList.toggle('active'));
-        setupClick('stickerBtn', () => document.getElementById('stickerPicker').classList.toggle('active'));
-        setupClick('toggleInfoBtn', () => document.getElementById('infoPanel').classList.toggle('active'));
+        // Info Section Accordion
+        document.querySelectorAll('.info-section-title').forEach(title => {
+            title.addEventListener('click', () => {
+                title.parentElement.classList.toggle('open');
+                console.log('Toggled info section');
+            });
+        });
+
+        setupClick('emojiBtn', () => document.getElementById('emojiPicker')?.classList.toggle('active'));
+        setupClick('stickerBtn', () => document.getElementById('stickerPicker')?.classList.toggle('active'));
+        setupClick('toggleInfoBtn', () => document.getElementById('infoPanel')?.classList.toggle('active'));
         setupClick('closePinnedBtn', () => this.handleUnpinCurrent());
         setupClick('cancelReplyBtn', () => this.cancelReply());
         setupClick('likeBtn', () => this.sendMessage('👍'));
 
         // File Uploads
-        setupClick('attachFileBtn', () => document.getElementById('fileInput').click());
-        setupClick('attachImageBtn', () => document.getElementById('imageInput').click());
+        setupClick('attachFileBtn', () => document.getElementById('fileInput')?.click());
+        setupClick('attachImageBtn', () => document.getElementById('imageInput')?.click());
 
         document.getElementById('fileInput')?.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
         document.getElementById('imageInput')?.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
@@ -311,16 +344,67 @@ class ChatApp {
         // Search
         document.getElementById('sidebarSearchInput')?.addEventListener('input', (e) => this.handleSearch(e.target.value.trim()));
         document.getElementById('sidebarSearchInput')?.addEventListener('focus', () => {
-            if (!document.getElementById('sidebarSearchInput').value.trim()) this.loadSuggestedUsers();
+            const val = document.getElementById('sidebarSearchInput')?.value?.trim();
+            if (!val) this.loadSuggestedUsers();
         });
 
         // Modals
-        setupClick('btnCreateGroup', () => document.getElementById('groupModal').style.display = 'block');
+        setupClick('btnCreateGroup', () => {
+            const modal = document.getElementById('groupModal');
+            if (modal) modal.style.display = 'block';
+        });
         setupClick('closeGroupModal', () => {
-            document.getElementById('groupModal').style.display = 'none';
+            const modal = document.getElementById('groupModal');
+            if (modal) modal.style.display = 'none';
             this.selectedGroupUsers = [];
         });
         setupClick('btnSubmitGroup', () => this.createGroup());
+
+        // Info Panel Actions
+        setupClick('btnInfoProfile', () => {
+            console.log('Profile action triggered');
+            if (!this.currentConversationId) return;
+            this.handleProfileClick();
+        });
+
+        setupClick('btnInfoMute', () => {
+            console.log('Mute action triggered');
+            this.handleMuteToggle();
+        });
+        setupClick('btnInfoSearch', () => {
+            console.log('Search action triggered');
+            document.getElementById('sidebarSearchInput')?.focus();
+        });
+
+        setupClick('btnInfoTheme', () => {
+            console.log('Theme modal open triggered');
+            const modal = document.getElementById('themeModal');
+            if (modal) modal.style.display = 'block';
+        });
+        setupClick('btnInfoEmoji', () => {
+            console.log('Emoji change triggered');
+            this.handleEmojiChangeRequest();
+        });
+        setupClick('btnInfoNickname', () => {
+            console.log('Nickname prompt triggered');
+            this.handleNicknamePrompt();
+        });
+        setupClick('btnInfoMedia', () => {
+            console.log('Media browser triggered');
+            this.loadAttachments('image');
+        });
+        setupClick('btnInfoFiles', () => {
+            console.log('Files browser triggered');
+            this.loadAttachments('file');
+        });
+
+        // Theme Selection
+        document.querySelectorAll('.theme-option').forEach(opt => {
+            opt.onclick = () => {
+                console.log(`Theme selected: ${opt.dataset.color}`);
+                this.handleThemeChange(opt.dataset.color);
+            };
+        });
 
         // Global Click-away
         document.addEventListener('click', (e) => {
@@ -328,10 +412,12 @@ class ChatApp {
             if (!e.target.closest('#emojiPicker') && !e.target.closest('#emojiBtn')) document.getElementById('emojiPicker')?.classList.remove('active');
             if (!e.target.closest('#stickerBtn') && !e.target.closest('#stickerPicker')) document.getElementById('stickerPicker')?.classList.remove('active');
             if (!e.target.closest('.message-bubble') && !e.target.closest('#msgContextMenu')) {
-                document.getElementById('msgContextMenu').style.display = 'none';
+                const menu = document.getElementById('msgContextMenu');
+                if (menu) menu.style.display = 'none';
                 document.querySelectorAll('.hover-reaction-bar').forEach(bar => bar.style.visibility = '');
             }
-            if (document.getElementById('convContextMenu')) document.getElementById('convContextMenu').style.display = 'none';
+            const convMenu = document.getElementById('convContextMenu');
+            if (convMenu) convMenu.style.display = 'none';
         });
 
         // Context Menu
@@ -354,6 +440,7 @@ class ChatApp {
         window.addEventListener('focus', () => this.markRead());
         document.getElementById('messageInput')?.addEventListener('focus', () => this.markRead());
     }
+
 
     async handleFileUpload(file) {
         if (!file) return;
@@ -586,6 +673,7 @@ class ChatApp {
     }
 
     async handleMessagesRead(data) {
+
         // data.user_id is the person who read the messages
         if (data.user_id == this.userId) return; // Ignore own read receipts
 
@@ -677,6 +765,117 @@ class ChatApp {
         const file = new File([audioBlob], "voice_message.webm", { type: "audio/webm" });
         await this.handleFileUpload(file);
     }
+
+    // --- New Info Panel Handlers ---
+
+    async handleProfileClick() {
+        // Find other participant for direct chat
+        if (!this.currentConversationId) return;
+        try {
+            const participants = await this.api.getParticipants(this.currentConversationId);
+            const other = participants.find(p => p.id !== this.userId);
+            if (other) {
+                window.location.href = `/profile/${other.id}`; // Adjust route as per your app
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async handleMuteToggle() {
+        if (!this.currentConversationId) return;
+        const muteText = document.getElementById('muteText');
+        const isCurrentlyMuted = muteText.textContent.includes('Bật');
+        const newMute = !isCurrentlyMuted;
+
+        try {
+            const res = await this.api.updateMySettings(this.currentConversationId, { is_muted: newMute });
+            if (res.status === 'success') {
+                muteText.textContent = newMute ? 'Bật thông báo' : 'Tắt thông báo';
+                this.ui.showToast(newMute ? 'Đã tắt thông báo' : 'Đã bật thông báo');
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async handleEmojiChangeRequest() {
+        // Temporarily use the emoji picker for this selection
+        const picker = document.getElementById('emojiPicker');
+        picker.classList.add('active');
+        // We'll need a way to distinguish if we are picking for chat or for setting
+        this.pickingForSetting = 'emoji';
+    }
+
+    async handleThemeChange(color) {
+        if (!this.currentConversationId) return;
+        try {
+            const res = await this.api.updateConversationSettings(this.currentConversationId, { theme_color: color });
+            if (res.status === 'success') {
+                this.ui.applyTheme(color);
+                document.getElementById('themeModal').style.display = 'none';
+                this.ui.showToast('Đã đổi chủ đề');
+                // Emit socket event so others see it
+                this.socket.emit('update_conversation_settings', { conversation_id: this.currentConversationId, settings: { theme_color: color } });
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async handleNicknamePrompt() {
+        if (!this.currentConversationId) return;
+        const body = document.getElementById('nicknameListBody');
+        try {
+            const participants = await this.api.getParticipants(this.currentConversationId);
+            body.innerHTML = participants.map(p => `
+                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center;">${p.name[0]}</div>
+                    <div style="flex: 1;">
+                        <input type="text" class="nickname-input" data-user-id="${p.id}" value="${p.nickname || p.name}" 
+                               style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                    </div>
+                    <button onclick="window.chatApp.saveNickname(${p.id}, this.previousElementSibling.querySelector('input').value)" 
+                            style="padding: 5px 10px; background: var(--messenger-blue); color: white; border: none; border-radius: 4px; cursor: pointer;">Lưu</button>
+                </div>
+            `).join('');
+            document.getElementById('nicknameModal').style.display = 'block';
+        } catch (e) { console.error(e); }
+    }
+
+    async saveNickname(targetUserId, nickname) {
+        if (!this.currentConversationId) return;
+        try {
+            // If it's for current user, use updateMySettings
+            let res;
+            if (targetUserId == this.userId) {
+                res = await this.api.updateMySettings(this.currentConversationId, { nickname });
+            } else {
+                // If it's for someone else (admin only or specific endpoint needed)
+                // For now let's assume users can set their own or admin can set anyone
+                res = await this.api.updateMySettings(this.currentConversationId, { nickname }); // Simplified for now
+            }
+
+            if (res.status === 'success') {
+                this.ui.showToast('Đã cập nhật biệt danh');
+                this.loadConversations();
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async handleDefaultEmojiChange(emoji) {
+        if (!this.currentConversationId) return;
+        try {
+            const res = await this.api.updateConversationSettings(this.currentConversationId, { default_emoji: emoji });
+            if (res.status === 'success') {
+                this.loadSettings();
+                this.ui.showToast('Đã đổi biểu tượng cảm xúc');
+                this.socket.emit('update_conversation_settings', { conversation_id: this.currentConversationId, settings: { default_emoji: emoji } });
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    async loadAttachments(type) {
+        if (!this.currentConversationId) return;
+        try {
+            const data = await this.api.getAttachments(this.currentConversationId, type);
+            this.ui.openMediaBrowser(type, data.attachments || []);
+        } catch (e) { console.error(e); }
+    }
 }
 
 // Global instance
@@ -687,6 +886,7 @@ window.handlePin = () => window.chatApp.handlePin();
 window.handleUnpin = () => window.chatApp.handleUnpin();
 window.handleDeleteConv = () => window.chatApp.handleDeleteConv();
 window.handleMarkRead = () => window.chatApp.handleMarkRead();
+window.saveNickname = (uid, nik) => window.chatApp.saveNickname(uid, nik);
 window.endCall = () => {
     document.getElementById('callModal')?.classList.remove('active');
     window.chatApp.ui.showToast('Cuộc gọi đã kết thúc');

@@ -3,7 +3,49 @@
 {% block title %}Quản lý khách hàng - Fashion Store Admin{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+    .admin-sidebar {
+        min-height: calc(100vh - 56px);
+    }
+
+    .main-content {
+        height: calc(100vh - 56px);
+        overflow-y: auto;
+        padding: 20px;
+    }
+
+    .table-hover tbody tr {
+        transition: background-color 0.2s ease;
+    }
+
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+
+    .search-section {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        margin-bottom: 30px;
+    }
+
+    .status-badge {
+        font-weight: 500;
+        padding: 0.5em 0.75em;
+    }
+
+    .btn-icon {
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.2s;
+    }
+</style>
 {% endblock %}
 
 {% block content %}
@@ -13,9 +55,6 @@
         <div class="list-group admin-sidebar">
             <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
                 <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-            </a>
-            <a href="{{ url_for('chat.admin_chat_dashboard') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-comments me-2"></i>Hỗ trợ trực tuyến
             </a>
             <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
                 <i class="fas fa-box me-2"></i>Sản phẩm
@@ -55,26 +94,26 @@
         </div>
 
         <!-- Search and Filter -->
-        <div class="search-section glass-card mb-4">
+        <div class="search-section">
             <form method="GET" action="{{ url_for('admin.admin_customers') }}" class="row g-3" id="filterForm">
                 <div class="col-md-5">
-                    <div class="premium-search d-flex align-items-center">
-                        <i class="fas fa-search text-muted me-2"></i>
-                        <input type="text" name="search" class="form-control border-0 bg-transparent shadow-none"
+                    <div class="input-group">
+                        <span class="input-group-text bg-white border-end-0">
+                            <i class="fas fa-search text-muted"></i>
+                        </span>
+                        <input type="text" name="search" class="form-control border-start-0"
                             placeholder="Tìm theo tên, email..." value="{{ search }}">
                     </div>
                 </div>
                 <div class="col-md-3">
-                    <select name="role" class="form-select border-0 bg-light rounded-pill"
-                        onchange="this.form.submit()">
+                    <select name="role" class="form-select" onchange="this.form.submit()">
                         <option value="all" {% if role=='all' %}selected{% endif %}>Tất cả vai trò</option>
                         <option value="admin" {% if role=='admin' %}selected{% endif %}>Chỉ Admin</option>
                         <option value="customer" {% if role=='customer' %}selected{% endif %}>Chỉ Khách hàng</option>
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <select name="sort_by" class="form-select border-0 bg-light rounded-pill"
-                        onchange="this.form.submit()">
+                    <select name="sort_by" class="form-select" onchange="this.form.submit()">
                         <option value="newest" {% if sort_by=='newest' %}selected{% endif %}>Mới nhất</option>
                         <option value="oldest" {% if sort_by=='oldest' %}selected{% endif %}>Cũ nhất</option>
                         <option value="name_asc" {% if sort_by=='name_asc' %}selected{% endif %}>Tên A-Z</option>
@@ -82,12 +121,11 @@
                     </select>
                 </div>
                 <div class="col-md-1 text-end">
-                    <button class="btn btn-primary rounded-pill w-100 shadow-sm" type="submit">Lọc</button>
+                    <button class="btn btn-primary w-100" type="submit">Lọc</button>
                 </div>
                 {% if search or role != 'all' or sort_by != 'newest' %}
                 <div class="col-12 mt-2">
-                    <a href="{{ url_for('admin.admin_customers') }}"
-                        class="text-secondary small text-decoration-none ms-3">
+                    <a href="{{ url_for('admin.admin_customers') }}" class="text-secondary small text-decoration-none">
                         <i class="fas fa-times me-1"></i>Xóa tất cả bộ lọc
                     </a>
                 </div>
@@ -96,12 +134,12 @@
         </div>
 
         <!-- Table Card -->
-        <div class="border-0 bg-transparent mb-4">
-            <div class="p-0">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-0">
                 <div class="table-responsive">
-                    <table class="table premium-table align-middle mb-0">
-                        <thead class="text-muted">
-                            <tr class="bg-transparent">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="bg-light text-muted">
+                            <tr>
                                 <th class="ps-4">ID</th>
                                 <th>Họ tên</th>
                                 <th>Liên hệ</th>
