@@ -147,8 +147,8 @@
                     <span class="status" id="headerStatus">Đang hoạt động</span>
                 </div>
                 <div class="chat-header-actions">
-                    <button title="Call"><i class="fas fa-phone-alt"></i></button>
-                    <button title="Video Call"><i class="fas fa-video"></i></button>
+                    <button title="Call" id="btnCall"><i class="fas fa-phone-alt"></i></button>
+                    <button title="Video Call" id="btnVideo"><i class="fas fa-video"></i></button>
                     <button title="Information" id="toggleInfoBtn"><i class="fas fa-info-circle"></i></button>
                 </div>
             </div>
@@ -164,6 +164,7 @@
             </div>
 
             <div class="typing-indicator" id="typingIndicator">
+                <span id="typingName" style="margin-right: 8px; font-weight: 500;"></span>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
                 <div class="typing-dot"></div>
@@ -188,7 +189,7 @@
                         <input type="file" id="imageInput" accept="image/*" hidden>
                         <button title="Choose Image" id="attachImageBtn"><i class="fas fa-image"></i></button>
                         <button title="Choose Sticker" id="stickerBtn"><i class="fas fa-sticky-note"></i></button>
-                        <button title="Choose GIF"><i class="fas fa-gift"></i></button>
+                        <button title="Choose GIF" id="gifBtn"><i class="fas fa-gift"></i></button>
                         <button title="Voice Message" id="micBtn"><i class="fas fa-microphone"></i></button>
                     </div>
 
@@ -418,6 +419,66 @@
         </div>
     </div>
 </div>
+
+<!-- Call Overlay -->
+<div id="callOverlay" class="call-overlay">
+    <!-- Incoming Call Alert -->
+    <div id="incomingCallModal" class="incoming-call-modal">
+        <div class="incoming-content">
+            <div class="incoming-avatar" id="incomingAvatar">?</div>
+            <h3 id="incomingName">User Name</h3>
+            <p>Incoming Call...</p>
+            <div class="incoming-actions">
+                <button class="btn-circle btn-reject" id="btnRejectCall"><i class="fas fa-phone-slash"></i></button>
+                <button class="btn-circle btn-accept" id="btnAcceptCall"><i class="fas fa-phone"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Video Call -->
+    <div id="activeCallView" class="active-call-view">
+        <div class="call-header">
+            <div class="header-left">
+                <i class="fas fa-volume-up"></i>
+                <span id="callChannelName">General</span>
+                <span class="header-divider">|</span>
+                <span id="callerInfo">User is streaming</span>
+            </div>
+            <div class="header-right">
+                <span class="quality-badge">720p 30FPS</span>
+                <span class="live-indicator">LIVE</span>
+                <button class="header-icon-btn"><i class="fas fa-comment-alt"></i></button>
+            </div>
+        </div>
+
+        <div class="video-grid" id="videoGrid">
+            <div class="video-cell remote" id="remoteCell">
+                <video id="remoteVideo" autoplay playsinline></video>
+                <div class="video-overlay-name" id="remoteNameTag">Remote User</div>
+            </div>
+            <div class="video-cell local" id="localCell">
+                <video id="localVideo" autoplay playsinline muted></video>
+                <div class="video-overlay-name">You</div>
+            </div>
+        </div>
+
+        <div class="call-controls-wrapper">
+            <div class="call-controls-pill">
+                <button class="control-btn" id="btnToggleMic" title="Mute Mic"><i
+                        class="fas fa-microphone"></i></button>
+                <button class="control-btn" id="btnToggleCam" title="Toggle Camera"><i
+                        class="fas fa-video"></i></button>
+                <button class="control-btn" id="btnShareScreen" title="Share Screen"><i
+                        class="fas fa-desktop"></i></button>
+                <button class="control-btn" id="btnMoreOptions"><i class="fas fa-ellipsis-h"></i></button>
+                <button class="control-btn btn-disconnect" id="btnEndCall" title="Disconnect"><i
+                        class="fas fa-phone-slash"></i></button>
+            </div>
+        </div>
+
+        <div class="call-status-badge" id="callStatus" style="display: none;">Connecting...</div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
@@ -425,6 +486,7 @@
 <script>
     (function () {
         window.chatUserId = Number('{{ session.get("user_id", 0) }}') || 0;
+        window.chatUserName = '{{ session.get("user_name", "User") }}';
         window.chatSessionId = localStorage.getItem('chat_session_id');
         window.isChatAdmin = '{{ session.get("is_admin", False) }}'.toLowerCase() === 'true';
     })();

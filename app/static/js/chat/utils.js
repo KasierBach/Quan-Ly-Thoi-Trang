@@ -77,14 +77,36 @@ export function initEmojiPicker() {
 }
 
 
-export function initStickerPicker() {
+export function renderStickers(gridId) {
+    // Using reliable Twemoji CDN
     const stickers = [
-        'https://th.bing.com/th/id/OIP.Xy9vOQ_uG8-G_y-zX8-5hgHaHa?pid=ImgDet&rs=1',
-        'https://th.bing.com/th/id/OIP.Ue-D-T6K9QyLdG4H6zR8ngHaHa?pid=ImgDet&rs=1',
-        'https://th.bing.com/th/id/OIP.1-_6S_G8M-K9_G4H6zR8ngHaHa?pid=ImgDet&rs=1'
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f600.png', // Grinning
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f60d.png', // Heart Eyes
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f602.png', // Joy
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f60e.png', // Cool
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f973.png', // Party
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f62d.png', // Loudly Crying
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44d.png', // Thumbs Up
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f44b.png', // Waving Hand
+        'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f923.png'  // Rolling on Floor Laughing
     ];
-    const grid = document.getElementById('stickerGrid');
+    const grid = document.getElementById(gridId);
     if (grid) {
-        grid.innerHTML = stickers.map(s => `<div class="sticker-item" onclick="window.chatApp.sendSticker('${s}')"><img src="${s}"></div>`).join('');
+        grid.innerHTML = stickers.map(s => `<div class="sticker-item" onclick="window.chatApp.sendSticker('${s}')"><img src="${s}" style="width: 100%; height: auto; min-height: 50px;"></div>`).join('');
+    }
+}
+
+export function renderGifs(gridId) {
+    const gifs = [
+        'https://media.giphy.com/media/nXxOjZ9xEQi1W/giphy.gif', // Success Kid
+        'https://media.giphy.com/media/10ECejNtM1GyRy/giphy.gif', // Doge
+        'https://media.giphy.com/media/GeimqsH0TLDt4tScGw/giphy.gif', // Cat Vibe
+        'https://media.giphy.com/media/l0HlCqV35hdEg2LSM/giphy.gif', // Original reliable one
+        'https://media.giphy.com/media/3o7TKSjRrfIPjeiVyM/giphy.gif',
+        'https://media.giphy.com/media/26AHONQ79FdWZhAI0/giphy.gif'
+    ];
+    const grid = document.getElementById(gridId);
+    if (grid) {
+        grid.innerHTML = gifs.map(g => `<div class="sticker-item" onclick="window.chatApp.sendSticker('${g}')"><img src="${g}" style="width: 100%; height: auto; border-radius: 4px; min-height: 50px;"></div>`).join('');
     }
 }

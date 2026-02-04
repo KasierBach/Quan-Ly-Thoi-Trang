@@ -145,10 +145,15 @@ def handle_conversations():
         c = dict(conv) if hasattr(conv, 'keys') else conv
         seen_convs.add(c['id'])
         if c.get('type') == 'private':
-            others = [p for p in ConversationService.get_participants(c['id']) if p['id'] != uid]
-            if others:
-                c['name'] = others[0]['name']
-                c['avatar'] = others[0].get('avatar')
+            # Use partner_display_name from query (nickname or real name)
+            if c.get('partner_display_name'):
+                c['name'] = c['partner_display_name']
+            else:
+                # Fallback to get_participants if needed
+                others = [p for p in ConversationService.get_participants(c['id']) if p['id'] != uid]
+                if others:
+                    c['name'] = others[0].get('nickname') or others[0]['name']
+                    c['avatar'] = others[0].get('avatar')
         result.append(c)
 
     # If admin, also include guest support sessions from Messages
@@ -181,6 +186,21 @@ def handle_conversations():
             conn.close()
 
     return jsonify({'conversations': result})
+
+@chat_bp.route('/api/conversations/<int:cid>', methods=['GET'])
+def get_conversation_details(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Not logged in'}), 401
+    
+    # Check if user is participant
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants) and not session.get('is_admin'):
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    conv = ConversationService.get_conversation(cid)
+    if not conv: return jsonify({'error': 'Not found'}), 404
+    
+    return jsonify(conv)
 
 @chat_bp.route('/api/chat/send', methods=['POST'])
 def handle_chat_send():
@@ -369,6 +389,21 @@ def update_my_participant_settings(cid):
     
     data = request.json
     if ConversationService.update_participant_settings(cid, uid, data):
+        return jsonify({'status': 'success'})
+    return jsonify({'error': 'Fail'}), 500
+
+@chat_bp.route('/api/conversations/<int:cid>/participants/<int:target_uid>', methods=['PATCH'])
+def update_participant_settings_specific(cid, target_uid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+    
+    # Check if calling user is a participant
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants):
+        return jsonify({'error': 'Unauthorized'}), 403
+        
+    data = request.json
+    if ConversationService.update_participant_settings(cid, target_uid, data):
         return jsonify({'status': 'success'})
     return jsonify({'error': 'Fail'}), 500
 

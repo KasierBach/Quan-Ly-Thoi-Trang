@@ -12,6 +12,22 @@
     --online-green: #31a24c;
 }
 
+/* Discord Colors for isolated use */
+.discord-colors {
+    --discord-blue: #5865f2;
+    --discord-green: #23a55a;
+    --discord-red: #f23f43;
+    --discord-dark-bg: #313338;
+}
+
+.glass-effect {
+    background: rgba(43, 45, 49, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
 /* Main Container */
 .messenger-container {
     display: flex;
@@ -189,6 +205,39 @@
     background: var(--online-green);
     border: 3px solid white;
     border-radius: 50%;
+}
+
+.live-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--discord-red);
+    color: white;
+    font-size: 8px;
+    font-weight: 900;
+    padding: 2px 5px;
+    border-radius: 8px;
+    text-transform: uppercase;
+    border: 2px solid var(--discord-sidebar-bg);
+    animation: pulse-live 1.5s infinite;
+    z-index: 10;
+}
+
+@keyframes pulse-live {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .conv-info {
@@ -391,29 +440,36 @@
 }
 
 .message-bubble {
-    padding: 8px 12px;
-    border-radius: 18px;
+    padding: 10px 14px;
+    border-radius: 20px;
     font-size: 0.95rem;
-    line-height: 1.4;
+    line-height: 1.5;
     word-wrap: break-word;
     position: relative;
     max-width: 100%;
+    min-width: fit-content;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-bubble.has-reply {
+    min-width: 120px;
 }
 
 .message-bubble.big-emoji {
-    background: transparent !important;
-    font-size: 2.25rem;
-    padding: 0;
-    line-height: 1.1;
-    border: none !important;
+    font-size: 1.8rem;
+    /* Slightly smaller than 2.25rem to fit better in bubble */
+    line-height: 1.2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.message-group.sent .message-bubble:not(.big-emoji) {
+.message-group.sent .message-bubble {
     background: var(--messenger-blue);
     color: white;
 }
 
-.message-group.received .message-bubble:not(.big-emoji) {
+.message-group.received .message-bubble {
     background: var(--bg-secondary);
     color: var(--text-primary);
 }
@@ -566,22 +622,23 @@
 
 /* Quoted Reply Rendering */
 .message-reply-quote {
-    font-size: 0.8rem;
-    padding: 6px 12px 10px;
-    margin-bottom: -8px;
-    border-radius: 16px 16px 0 0;
-    background: rgba(0, 0, 0, 0.05);
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    margin: -4px -4px 8px -4px;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.06);
     color: var(--text-secondary);
-    border-left: 3px solid var(--messenger-blue);
+    border-left: 4px solid var(--messenger-blue);
     cursor: pointer;
-    transition: opacity 0.2s;
+    transition: all 0.2s ease;
     max-width: 100%;
+    backdrop-filter: blur(4px);
 }
 
 .message-group.sent .message-reply-quote {
-    background: rgba(255, 255, 255, 0.15);
-    color: rgba(255, 255, 255, 0.9);
-    border-left-color: white;
+    background: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.95);
+    border-left-color: rgba(255, 255, 255, 0.8);
 }
 
 .message-reply-quote:hover {
@@ -595,10 +652,14 @@
 }
 
 .quote-text {
-    white-space: nowrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: block;
+    white-space: normal;
+    word-break: break-all;
 }
 
 .highlight-msg {
@@ -706,23 +767,23 @@
 .typing-indicator {
     display: none;
     align-items: center;
-    gap: 8px;
+    gap: 4px;
     padding: 8px 16px;
+    background: transparent;
+    margin-bottom: 8px;
     font-size: 0.85rem;
     color: var(--text-secondary);
-    background: var(--bg-primary);
+}
+
+#typingName {
+    font-weight: 500;
 }
 
 .typing-indicator.active {
     display: flex;
 }
 
-.typing-dots {
-    display: flex;
-    gap: 2px;
-}
-
-.typing-dots span {
+.typing-dot {
     width: 6px;
     height: 6px;
     background: #90949c;
@@ -730,11 +791,11 @@
     animation: typing-anim 1s infinite alternate;
 }
 
-.typing-dots span:nth-child(2) {
+.typing-dot:nth-child(2) {
     animation-delay: 0.2s;
 }
 
-.typing-dots span:nth-child(3) {
+.typing-dot:nth-child(3) {
     animation-delay: 0.4s;
 }
 
@@ -1082,9 +1143,28 @@
     display: block;
 }
 
+.message-sticker img.sticker-img {
+    max-width: 140px;
+    min-width: 50px;
+    min-height: 50px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    cursor: pointer;
+    transition: transform 0.2s;
+    background: rgba(0, 0, 0, 0.02);
+    /* Subtle placeholder bg */
+    border-radius: 8px;
+}
+
+.message-sticker img.sticker-img:hover {
+    transform: scale(1.05);
+}
+
 /* Remove bubble styles for media messages to make them "clean" */
 .message-group .message-bubble:has(.message-image),
-.message-group .message-bubble:has(.message-video) {
+.message-group .message-bubble:has(.message-video),
+.message-group .message-bubble:has(.message-sticker) {
     padding: 0;
     background: transparent !important;
     border: none;
@@ -1092,6 +1172,199 @@
 
 .message-bubble:hover {
     z-index: 10;
+}
+
+
+/* --- Call Overlay Styles --- */
+.call-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    z-index: 10000;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inter', sans-serif;
+}
+
+.call-overlay.active {
+    display: flex;
+}
+
+/* Incoming Call Modal */
+.incoming-call-modal {
+    background: #fff;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    width: 320px;
+    display: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    animation: popupCall 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popupCall {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.incoming-call-modal.active {
+    display: block;
+}
+
+.incoming-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: #e4e6eb;
+    color: #555;
+    font-size: 32px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 15px;
+    background-size: cover;
+    background-position: center;
+}
+
+.incoming-content h3 {
+    margin: 0 0 5px;
+    color: #1c1e21;
+    font-size: 1.2rem;
+}
+
+.incoming-content p {
+    color: #65676b;
+    margin-bottom: 25px;
+}
+
+/* Buttons */
+.btn-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    font-size: 22px;
+    margin: 0 10px;
+    cursor: pointer;
+    color: white;
+    background: rgba(255, 255, 255, 0.2);
+    transition: transform 0.2s, background 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-circle:hover {
+    transform: scale(1.1);
+}
+
+.btn-accept {
+    background: #2ecc71;
+    box-shadow: 0 4px 15px rgba(46, 204, 113, 0.4);
+}
+
+.btn-reject {
+    background: #ff3b30;
+    box-shadow: 0 4px 15px rgba(255, 59, 48, 0.4);
+}
+
+.btn-control:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.call-controls .btn-circle.active {
+    background: #ff3b30;
+    color: white;
+    box-shadow: 0 0 15px rgba(255, 59, 48, 0.4);
+}
+
+#btnShareScreen.sharing {
+    background: #2ecc71;
+    color: white;
+    box-shadow: 0 0 15px rgba(46, 204, 113, 0.6);
+}
+
+/* Active Call View */
+.active-call-view {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    display: none;
+    background: #000;
+}
+
+.active-call-view.active {
+    display: block;
+}
+
+#remoteVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.local-video-wrapper {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    width: 160px;
+    height: 240px;
+    /* Portrait ratio roughly */
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+    background: #333;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    z-index: 2;
+}
+
+#localVideo {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+    /* Mirror self */
+}
+
+.call-controls {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    z-index: 3;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 15px 25px;
+    border-radius: 40px;
+    backdrop-filter: blur(10px);
+}
+
+.call-status-badge {
+    position: absolute;
+    top: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    backdrop-filter: blur(5px);
+    z-index: 2;
 }
 
 .message-video {
@@ -2005,4 +2278,260 @@
     font-weight: bold;
     font-size: 1.1rem;
     flex: 1;
+}
+
+/* --- Discord-Style Call Overlay --- */
+.call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.call-overlay.active {
+    display: flex;
+}
+
+.active-call-view {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.call-header {
+    height: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+}
+
+.header-divider {
+    color: var(--text-muted);
+    margin: 0 4px;
+}
+
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.quality-badge {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.live-indicator {
+    background: var(--discord-red);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.header-icon-btn {
+    background: transparent;
+    border: none;
+    color: white;
+    cursor: pointer;
+    font-size: 1.1rem;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.header-icon-btn:hover {
+    opacity: 1;
+}
+
+/* Video Grid */
+.video-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 16px;
+    align-content: center;
+}
+
+.video-cell {
+    position: relative;
+    background: #1e1f22;
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.video-cell video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.video-overlay-name {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.video-cell.local {
+    position: absolute;
+    bottom: 100px;
+    right: 40px;
+    width: 240px;
+    z-index: 10;
+    border: 2px solid var(--discord-blue);
+}
+
+/* Call Controls */
+.call-controls-wrapper {
+    position: absolute;
+    bottom: 32px;
+    left: 0;
+    right: 0;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.call-controls-pill {
+    pointer-events: auto;
+    background: #1e1f22;
+    padding: 8px 16px;
+    border-radius: 32px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+}
+
+.control-btn {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: #313338;
+    border: none;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+}
+
+.control-btn:hover {
+    background: #4e5058;
+}
+
+.control-btn.active {
+    background: white;
+    color: #313338;
+}
+
+.control-btn.btn-disconnect {
+    background: var(--discord-red);
+}
+
+.control-btn.btn-disconnect:hover {
+    background: #da373c;
+}
+
+/* Incoming Call Glassmorphism */
+.incoming-call-modal {
+    position: fixed;
+    top: 40px;
+    right: 40px;
+    width: 320px;
+    background: rgba(43, 45, 49, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    z-index: 10000;
+    display: none;
+}
+
+.incoming-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.incoming-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: var(--discord-blue);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+}
+
+.incoming-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+}
+
+.btn-accept {
+    background: var(--discord-green);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-reject {
+    background: var(--discord-red);
+    color: white;
+    border: none;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }

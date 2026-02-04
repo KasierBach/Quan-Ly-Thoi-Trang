@@ -9,11 +9,13 @@ class ChatAPI {
 
     async getConversations() {
         const res = await fetch('/api/conversations');
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
         return await res.json();
     }
 
     async getConversation(id) {
         const res = await fetch(`/api/conversations/${id}`);
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
         return await res.json();
     }
 
@@ -22,6 +24,7 @@ class ChatAPI {
         let url = `/api/chat/history?session_id=${sessionId}`;
         if (conversationId) url += `&conversation_id=${conversationId}`;
         const res = await fetch(url);
+        if (!res.ok) throw new Error(`API Error: ${res.status}`);
         return await res.json();
     }
 
@@ -125,6 +128,18 @@ class ChatAPI {
 
     async updateMySettings(convId, settings) {
         const res = await fetch(`/api/conversations/${convId}/participants/me`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': this.csrfToken
+            },
+            body: JSON.stringify(settings)
+        });
+        return await res.json();
+    }
+
+    async updateParticipantSettings(convId, userId, settings) {
+        const res = await fetch(`/api/conversations/${convId}/participants/${userId}`, {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/json',

@@ -61,14 +61,38 @@ class ChatSocket {
         });
 
         this.socket.on('typing', (data) => {
-            if (data.conversation_id === this.app.currentConversationId || data.session_id === this.app.sessionId) {
-                document.getElementById('typingIndicator')?.classList.add('active');
-                this.app.ui.scrollToBottom();
+            // isMe check: 
+            // - For logged in users: matches user_id
+            // - For guests: matches session_id AND is NOT from admin
+            const isMe = (data.user_id && data.user_id === this.app.userId) ||
+                (data.session_id === this.app.sessionId && !data.is_admin);
+            if (isMe) return;
+
+            const currentCid = String(this.app.currentConversationId);
+            const incomingCid = String(data.conversation_id);
+            const isRelevant = (data.conversation_id && incomingCid === currentCid) ||
+                (data.session_id === this.app.sessionId) ||
+                (this.app.isAdmin && data.session_id === currentCid);
+
+            if (isRelevant) {
+                const typingIndicator = document.getElementById('typingIndicator');
+                const typingName = document.getElementById('typingName');
+                if (typingIndicator && typingName) {
+                    typingName.textContent = `${data.user_name || 'Ai đó'} đang soạn tin...`;
+                    typingIndicator.classList.add('active');
+                    this.app.ui.scrollToBottom();
+                }
             }
         });
 
         this.socket.on('stop_typing', (data) => {
-            if (data.conversation_id === this.app.currentConversationId || data.session_id === this.app.sessionId) {
+            const currentCid = String(this.app.currentConversationId);
+            const incomingCid = String(data.conversation_id);
+            const isRelevant = (data.conversation_id && incomingCid === currentCid) ||
+                (data.session_id === this.app.sessionId) ||
+                (this.app.isAdmin && data.session_id === currentCid);
+
+            if (isRelevant) {
                 document.getElementById('typingIndicator')?.classList.remove('active');
             }
         });
@@ -96,6 +120,24 @@ class ChatSocket {
                     if (muteText) muteText.textContent = data.settings.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
                 }
             }
+        });
+
+        // WebRTC Events
+        this.socket.on('incoming_call', (data) => this.app.callManager?.handleIncomingCall(data));
+        this.socket.on('call_answered', (data) => this.app.callManager?.handleCallAnswered(data));
+        this.socket.on('call_rejected', (data) => this.app.callManager?.handleCallRejected(data));
+        this.socket.on('call_ended', (data) => this.app.callManager?.handleCallEnded(data));
+        this.socket.on('remote_ice_candidate', (data) => this.app.callManager?.handleIceCandidate(data));
+        this.socket.on('call_resume', (data) => this.app.callManager?.handleCallResume(data));
+
+        this.socket.on('stream_status', (data) => {
+            // data: { conversation_id, user_id, is_streaming }
+            this.app.handleStreamStatus(data);
+        });
+
+        this.socket.on('stream_request', (data) => {
+            // data: { conversation_id, target_user_id, viewer_id, viewer_name }
+            this.app.callManager?.handleStreamRequest(data);
         });
     }
 

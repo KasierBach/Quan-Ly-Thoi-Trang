@@ -1,9 +1,10 @@
-import ChatAPI from './api.js';
-import ChatUI from './ui.js';
-import ChatSocket from './socket.js';
-import ImageViewer from './viewer.js';
-import ChatRecorder from './recorder.js';
-import { initEmojiPicker, initStickerPicker } from './utils.js';
+import ChatAPI from '/static/js/chat/api.js';
+import ChatUI from '/static/js/chat/ui.js';
+import ChatSocket from '/static/js/chat/socket.js';
+import ImageViewer from '/static/js/chat/viewer.js';
+import ChatRecorder from '/static/js/chat/recorder.js';
+import { initEmojiPicker, renderStickers, renderGifs } from '/static/js/chat/utils.js';
+import { CallManager } from '/static/js/chat/call.js';
 
 class ChatApp {
     constructor() {
@@ -15,7 +16,8 @@ class ChatApp {
             });
             localStorage.setItem('chat_session_id', this.sessionId);
         }
-        this.userId = window.chatUserId || 0;
+        this.userId = window.chatUserId || this.sessionId;
+        this.userName = window.chatUserName || 'User';
         this.isAdmin = window.isChatAdmin || false;
         this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
@@ -24,7 +26,9 @@ class ChatApp {
         this.socket = new ChatSocket(this.sessionId, this);
         this.viewer = new ImageViewer();
         this.recorder = new ChatRecorder(this.handleAudioRecorded.bind(this));
+        this.callManager = new CallManager(this);
 
+        // State
         this.currentConversationId = null;
         this.selectedGroupUsers = [];
         this.contextMenuMsgId = null;
@@ -33,17 +37,36 @@ class ChatApp {
         this.hoveredEmoji = null;
         this.currentPinnedMessageId = null;
         this.currentReplyTo = null;
+        this.currentPickerMode = 'sticker'; // 'sticker' or 'gif'
+        this.conversations = [];
 
         this.init();
     }
 
     init() {
-        document.addEventListener('DOMContentLoaded', () => {
+        const onReady = () => {
+            this.callManager.initUI();
             this.initEventListeners();
             this.loadConversations();
             initEmojiPicker();
-            initStickerPicker();
-        });
+            // Default load stickers
+            renderStickers('stickerGrid');
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', onReady);
+        } else {
+            onReady();
+        }
+
+        console.log('ChatApp initialized, window.chatApp set');
+        // Diagnostics: try to clear loading spinner immediately
+        const list = document.getElementById('conversationList');
+        if (list) {
+            console.log('Conversation list found in DOM');
+        } else {
+            console.error('Conversation list NOT found in DOM!');
+        }
 
         // Expose globally for inline event handlers in HTML
         window.chatApp = this;
@@ -52,9 +75,17 @@ class ChatApp {
     async loadConversations() {
         try {
             const data = await this.api.getConversations();
-            this.ui.renderConversationList(data.conversations || [], this.currentConversationId, this.selectConversation.bind(this));
+            this.conversations = data.conversations || [];
+            this.ui.renderConversationList(this.conversations, this.currentConversationId, this.selectConversation.bind(this));
         } catch (e) {
             console.error("Error loading conversations:", e);
+            const list = document.getElementById('conversationList');
+            if (list) {
+                list.innerHTML = `<div class="text-center p-4 text-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Lỗi: ${e.message}<br>
+                    <small>Vui lòng thử lại sau.</small>
+                </div>`;
+            }
         }
     }
 
@@ -92,7 +123,7 @@ class ChatApp {
                         this.ui.appendMessage({
                             type: isMyMsg ? 'sent' : 'received',
                             content: msg.content,
-                            time: this.ui.formatTime(msg.created_at),
+                            time: this.ui.formatTime(msg.timestamp || msg.created_at),
                             msgType: msg.message_type,
                             id: msg.id,
                             attachments: msg.attachments,
@@ -184,19 +215,13 @@ class ChatApp {
             reply_to_id: this.currentReplyTo
         });
 
-        this.ui.appendMessage({
-            type: 'sent',
-            content,
-            time: this.ui.formatTime(new Date().toISOString()),
-            avatarText: ''
-        });
-
         if (input) {
             input.value = '';
             input.style.height = 'auto';
         }
 
         this.cancelReply();
+        this.updateTypingStatus(true);
 
         setTimeout(() => {
             this.loadHistory();
@@ -206,31 +231,59 @@ class ChatApp {
     }
 
     handleNewMessage(data) {
-        const isCurrent = data.conversation_id == this.currentConversationId ||
-            (data.session_id == this.currentConversationId) ||
-            (data.session_id == this.sessionId && !this.currentConversationId);
+        // ID-based deduplication: check if message already exists in UI
+        if (document.querySelector(`.message-bubble[data-msg-id="${data.id}"]`)) {
+            console.log('Duplicate message ignored:', data.id);
+            return;
+        }
+
+        const currentCid = String(this.currentConversationId);
+        const isCurrent = String(data.conversation_id) === currentCid ||
+            (data.session_id === currentCid) ||
+            (data.session_id === this.sessionId && !this.currentConversationId);
 
         if (isCurrent) {
-            if (data.sender !== 'user' || (this.isAdmin && data.sender === 'user' && data.session_id !== this.sessionId)) {
-                // If it's from someone else, or it's from a user (guest) and I'm an admin viewing them
-                const avatarEl = document.getElementById('currentChatAvatar');
-                this.ui.appendMessage({
-                    type: 'received',
-                    content: data.content,
-                    time: this.ui.formatTime(new Date().toISOString()),
-                    msgType: data.message_type,
-                    attachments: data.attachments,
-                    avatarText: avatarEl ? avatarEl.textContent : (data.sender === 'admin' ? 'A' : 'K'),
-                    senderName: data.sender_name,
-                    id: data.id,
-                    reply_to_id: data.reply_to_id,
-                    parent_content: data.parent_content,
-                    parent_sender_type: data.parent_sender_type,
-                    parent_sender_name: data.parent_sender_name
-                });
+            // Only skip appending if it's the SAME session that sent it
+            // AND we don't want to double-render.
+            // But since we have the ID check above, we can be more liberal here.
+
+            const avatarEl = document.getElementById('currentChatAvatar');
+            this.ui.appendMessage({
+                type: (data.sender === 'admin' && this.isAdmin) || (data.sender === 'user' && !this.isAdmin && data.session_id === this.sessionId) ? 'sent' : 'received',
+                content: data.content,
+                time: this.ui.formatTime(data.timestamp),
+                msgType: data.message_type,
+                attachments: data.attachments,
+                avatarText: avatarEl ? avatarEl.textContent : (data.sender === 'admin' ? 'A' : 'K'),
+                senderName: data.sender_name,
+                id: data.id,
+                reply_to_id: data.reply_to_id,
+                parent_content: data.parent_content,
+                parent_sender_type: data.parent_sender_type,
+                parent_sender_name: data.parent_sender_name
+            });
+
+            // If focus is here, mark as read
+            if (document.activeElement === document.getElementById('messageInput')) {
+                this.markRead();
             }
         }
         this.loadConversations();
+    }
+
+    handleStreamStatus(data) {
+        // data: { conversation_id, user_id, is_streaming }
+        console.log('Stream status update:', data);
+
+        // Update local state
+        const conv = this.conversations.find(c => String(c.id) === String(data.conversation_id));
+        if (conv) {
+            conv.is_streaming = data.is_streaming;
+            conv.streamer_id = data.is_streaming ? data.user_id : null;
+        }
+
+        // Update UI
+        this.ui.setConversationStreaming(data.conversation_id, data.is_streaming, data.user_id);
     }
 
     handleReply(msgId, e) {
@@ -263,6 +316,39 @@ class ChatApp {
         }
     }
 
+    updateTypingStatus(forceStop = false) {
+        const msgInput = document.getElementById('messageInput');
+        const hasContent = msgInput?.value.trim().length > 0;
+        const isFocused = document.activeElement === msgInput;
+        const shouldBeTyping = hasContent && isFocused && !forceStop;
+
+        if (shouldBeTyping && !this.isTyping) {
+            this.isTyping = true;
+            this.socket.emit('typing', {
+                conversation_id: this.currentConversationId,
+                session_id: this.sessionId
+            });
+            if (this.isAdmin) {
+                this.socket.emit('admin_typing', {
+                    conversation_id: this.currentConversationId,
+                    session_id: this.sessionId
+                });
+            }
+        } else if (!shouldBeTyping && this.isTyping) {
+            this.isTyping = false;
+            this.socket.emit('stop_typing', {
+                conversation_id: this.currentConversationId,
+                session_id: this.sessionId
+            });
+            if (this.isAdmin) {
+                this.socket.emit('admin_stop_typing', {
+                    conversation_id: this.currentConversationId,
+                    session_id: this.sessionId
+                });
+            }
+        }
+    }
+
     initEventListeners() {
         const app = this;
 
@@ -277,28 +363,19 @@ class ChatApp {
             }
         });
 
-        // Typing Indicator
-        let typingTimeout = null;
-        document.getElementById('messageInput')?.addEventListener('input', function () {
+        // Typing Indicator Refinement
+        this.isTyping = false;
+        const msgInput = document.getElementById('messageInput');
+
+        msgInput?.addEventListener('input', function () {
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 100) + 'px';
             this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
-
-            if (app.currentConversationId || app.sessionId) {
-                if (!typingTimeout) app.socket.emit('typing', {
-                    conversation_id: app.currentConversationId,
-                    session_id: app.sessionId
-                });
-                clearTimeout(typingTimeout);
-                typingTimeout = setTimeout(() => {
-                    app.socket.emit('stop_typing', {
-                        conversation_id: app.currentConversationId,
-                        session_id: app.sessionId
-                    });
-                    typingTimeout = null;
-                }, 2000);
-            }
+            app.updateTypingStatus();
         });
+
+        msgInput?.addEventListener('focus', () => this.updateTypingStatus());
+        msgInput?.addEventListener('blur', () => this.updateTypingStatus());
 
         // Toggle Buttons
         const setupClick = (id, fn) => {
@@ -323,7 +400,29 @@ class ChatApp {
         });
 
         setupClick('emojiBtn', () => document.getElementById('emojiPicker')?.classList.toggle('active'));
-        setupClick('stickerBtn', () => document.getElementById('stickerPicker')?.classList.toggle('active'));
+
+        setupClick('stickerBtn', () => {
+            const picker = document.getElementById('stickerPicker');
+            if (this.currentPickerMode === 'gif') {
+                renderStickers('stickerGrid');
+                this.currentPickerMode = 'sticker';
+                picker.classList.add('active');
+            } else {
+                picker.classList.toggle('active');
+            }
+        });
+
+        setupClick('gifBtn', () => {
+            const picker = document.getElementById('stickerPicker');
+            if (this.currentPickerMode === 'sticker') {
+                renderGifs('stickerGrid');
+                this.currentPickerMode = 'gif';
+                picker.classList.add('active');
+            } else {
+                picker.classList.toggle('active');
+            }
+        });
+
         setupClick('toggleInfoBtn', () => document.getElementById('infoPanel')?.classList.toggle('active'));
         setupClick('closePinnedBtn', () => this.handleUnpinCurrent());
         setupClick('cancelReplyBtn', () => this.cancelReply());
@@ -389,6 +488,11 @@ class ChatApp {
             console.log('Nickname prompt triggered');
             this.handleNicknamePrompt();
         });
+
+        // Call Buttons
+        setupClick('btnCall', () => this.callManager.startCall(false));
+        setupClick('btnVideo', () => this.callManager.startCall(true));
+
         setupClick('btnInfoMedia', () => {
             console.log('Media browser triggered');
             this.loadAttachments('image');
@@ -633,11 +737,10 @@ class ChatApp {
     sendSticker(url) {
         this.socket.emit('send_message', {
             content: url,
-            message_type: 'image',
+            message_type: 'sticker',
             session_id: this.sessionId,
             conversation_id: this.currentConversationId
         });
-        this.ui.appendMessage({ type: 'sent', content: url, time: this.ui.formatTime(new Date().toISOString()), msgType: 'image' });
         document.getElementById('stickerPicker').classList.remove('active');
     }
 
@@ -772,7 +875,8 @@ class ChatApp {
         // Find other participant for direct chat
         if (!this.currentConversationId) return;
         try {
-            const participants = await this.api.getParticipants(this.currentConversationId);
+            const data = await this.api.getParticipants(this.currentConversationId);
+            const participants = data.participants || [];
             const other = participants.find(p => p.id !== this.userId);
             if (other) {
                 window.location.href = `/profile/${other.id}`; // Adjust route as per your app
@@ -821,7 +925,8 @@ class ChatApp {
         if (!this.currentConversationId) return;
         const body = document.getElementById('nicknameListBody');
         try {
-            const participants = await this.api.getParticipants(this.currentConversationId);
+            const data = await this.api.getParticipants(this.currentConversationId);
+            const participants = data.participants || [];
             body.innerHTML = participants.map(p => `
                 <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center;">${p.name[0]}</div>
@@ -840,19 +945,24 @@ class ChatApp {
     async saveNickname(targetUserId, nickname) {
         if (!this.currentConversationId) return;
         try {
-            // If it's for current user, use updateMySettings
             let res;
             if (targetUserId == this.userId) {
                 res = await this.api.updateMySettings(this.currentConversationId, { nickname });
             } else {
-                // If it's for someone else (admin only or specific endpoint needed)
-                // For now let's assume users can set their own or admin can set anyone
-                res = await this.api.updateMySettings(this.currentConversationId, { nickname }); // Simplified for now
+                res = await this.api.updateParticipantSettings(this.currentConversationId, targetUserId, { nickname });
             }
 
             if (res.status === 'success') {
                 this.ui.showToast('Đã cập nhật biệt danh');
                 this.loadConversations();
+
+                // Immediate UI update for header if it's the partner
+                if (targetUserId != this.userId) {
+                    const nameEl = document.getElementById('currentChatName');
+                    const infoNameEl = document.getElementById('infoPanelName');
+                    if (nameEl && !nameEl.closest('.conversation-item')) nameEl.textContent = nickname;
+                    if (infoNameEl) infoNameEl.textContent = nickname;
+                }
             }
         } catch (e) { console.error(e); }
     }

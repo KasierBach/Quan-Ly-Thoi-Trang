@@ -43,7 +43,13 @@ class ConversationService(BaseService):
         cursor = conn.cursor()
         try:
             cursor.execute('SELECT * FROM vw_ConversationSummary WHERE conversation_id = %s', (conversation_id,))
-            return cursor.fetchone()
+            res = cursor.fetchone()
+            if res:
+                conv = dict(res)
+                if conv.get('last_message_at'):
+                    conv['last_message_at'] = conv['last_message_at'].isoformat()
+                return conv
+            return None
         finally:
             conn.close()
 
@@ -54,7 +60,7 @@ class ConversationService(BaseService):
         cursor = conn.cursor()
         try:
             cursor.execute('''
-                SELECT c.*, p.role, p.last_read_at,
+                SELECT c.*, p.role, p.last_read_at, p.nickname as my_nickname,
                        (SELECT content FROM Messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
                        (SELECT created_at FROM Messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at,
                        CASE WHEN c.type = 'private' THEN (
@@ -63,12 +69,19 @@ class ConversationService(BaseService):
                            JOIN Customers u ON p2.user_id = u.CustomerID 
                            WHERE p2.conversation_id = c.id AND p2.user_id != %s
                            LIMIT 1
-                       ) ELSE NULL END as partner_last_seen
+                       ) ELSE NULL END as partner_last_seen,
+                       CASE WHEN c.type = 'private' THEN (
+                           SELECT COALESCE(p2.nickname, u.FullName)
+                           FROM Participants p2 
+                           JOIN Customers u ON p2.user_id = u.CustomerID 
+                           WHERE p2.conversation_id = c.id AND p2.user_id != %s
+                           LIMIT 1
+                       ) ELSE NULL END as partner_display_name
                 FROM Conversations c
                 JOIN Participants p ON c.id = p.conversation_id
                 WHERE p.user_id = %s
                 ORDER BY last_message_at DESC NULLS LAST
-            ''', (user_id, user_id))
+            ''', (user_id, user_id, user_id))
             
             conversations = []
             for row in cursor.fetchall():
@@ -79,6 +92,11 @@ class ConversationService(BaseService):
                     diff = datetime.now() - conv['partner_last_seen']
                     if diff.total_seconds() < 300: # 5 minutes
                         conv['is_online'] = True
+                    conv['partner_last_seen'] = conv['partner_last_seen'].isoformat()
+                
+                if conv.get('last_message_at'):
+                    conv['last_message_at'] = conv['last_message_at'].isoformat()
+                
                 conversations.append(conv)
             return conversations
         finally:

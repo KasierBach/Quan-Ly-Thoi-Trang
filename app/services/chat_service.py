@@ -36,17 +36,28 @@ class ChatService(BaseService):
             
             parent_info = {}
             if reply_to_id:
-                cursor.execute('SELECT content, sender_type FROM Messages WHERE id = %s', (reply_to_id,))
+                cursor.execute('''
+                    SELECT m.content, m.sender_type, c.FullName as sender_name 
+                    FROM Messages m 
+                    LEFT JOIN Customers c ON m.user_id = c.CustomerID 
+                    WHERE m.id = %s
+                ''', (reply_to_id,))
                 p_row = cursor.fetchone()
                 if p_row:
-                    parent_info = {'parent_content': p_row.content, 'parent_sender_type': p_row.sender_type}
+                    p_name = p_row.sender_name if p_row.sender_name else ('Admin' if p_row.sender_type == 'admin' else 'Khách')
+                    parent_info = {
+                        'parent_content': p_row.content, 
+                        'parent_sender_type': p_row.sender_type,
+                        'parent_sender_name': p_name
+                    }
 
             conn.commit()
             return ChatService.success({
                 'id': row.id,
                 'content': content,
                 'sender_type': sender_type,
-                'timestamp': row.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'message_type': message_type,
+                'timestamp': row.created_at.isoformat(),
                 'conversation_id': conversation_id,
                 **parent_info
             })
@@ -71,6 +82,7 @@ class ChatService(BaseService):
             query = '''
                 SELECT m.*, c.FullName as sender_name, c.avatar_url as sender_avatar,
                        p.content as parent_content, p.sender_type as parent_sender_type,
+                       pc.FullName as parent_sender_name,
                        (SELECT json_agg(json_build_object('emoji', r.emoji, 'user_id', r.user_id))
                         FROM Reactions r WHERE r.message_id = m.id) as reactions,
                        (SELECT json_agg(json_build_object(
@@ -80,6 +92,7 @@ class ChatService(BaseService):
                 FROM Messages m
                 LEFT JOIN Customers c ON m.user_id = c.CustomerID
                 LEFT JOIN Messages p ON m.reply_to_id = p.id
+                LEFT JOIN Customers pc ON p.user_id = pc.CustomerID
                 WHERE m.is_deleted = FALSE
             '''
             params = []
@@ -102,7 +115,9 @@ class ChatService(BaseService):
             for row in cursor.fetchall():
                 msg = dict(row)
                 if msg.get('created_at'):
-                    msg['created_at'] = msg['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                    iso_time = msg['created_at'].isoformat()
+                    msg['created_at'] = iso_time
+                    msg['timestamp'] = iso_time
                 messages.append(msg)
             return messages
         finally:

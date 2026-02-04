@@ -5,14 +5,16 @@
 class ChatUI {
     constructor(app) {
         this.app = app;
-        this.messagesArea = document.getElementById('messagesArea');
-        this.conversationList = document.getElementById('conversationList');
-        this.activeChatContainer = document.getElementById('activeChatContainer');
-        this.welcomeScreen = document.getElementById('welcomeScreen');
-        this.pinnedShelf = document.getElementById('pinnedShelf');
-        this.pinnedContent = document.getElementById('pinnedContent');
-        this.messageInput = document.getElementById('messageInput');
     }
+
+    // Lazy getters for DOM elements to avoid null refs during early initialization
+    get messagesArea() { return document.getElementById('messagesArea'); }
+    get conversationList() { return document.getElementById('conversationList'); }
+    get activeChatContainer() { return document.getElementById('activeChatContainer'); }
+    get welcomeScreen() { return document.getElementById('welcomeScreen'); }
+    get pinnedShelf() { return document.getElementById('pinnedShelf'); }
+    get pinnedContent() { return document.getElementById('pinnedContent'); }
+    get messageInput() { return document.getElementById('messageInput'); }
 
     renderConversationList(conversations, currentId, onSelect) {
         if (!this.conversationList) return;
@@ -50,9 +52,11 @@ class ChatUI {
         const time = conv.last_message_at ? this.formatTime(conv.last_message_at) : '';
         const onlineDot = conv.is_online ? '<div class="online-dot"></div>' : '';
 
+        const liveBadge = conv.is_streaming ? `<div class="live-badge" onclick="event.stopPropagation(); window.chatApp.callManager.watchStream('${conv.streamer_id}', '${conv.id}')">LIVE</div>` : '';
+
         if (conv.is_support) {
             item.innerHTML = `
-                <div class="conv-avatar support-avatar"><i class="fas fa-headset"></i></div>
+                <div class="conv-avatar support-avatar"><i class="fas fa-headset"></i>${liveBadge}</div>
                 <div class="conv-info">
                     <div class="conv-name">${conv.name}</div>
                     <div class="conv-preview">${conv.last_message}</div>
@@ -60,7 +64,7 @@ class ChatUI {
             `;
         } else {
             item.innerHTML = `
-                <div class="conv-avatar">${avatarChar}${onlineDot}</div>
+                <div class="conv-avatar">${avatarChar}${onlineDot}${liveBadge}</div>
                 <div class="conv-info">
                     <div class="conv-name">${conv.name || 'Người dùng'}</div>
                     <div class="conv-preview">${conv.last_message || 'Chưa có tin nhắn'}</div>
@@ -126,6 +130,34 @@ class ChatUI {
         }
     }
 
+    setConversationStreaming(id, isStreaming, streamerId = null) {
+        const item = document.querySelector(`.conv-item[data-conversation-id="${id}"]`);
+        if (!item) return;
+
+        const avatar = item.querySelector('.conv-avatar');
+        if (!avatar) return;
+
+        let badge = avatar.querySelector('.live-badge');
+        if (isStreaming && !badge) {
+            badge = document.createElement('div');
+            badge.className = 'live-badge';
+            badge.textContent = 'LIVE';
+            badge.onclick = (e) => {
+                e.stopPropagation();
+                window.chatApp.callManager.watchStream(streamerId, id);
+            };
+            avatar.appendChild(badge);
+        } else if (!isStreaming && badge) {
+            badge.remove();
+        } else if (isStreaming && badge && streamerId) {
+            // Update streamer ID if it changed
+            badge.onclick = (e) => {
+                e.stopPropagation();
+                window.chatApp.callManager.watchStream(streamerId, id);
+            };
+        }
+    }
+
     appendMessage(data) {
         if (!this.messagesArea) return;
 
@@ -138,7 +170,9 @@ class ChatUI {
         div.dataset.senderName = senderName || (type === 'sent' ? 'Bạn' : (avatarText || 'Người dùng'));
 
         let bubbleContent = this.escapeHtml(content);
-        if (msgType === 'image' || (attachments && attachments[0] && attachments[0].file_type === 'image')) {
+        if (msgType === 'sticker') {
+            bubbleContent = `<div class="message-sticker"><img src="${content}" class="sticker-img" alt="Sticker"></div>`;
+        } else if (msgType === 'image' || (attachments && attachments[0] && attachments[0].file_type === 'image')) {
             const url = attachments ? attachments[0].file_url : content;
             bubbleContent = `<div class="message-image" onclick="window.chatApp.viewer.open('${url}')"><img src="${url}"></div>`;
         } else if (msgType === 'video' || (attachments && attachments[0] && attachments[0].file_type === 'video')) {
@@ -151,7 +185,7 @@ class ChatUI {
 
         // Detect single emoji for "Big Emoji" effect (Messenger style)
         const isBigEmoji = msgType === 'text' && /^(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])$/.test(content.trim());
-        const bubbleClass = isBigEmoji ? 'message-bubble big-emoji' : 'message-bubble';
+        const bubbleClass = `message-bubble ${isBigEmoji ? 'big-emoji' : ''} ${data.parent_content ? 'has-reply' : ''}`.trim().replace(/\s+/g, ' ');
 
         const avatarHtml = type === 'received' ? `<div class="message-avatar">${avatarText}</div>` : '';
         const reactionsHtml = this.renderReactions(reactions, id);
