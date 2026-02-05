@@ -45,7 +45,7 @@ class ChatSocketHandlers:
         self.socketio.on('stream_status')(self.handle_stream_status)
         self.socketio.on('request_stream')(self.handle_request_stream)
 
-    def handle_connect(self):
+    def handle_connect(self, auth=None):
         session_id = request.args.get('session_id')
         user_id = session.get('user_id')
         if session_id:

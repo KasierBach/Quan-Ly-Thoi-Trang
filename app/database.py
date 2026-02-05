@@ -105,8 +105,41 @@ def get_db_connection():
          conn = psycopg2.connect(current_app.config['SQLALCHEMY_DATABASE_URI'], cursor_factory=CaseInsensitiveCursor)
          return conn
          
-    real_conn = db_pool.getconn()
-    return PooledConnection(db_pool, real_conn)
+    # Retry loop to get a valid connection
+    for _ in range(3):
+        try:
+            real_conn = db_pool.getconn()
+            
+            # Health check
+            if real_conn.closed:
+                # Discard dead connection
+                db_pool.putconn(real_conn, close=True)
+                continue
+                
+            # Active ping to ensure connection is alive (catches SSL EOF)
+            try:
+                with real_conn.cursor() as cur:
+                    cur.execute('SELECT 1')
+            except (psycopg2.OperationalError, psycopg2.InterfaceError) as e:
+                # Connection is dead
+                print(f"Discarding dead connection: {e}")
+                db_pool.putconn(real_conn, close=True)
+                continue
+                
+            return PooledConnection(db_pool, real_conn)
+            
+        except Exception as e:
+            print(f"Error getting connection from pool: {e}")
+            # If we failed to getconn, maybe pool is exhausted or other issue.
+            # We can try to create a fresh standalone connection as fallback
+            try:
+                 conn = psycopg2.connect(current_app.config['SQLALCHEMY_DATABASE_URI'], cursor_factory=CaseInsensitiveCursor)
+                 return conn
+            except Exception as e2:
+                 raise e
+                 
+    # Fallback after retries
+    return psycopg2.connect(current_app.config['SQLALCHEMY_DATABASE_URI'], cursor_factory=CaseInsensitiveCursor)
 
 def close_db_connection(conn):
     # Backward compatibility helper
