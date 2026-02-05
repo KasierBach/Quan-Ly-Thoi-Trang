@@ -1,0 +1,180 @@
+/* Message Related Styles */
+
+.messages-area {
+    flex: 1;
+    padding: 40px 16px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.message-group {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+    margin-bottom: 2px;
+}
+
+.message-group.sent {
+    align-self: flex-end;
+}
+
+.message-group.received {
+    align-self: flex-start;
+}
+
+.message-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+}
+
+.message-group.sent .message-row {
+    flex-direction: row-reverse;
+}
+
+.message-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--messenger-blue) 0%, var(--messenger-blue-dark) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.message-bubble {
+    padding: 10px 14px;
+    border-radius: 20px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    word-wrap: break-word;
+    position: relative;
+    max-width: 100%;
+    min-width: fit-content;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.message-group.sent .message-bubble {
+    background: var(--messenger-blue);
+    color: white;
+}
+
+.message-group.received .message-bubble {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+}
+
+/* Media Messages */
+.message-image,
+.message-video,
+.message-sticker {
+    max-width: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.message-bubble:has(.message-image),
+.message-bubble:has(.message-video),
+.message-bubble:has(.message-sticker) {
+    padding: 0;
+    background: transparent !important;
+    border: none;
+}
+
+/* Reactions */
+.message-reactions {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.reaction-badge {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 15px;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Actions & Hover Bar */
+.message-actions {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    gap: 4px;
+    padding: 0 8px;
+    opacity: 0;
+    transition: opacity 0.2s;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.message-bubble:hover .message-actions {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.hover-reaction-bar {
+    position: absolute;
+    bottom: calc(100% + 5px);
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 30px;
+    padding: 6px 12px;
+    display: flex;
+    gap: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    z-index: 200;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px) scale(0.95);
+    transition: all 0.2s;
+}
+
+.message-bubble:hover .hover-reaction-bar {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0) scale(1);
+}
+
+/* Image/Video Error Placeholder */
+.img-error-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 120px;
+    min-height: 80px;
+    padding: 20px;
+    background: var(--bg-secondary);
+    border-radius: 12px;
+    color: var(--text-secondary);
+    gap: 8px;
+}
+
+.img-error-placeholder i {
+    font-size: 24px;
+    opacity: 0.5;
+}
+
+.img-error-placeholder span {
+    font-size: 0.85rem;
+}
+
+.img-error {
+    opacity: 0.5;
+    filter: grayscale(1);
+}

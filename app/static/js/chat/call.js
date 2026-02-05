@@ -26,6 +26,8 @@ export class CallManager {
     }
 
     initUI() {
+        this.isGridView = false; // Grid view mode state
+
         this.elements = {
             btnToggleCam: document.getElementById('btnToggleCam'),
             btnShare: document.getElementById('btnShareScreen'),
@@ -40,18 +42,23 @@ export class CallManager {
             incomingName: document.getElementById('incomingName'),
             incomingAvatar: document.getElementById('incomingAvatar'),
 
-            // New Discord elements
+            // Discord elements
             header: document.querySelector('.call-header'),
             channelName: document.getElementById('callChannelName'),
             callerInfo: document.getElementById('callerInfo'),
             remoteNameTag: document.getElementById('remoteNameTag'),
-            videoGrid: document.getElementById('videoGrid'),
+
+            // Layout elements
+            mainContent: document.querySelector('.call-main-content'),
+            primaryStream: document.getElementById('primaryStream'),
+            participantStrip: document.getElementById('participantStrip'),
 
             // Buttons
             btnAnswer: document.getElementById('btnAcceptCall'),
             btnReject: document.getElementById('btnRejectCall'),
             btnMic: document.getElementById('btnToggleMic'),
-            btnCam: document.getElementById('btnToggleCam')
+            btnCam: document.getElementById('btnToggleCam'),
+            btnGridView: document.getElementById('btnGridView')
         };
 
         this.bindEvents();
@@ -66,16 +73,29 @@ export class CallManager {
             const state = JSON.parse(stateStr);
             const now = Date.now();
 
-            // Only resume if the call was "active" in the last 5 minutes
-            if (now - state.timestamp < 300000) {
+            // Only resume if the call was "active" in the last 15 seconds (page refresh)
+            if (now - state.timestamp < 15000) {
                 console.log('Persistent call detected, resuming...', state);
                 this.resumeCall(state);
             } else {
+                console.log('Call state expired, clearing');
                 this.clearCallState();
             }
         } catch (e) {
             console.error('Error parsing call state:', e);
             this.clearCallState();
+        }
+    }
+
+    startKeepAlive() {
+        if (this.keepAliveInterval) clearInterval(this.keepAliveInterval);
+        this.keepAliveInterval = setInterval(() => this.keepAlivePersistentCall(), 5000);
+    }
+
+    stopKeepAlive() {
+        if (this.keepAliveInterval) {
+            clearInterval(this.keepAliveInterval);
+            this.keepAliveInterval = null;
         }
     }
 
@@ -116,6 +136,150 @@ export class CallManager {
         if (this.elements.btnShare) {
             this.elements.btnShare.onclick = () => this.toggleScreenShare();
         }
+
+        // Grid View Toggle
+        if (this.elements.btnGridView) {
+            this.elements.btnGridView.onclick = () => this.toggleGridView();
+        }
+    }
+
+    toggleGridView() {
+        this.isGridView = !this.isGridView;
+
+        if (this.elements.view) {
+            this.elements.view.classList.toggle('grid-mode', this.isGridView);
+        }
+
+        if (this.elements.btnGridView) {
+            this.elements.btnGridView.classList.toggle('active', this.isGridView);
+        }
+
+        console.log('Grid view:', this.isGridView);
+    }
+
+    addRemoteParticipant() {
+        console.log('Adding remote participant to strip...');
+
+        // Find participant strip if not already cached
+        const strip = this.elements.participantStrip || document.getElementById('participantStrip');
+        if (!strip) {
+            console.warn('Participant strip not found!');
+            return;
+        }
+
+        // Check if already present
+        const existingItem = document.getElementById('remoteParticipant');
+        if (existingItem) {
+            // If it's a placeholder (has 'connecting' class), remove it and continue to create real one
+            if (existingItem.classList.contains('connecting')) {
+                console.log('Replacing placeholder with real remote participant');
+                existingItem.remove();
+            } else {
+                console.log('Remote participant exists, updating state');
+                const video = existingItem.querySelector('video');
+                let placeholder = existingItem.querySelector('.participant-placeholder');
+
+                // Ensure placeholder exists (legacy update)
+                if (!placeholder) {
+                    placeholder = document.createElement('div');
+                    placeholder.className = 'participant-placeholder';
+                    placeholder.innerHTML = '<i class="fas fa-user"></i>';
+                    placeholder.style.cssText = 'display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:#334155; color:#94a3b8; font-size:2rem;';
+                    if (video) existingItem.insertBefore(placeholder, existingItem.querySelector('.participant-name'));
+                }
+
+                if (video && this.remoteStream) {
+                    if (hasVideo) {
+                        video.srcObject = this.remoteStream;
+                        video.style.display = 'block';
+                        if (placeholder) placeholder.style.display = 'none';
+                        video.play().catch(e => console.warn('Remote video autoplay blocked:', e));
+                    } else {
+                        video.style.display = 'none';
+                        if (placeholder) placeholder.style.display = 'flex';
+                    }
+
+                    // Re-attach listeners? Actually track listeners persist on track object.
+                    // But if stream changed, we need new listeners.
+                    // Ideally we should remove old ones but for simplicity we rely on garbage collection of old stream/tracks
+                }
+                return;
+            }
+        }
+
+        const remoteName = this.pendingCall?.sender_name || 'Remote User';
+
+        const item = document.createElement('div');
+        item.className = 'participant-item';
+        item.id = 'remoteParticipant';
+        const hasVideo = this.remoteStream && this.remoteStream.getVideoTracks().some(t => t.enabled);
+        item.innerHTML = `
+            <video autoplay playsinline style="${hasVideo ? '' : 'display:none'}"></video>
+            <div class="participant-placeholder" style="${hasVideo ? 'display:none' : 'display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:#334155; color:#94a3b8; font-size:2rem;'}">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="participant-name">${remoteName}</div>
+            <div class="participant-status">
+                <i class="fas fa-microphone"></i>
+            </div>
+        `;
+
+        // Set video source to remote stream
+        const video = item.querySelector('video');
+        if (video && this.remoteStream) {
+            video.srcObject = this.remoteStream;
+            if (hasVideo) video.play().catch(e => console.warn('Remote video autoplay blocked:', e));
+
+            // Listen for track mute/unmute to toggle avatar
+            this.remoteStream.getVideoTracks().forEach(track => {
+                track.onmute = () => {
+                    video.style.display = 'none';
+                    const ph = item.querySelector('.participant-placeholder');
+                    if (ph) ph.style.display = 'flex';
+                };
+                track.onunmute = () => {
+                    video.style.display = 'block';
+                    const ph = item.querySelector('.participant-placeholder');
+                    if (ph) ph.style.display = 'none';
+                };
+            });
+        }
+
+        // Click to focus on this participant (switch to focus mode and set as primary)
+        item.onclick = () => {
+            if (this.isGridView) {
+                this.toggleGridView(); // Switch to focus mode
+            }
+        };
+
+        strip.appendChild(item);
+        console.log('Remote participant added successfully');
+    }
+
+    removeRemoteParticipant() {
+        const el = document.getElementById('remoteParticipant');
+        if (el) el.remove();
+    }
+
+    addRemoteParticipantPlaceholder(statusText = 'Connecting...') {
+        const strip = this.elements.participantStrip || document.getElementById('participantStrip');
+        if (!strip) return;
+
+        // Remove existing placeholder if any
+        const existing = document.getElementById('remoteParticipant');
+        if (existing) existing.remove();
+
+        const item = document.createElement('div');
+        item.className = 'participant-item connecting';
+        item.id = 'remoteParticipant';
+        item.innerHTML = `
+            <div class="participant-placeholder">
+                <i class="fas fa-user"></i>
+            </div>
+            <div class="participant-name">${statusText}</div>
+        `;
+
+        strip.appendChild(item);
     }
 
     // --- Outgoing Call ---
@@ -132,8 +296,13 @@ export class CallManager {
         }
 
         this.showOverlay();
-        this.showActiveView();
-        if (this.elements.status) this.elements.status.textContent = 'Calling...';
+        this.showOverlay();
+        // Show Outgoing Modal instead of Active View immediately, with peer name from header or default
+        const headerName = document.getElementById('chatHeaderName')?.textContent;
+        this.showOutgoingModal(headerName || 'User');
+
+        // Add remote participant placeholder immediately
+        this.addRemoteParticipantPlaceholder('Waiting for answer...');
 
         try {
             await this.getMedia(video);
@@ -181,21 +350,27 @@ export class CallManager {
 
         // Handle reconnection/renegotiation (e.g. adding screen share or F5 resume)
         if (data.isResume) {
-            console.log('Processing resume/renegotiation offer (isResume)');
+            console.log('Processing resume/renegotiation offer (isResume). Active:', this.isCallActive);
+            this.cancelResumeTimeout(); // Cancel any pending resume timeout
 
             // If we are NOT in a call, but this is a resume offer, we should probably accept it silently
             // if we have a matching persistent state.
             if (!this.isCallActive) {
-                console.log('Silent reconnection from peer');
+                console.log('Silent reconnection from peer (isResume=true, isCallActive=false)');
                 this.pendingCall = data;
                 await this.acceptCall();
                 return;
             }
 
-            if (this.peerConnection && this.peerConnection.signalingState === 'stable') {
-                console.warn('Cannot set remote offer in stable state');
-                return;
+            // Allow renegotiation even if stable (ACTUALLY, stable is the ONLY state we should accept valid offers in, unless we are in glare)
+            if (this.peerConnection && this.peerConnection.signalingState !== 'stable' && this.peerConnection.signalingState !== 'have-local-offer' && this.peerConnection.signalingState !== 'have-remote-offer') {
+                // If we are closed or something weird
+                console.warn('Renegotiation offered but state is:', this.peerConnection.signalingState);
+                // We might still want to proceed if we can reset, but for now let's just log
             }
+
+            // REMOVED the "if stable return" check because that was the BUG.
+            // We WANT to accept offers when stable.
 
             try {
                 await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
@@ -223,7 +398,7 @@ export class CallManager {
             return;
         }
 
-        console.log('Showing incoming call modal for:', data.sender_name);
+        console.log('Showing incoming call modal for:', data.sender_name, 'isResume:', data.isResume);
         this.pendingCall = data;
         this.showOverlay();
         this.showIncomingModal(data);
@@ -278,7 +453,7 @@ export class CallManager {
 
     async startScreenShare() {
         try {
-            this.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+            this.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
             const screenTrack = this.screenStream.getVideoTracks()[0];
 
             // Replace track in RTCPeerConnection
@@ -291,18 +466,21 @@ export class CallManager {
             } else {
                 console.log('No video sender found, adding screen track to peer connection');
                 this.peerConnection.addTrack(screenTrack, this.screenStream);
-                // We might need to renegotiate if we add a new track
-                const offer = await this.peerConnection.createOffer();
-                await this.peerConnection.setLocalDescription(offer);
-                this.socket.emit('call_user', {
-                    conversation_id: this.app.currentConversationId,
-                    sender_id: this.app.userId,
-                    session_id: this.app.sessionId,
-                    offer: offer,
-                    isVideo: true,
-                    isResume: true // Use resume-like logic to update remote
-                });
             }
+
+            // Always renegotiate to ensure remote peer gets the new track
+            console.log('Renegotiating to sync screen share with remote peer');
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+            this.socket.emit('call_user', {
+                conversation_id: this.app.currentConversationId,
+                sender_id: this.app.userId,
+                session_id: this.app.sessionId,
+                sender_name: this.app.userName || 'User',
+                offer: offer,
+                isVideo: true,
+                isResume: true // Use resume-like logic to update remote
+            });
 
             // Update local UI
             this.elements.localVideo.srcObject = this.screenStream;
@@ -428,10 +606,19 @@ export class CallManager {
 
     // --- Signaling Handlers ---
     async handleCallAnswered(data) {
+        if (this.isProcessingAnswer) return;
+
         if (this.peerConnection && (this.peerConnection.signalingState === 'have-local-offer' || this.peerConnection.signalingState === 'have-remote-pranswer')) {
-            await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-            this.elements.status.textContent = 'Connected';
-            await this.processQueuedCandidates();
+            this.isProcessingAnswer = true;
+            try {
+                await this.peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+                this.elements.status.textContent = 'Connected';
+                await this.processQueuedCandidates();
+            } catch (e) {
+                console.error('Error handling answer:', e);
+            } finally {
+                this.isProcessingAnswer = false;
+            }
         } else {
             console.warn('Ignoring answer: signalingState is', this.peerConnection?.signalingState);
         }
@@ -532,6 +719,7 @@ export class CallManager {
             }
 
             this.updatePrimaryVideo();
+            this.addRemoteParticipant(); // Add to participant strip for grid view
 
             try {
                 await this.elements.remoteVideo.play();
@@ -547,13 +735,39 @@ export class CallManager {
 
         this.peerConnection.onconnectionstatechange = () => {
             console.log('PeerConnection State:', this.peerConnection.connectionState);
-            if (this.peerConnection.connectionState === 'failed') {
-                this.elements.status.textContent = 'Connection Failed';
-                this.elements.status.style.display = 'block';
+            const state = this.peerConnection.connectionState;
+
+            if (state === 'connected') {
+                // Connection established - hide status
+                if (this.elements.status) {
+                    this.elements.status.style.display = 'none';
+                }
+
+                // Switch from Modal to Active View
+                this.hideIncomingModal();
+                this.showActiveView();
+
+                this.cancelResumeTimeout();
+            } else if (state === 'connecting') {
+                if (this.elements.status) {
+                    this.elements.status.textContent = 'Connecting...';
+                    this.elements.status.style.display = 'flex';
+                }
+            } else if (state === 'failed') {
+                if (this.elements.status) {
+                    this.elements.status.textContent = 'Connection Failed';
+                    this.elements.status.style.display = 'flex';
+                }
+            } else if (state === 'disconnected') {
+                if (this.elements.status) {
+                    this.elements.status.textContent = 'Reconnecting...';
+                    this.elements.status.style.display = 'flex';
+                }
             }
         };
 
         this.isCallActive = true;
+        this.startKeepAlive();
 
         // Process any queued candidates if we were the receiver
         await this.processQueuedCandidates();
@@ -566,6 +780,8 @@ export class CallManager {
     }
 
     endCall(isRemote = false) {
+        this.stopKeepAlive();
+
         if (!isRemote && (this.app.currentConversationId || this.pendingCall)) {
             // Notify other side
             const cid = this.app.currentConversationId || this.pendingCall?.conversation_id;
@@ -621,13 +837,57 @@ export class CallManager {
         if (this.elements.callerInfo) this.elements.callerInfo.textContent = info;
     }
     showIncomingModal(data) {
+        console.log('showIncomingModal called for:', data.sender_name);
+
+        // Setup Modal content for INCOMING
+        if (this.elements.incomingName) this.elements.incomingName.textContent = data.sender_name || 'Unknown';
+        if (this.elements.incomingAvatar) this.elements.incomingAvatar.textContent = (data.sender_name ? data.sender_name[0] : '?');
+
+        const title = this.elements.incomingModal.querySelector('p');
+        if (title) title.textContent = 'Incoming Call...';
+
+        if (this.elements.btnAnswer) this.elements.btnAnswer.style.display = 'inline-flex';
+
+        // Show modal
         if (this.elements.incomingModal) {
             this.elements.incomingModal.classList.add('active');
             this.elements.incomingModal.style.display = 'block';
         }
-        if (this.elements.incomingName) this.elements.incomingName.textContent = data.sender_name || 'Unknown';
-        if (this.elements.incomingAvatar) this.elements.incomingAvatar.textContent = (data.sender_name ? data.sender_name[0] : '?');
+
+        // FORCE HIDE active view to prevent "background call" effect
+        if (this.elements.view) {
+            this.elements.view.style.display = 'none';
+            this.elements.view.classList.remove('active');
+        }
+        if (this.elements.status) this.elements.status.style.display = 'none';
     }
+
+    showOutgoingModal(peerName) {
+        console.log('showOutgoingModal called for:', peerName);
+
+        // Setup Modal content for OUTGOING
+        if (this.elements.incomingName) this.elements.incomingName.textContent = peerName || 'User';
+        if (this.elements.incomingAvatar) this.elements.incomingAvatar.textContent = (peerName ? peerName[0] : '?');
+
+        const title = this.elements.incomingModal.querySelector('p');
+        if (title) title.textContent = 'Calling...';
+
+        // Hide Accept button for outgoing
+        if (this.elements.btnAnswer) this.elements.btnAnswer.style.display = 'none';
+
+        // Show modal
+        if (this.elements.incomingModal) {
+            this.elements.incomingModal.classList.add('active');
+            this.elements.incomingModal.style.display = 'block';
+        }
+
+        // FORCE HIDE active view
+        if (this.elements.view) {
+            this.elements.view.style.display = 'none';
+            this.elements.view.classList.remove('active');
+        }
+    }
+
     hideIncomingModal() {
         if (this.elements.incomingModal) {
             this.elements.incomingModal.classList.remove('active');
@@ -638,6 +898,11 @@ export class CallManager {
         if (this.elements.view) {
             this.elements.view.style.display = 'flex';
             this.elements.view.classList.add('active');
+
+            // Trigger resize to fix video layout glitches (force flex recalculation)
+            setTimeout(() => {
+                window.dispatchEvent(new Event('resize'));
+            }, 50);
         }
     }
 
@@ -680,12 +945,58 @@ export class CallManager {
             this.elements.status.textContent = 'Reconnecting...';
         }
 
+        // Set up timeout - if no response in 8 seconds, try to restart call ourselves
+        this.resumeTimeout = setTimeout(async () => {
+            console.log('Resume timeout - attempting to restart call');
+            if (this.elements.status) {
+                this.elements.status.textContent = 'Restarting call...';
+            }
+
+            try {
+                // Try to restart the call ourselves
+                await this.getMedia(state.isVideo);
+                await this.createPeerConnection();
+                this.addLocalTracks();
+
+                const offer = await this.peerConnection.createOffer();
+                await this.peerConnection.setLocalDescription(offer);
+
+                this.socket.emit('call_user', {
+                    conversation_id: state.conversation_id,
+                    sender_id: this.app.userId,
+                    session_id: this.app.sessionId,
+                    sender_name: this.app.userName || 'User',
+                    offer: offer,
+                    isVideo: state.isVideo,
+                    isResume: true
+                });
+
+                this.saveCallState(state.conversation_id, state.isVideo);
+                console.log('Call restarted successfully');
+            } catch (e) {
+                console.error('Failed to restart call:', e);
+                if (this.elements.status) {
+                    this.elements.status.textContent = 'Connection failed. Please try again.';
+                }
+                // Close after 3 seconds
+                setTimeout(() => this.closeOverlay(), 3000);
+                this.clearCallState();
+            }
+        }, 8000);
+
         // Notify peer that we refreshed and want them to re-offer
         this.socket.emit('call_resume', {
             conversation_id: state.conversation_id,
             sender_id: this.app.userId,
             session_id: this.app.sessionId
         });
+    }
+
+    cancelResumeTimeout() {
+        if (this.resumeTimeout) {
+            clearTimeout(this.resumeTimeout);
+            this.resumeTimeout = null;
+        }
     }
 
     // --- UI State Management ---
@@ -699,24 +1010,56 @@ export class CallManager {
         if (hasRemoteVideo) {
             console.log('Showing remote video in primary view');
             this.elements.remoteVideo.srcObject = this.remoteStream;
+            this.elements.remoteVideo.style.display = 'block';
+            if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
+
             if (this.elements.remoteNameTag) {
                 this.elements.remoteNameTag.textContent = this.pendingCall?.sender_name || 'Remote User';
+            }
+        } else if (hasRemoteAudio && !this.isSharingScreen) {
+            // Logic: If Audio Only AND I am NOT sharing screen -> Show Placeholder
+            // BUT user asked to see "2 stream". If I am sharing screen, I might still want to see Remote Avatar?
+            // Discord behavior: Clicking remote user shows them.
+            // For now, let's prioritize Remote Audio Placeholder over "Nothing" (but under Screen Share?)
+            // Actually, if I am sharing screen, I see my screen. This is fine. Use visual toggle in strip to see remote.
+            // BUT if I am NOT sharing screen (Receiving only), I want to see placeholder instead of "you".
+
+            console.log('Showing remote audio placeholder in primary view');
+            this.elements.remoteVideo.style.display = 'none';
+            if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'flex';
+
+            if (this.elements.remoteNameTag) {
+                this.elements.remoteNameTag.textContent = (this.pendingCall?.sender_name || 'Remote User') + ' (Audio Only)';
             }
         } else if (this.isSharingScreen && this.screenStream) {
             console.log('Mirroring local screen share to primary view');
             this.elements.remoteVideo.srcObject = this.screenStream;
+            this.elements.remoteVideo.style.display = 'block';
+            if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
+
             if (this.elements.remoteNameTag) {
                 this.elements.remoteNameTag.textContent = 'You (Screen Sharing)';
             }
         } else if (this.localStream && this.localStream.getVideoTracks().length > 0) {
             console.log('Mirroring local camera to primary view');
             this.elements.remoteVideo.srcObject = this.localStream;
+            this.elements.remoteVideo.style.display = 'block';
+            if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
+
             if (this.elements.remoteNameTag) {
                 this.elements.remoteNameTag.textContent = 'You';
             }
         } else {
             console.log('No video available, showing placeholder');
             this.elements.remoteVideo.srcObject = null;
+            this.elements.remoteVideo.style.display = 'none';
+            // Show placeholder if we have remote connection but no video?
+            // If hasRemoteAudio (handled above).
+            // Fallback
+            if (document.getElementById('remotePlaceholder') && hasRemoteAudio) {
+                document.getElementById('remotePlaceholder').style.display = 'flex';
+            }
+
             if (this.elements.remoteNameTag) {
                 this.elements.remoteNameTag.textContent = hasRemoteAudio ? (this.pendingCall?.sender_name || 'Remote User') : 'No Video';
             }

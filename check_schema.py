@@ -1,25 +1,19 @@
-from app import create_app
+from run import app
 from app.database import get_db_connection
+import json
 
-app = create_app()
 with app.app_context():
     conn = get_db_connection()
     cursor = conn.cursor()
-    try:
-        # Check Conversations table
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'conversations'")
-        cols = [r[0] for r in cursor.fetchall()]
-        print(f"Conversations columns: {cols}")
-        
-        # Check vw_ConversationSummary
-        try:
-            cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'vw_conversationsummary'")
-            cols_vw = [r[0] for r in cursor.fetchall()]
-            print(f"vw_ConversationSummary columns: {cols_vw}")
-        except:
-            print("vw_ConversationSummary not found or error")
-            
-    except Exception as e:
-        print(f"Error: {e}")
-    finally:
-        conn.close()
+
+    def get_schema(table_name):
+        cursor.execute(f"SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = '{table_name.lower()}'")
+        return cursor.fetchall()
+
+    schema = {
+        'Messages': get_schema('Messages'),
+        'Attachments': get_schema('Attachments')
+    }
+
+    print(json.dumps(schema, indent=4))
+    conn.close()

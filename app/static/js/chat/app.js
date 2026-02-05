@@ -77,6 +77,18 @@ class ChatApp {
             const data = await this.api.getConversations();
             this.conversations = data.conversations || [];
             this.ui.renderConversationList(this.conversations, this.currentConversationId, this.selectConversation.bind(this));
+
+            // Auto-open a conversation so màn hình không trống
+            if (!this.currentConversationId) {
+                if (this.conversations.length > 0) {
+                    const first = this.conversations[0];
+                    this.selectConversation(first.id, first.name, first.is_online);
+                } else {
+                    // Không có cuộc trò chuyện nào -> mở ngay kênh hỗ trợ mặc định
+                    this.ui.switchChatUI('Hỗ trợ khách hàng', true, null);
+                    await this.loadHistory();
+                }
+            }
         } catch (e) {
             console.error("Error loading conversations:", e);
             const list = document.getElementById('conversationList');
@@ -203,6 +215,19 @@ class ChatApp {
         if (!content) content = input?.value.trim();
 
         if (!content) return;
+
+        // Optimistic UI: hiển thị ngay tin nhắn ở phía client
+        const avatarEl = document.getElementById('currentChatAvatar');
+        const avatarText = avatarEl ? avatarEl.textContent : 'Bạn';
+        this.ui.appendMessage({
+            type: 'sent',
+            content,
+            time: this.ui.formatTime(new Date().toISOString()),
+            msgType: 'text',
+            id: `temp-${Date.now()}`,
+            avatarText,
+            senderName: this.userName
+        });
 
         this.isSending = true;
         const sendBtn = document.getElementById('sendBtn');
@@ -423,7 +448,11 @@ class ChatApp {
             }
         });
 
-        setupClick('toggleInfoBtn', () => document.getElementById('infoPanel')?.classList.toggle('active'));
+        // Toggle info panel (dùng class .hidden trùng với CSS mới)
+        setupClick('toggleInfoBtn', () => {
+            const panel = document.getElementById('infoPanel');
+            if (panel) panel.classList.toggle('hidden');
+        });
         setupClick('closePinnedBtn', () => this.handleUnpinCurrent());
         setupClick('cancelReplyBtn', () => this.cancelReply());
         setupClick('likeBtn', () => this.sendMessage('👍'));
@@ -551,6 +580,21 @@ class ChatApp {
         try {
             const data = await this.api.uploadFile(file, this.sessionId, this.currentConversationId);
             if (data.status === 'success') {
+                // Hiển thị ngay file vừa upload trong chat
+                const url = data.file_url;
+                const avatarEl = document.getElementById('currentChatAvatar');
+                const avatarText = avatarEl ? avatarEl.textContent : 'Bạn';
+                this.ui.appendMessage({
+                    type: 'sent',
+                    content: url,
+                    time: this.ui.formatTime(new Date().toISOString()),
+                    msgType: data.file_type || 'image',
+                    attachments: url ? [{ file_url: url, file_name: file.name, file_type: data.file_type || 'image' }] : null,
+                    id: `temp-file-${Date.now()}`,
+                    avatarText,
+                    senderName: this.userName
+                });
+
                 this.ui.showToast('Tải lên thành công!', 'var(--online-green)');
                 this.loadHistory();
             }
@@ -766,6 +810,80 @@ class ChatApp {
                 this.loadConversations();
             }
         } catch (e) { console.error(e); }
+    }
+
+    // Handle emoji change modal
+    handleEmojiChangeRequest() {
+        const modal = document.getElementById('emojiDefaultModal');
+        if (!modal) return;
+        modal.style.display = 'flex';
+
+        // Setup emoji option click handlers
+        modal.querySelectorAll('.emoji-default-option').forEach(opt => {
+            opt.onclick = async () => {
+                const emoji = opt.dataset.emoji;
+                if (!this.currentConversationId) return;
+
+                try {
+                    const res = await fetch(`/api/conversations/${this.currentConversationId}/settings`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ default_emoji: emoji })
+                    });
+                    if (res.ok) {
+                        this.ui.showToast(`Đã đổi biểu tượng thành ${emoji}`);
+                        // Update like button
+                        const likeBtn = document.getElementById('likeBtn');
+                        if (likeBtn) likeBtn.innerHTML = emoji;
+                        modal.style.display = 'none';
+                    }
+                } catch (e) {
+                    console.error(e);
+                    this.ui.showToast('Lỗi khi cập nhật', '#e74c3c');
+                }
+            };
+        });
+    }
+
+    // Handle nickname prompt modal
+    async handleNicknamePrompt() {
+        const modal = document.getElementById('nicknameModal');
+        const body = document.getElementById('nicknameListBody');
+        if (!modal || !body || !this.currentConversationId) return;
+
+        try {
+            const convData = await this.api.getConversation(this.currentConversationId);
+            const participants = convData.participants || [];
+
+            body.innerHTML = participants.map(p => `
+                <div class="nickname-item" data-user-id="${p.id}">
+                    <div class="nickname-avatar">${(p.name || 'U')[0].toUpperCase()}</div>
+                    <input type="text" value="${p.nickname || p.name || ''}" placeholder="${p.name || 'Nickname'}" 
+                           onchange="window.chatApp.saveNickname(${p.id}, this.value)">
+                </div>
+            `).join('');
+
+            modal.style.display = 'flex';
+        } catch (e) {
+            console.error(e);
+            this.ui.showToast('Không thể tải danh sách', '#e74c3c');
+        }
+    }
+
+    async saveNickname(userId, nickname) {
+        if (!this.currentConversationId) return;
+        try {
+            const res = await fetch(`/api/conversations/${this.currentConversationId}/participants/${userId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nickname })
+            });
+            if (res.ok) {
+                this.ui.showToast('Đã cập nhật biệt danh');
+            }
+        } catch (e) {
+            console.error(e);
+        }
     }
 
     // Real-time Seen Status

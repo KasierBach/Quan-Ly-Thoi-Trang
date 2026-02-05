@@ -1,0 +1,102 @@
+/* Call Overlay & Signaling UI */
+
+.call-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(20px);
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.call-overlay.active {
+    display: flex;
+}
+
+.active-call-view {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    padding: 20px;
+}
+
+.call-header {
+    height: 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 16px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    margin-bottom: 16px;
+}
+
+/* Video Grid */
+.video-grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 16px;
+    align-content: center;
+}
+
+.video-cell {
+    position: relative;
+    background: #1e1f22;
+    border-radius: 16px;
+    overflow: hidden;
+    aspect-ratio: 16/9;
+}
+
+.video-cell video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Incoming Modal */
+.incoming-call-modal {
+    background: #fff;
+    padding: 30px;
+    border-radius: 16px;
+    text-align: center;
+    width: 320px;
+    display: none;
+    color: #333;
+}
+
+.incoming-call-modal.active {
+    display: block;
+}
+
+/* Control Buttons */
+.btn-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    font-size: 22px;
+    margin: 0 10px;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-reject {
+    background: #ff3b30;
+}
+
+.btn-accept {
+    background: #2ecc71;
+}

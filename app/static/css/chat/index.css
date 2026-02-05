@@ -1,0 +1,9 @@
+/* Chat Modular CSS - Master Loader */
+
+@import url('variables.css');
+@import url('layout.css');
+@import url('messages.css');
+@import url('input.css');
+@import url('popups.css');
+@import url('modals.css');
+@import url('call.css');

@@ -3,95 +3,7 @@
 {% block title %}Tin nhắn{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
-<style>
-    /* Modals */
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 2000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(2px);
-    }
-
-    .modal-content {
-        background-color: #fff;
-        margin: 10% auto;
-        padding: 0;
-        border-radius: 12px;
-        width: 400px;
-        box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
-        overflow: hidden;
-    }
-
-    .modal-content.large {
-        width: 80%;
-        max-width: 800px;
-    }
-
-    .modal-header {
-        padding: 15px 20px;
-        border-bottom: 1px solid #eee;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .modal-header h3 {
-        margin: 0;
-        font-size: 1.1rem;
-    }
-
-    .modal-body {
-        max-height: 70vh;
-        overflow-y: auto;
-    }
-
-    .modal-footer {
-        padding: 15px 20px;
-        border-top: 1px solid #eee;
-        text-align: right;
-    }
-
-    .close {
-        font-size: 24px;
-        cursor: pointer;
-        color: #aaa;
-    }
-
-    .close:hover {
-        color: #000;
-    }
-
-    /* Theme & Media Utilities */
-    .theme-option:hover {
-        transform: scale(1.1);
-        border: 2px solid white;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
-    }
-
-    .media-item:hover {
-        filter: brightness(0.9);
-    }
-
-    .btn-primary {
-        background-color: var(--messenger-blue);
-        color: white;
-        border: none;
-        padding: 8px 16px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-    }
-
-    .btn-primary:hover {
-        opacity: 0.9;
-    }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}?v={{ range(1, 10000) | random }}">
 {% endblock %}
 
 
@@ -195,9 +107,11 @@
 
                     <!-- Recording UI -->
                     <div class="recording-ui" id="recordingUI">
-                        <button class="btn-cancel-record" id="cancelRecordBtn"><i class="fas fa-times"></i></button>
+                        <button class="btn-cancel-record btn-record-action" id="cancelRecordBtn"><i
+                                class="fas fa-times"></i></button>
                         <div class="recording-timer" id="recordingTimer">00:00</div>
-                        <button class="btn-send-record" id="sendRecordBtn"><i class="fas fa-paper-plane"></i></button>
+                        <button class="btn-send-record btn-record-action" id="sendRecordBtn"><i
+                                class="fas fa-paper-plane"></i></button>
                     </div>
 
                     <div class="message-input-wrapper">
@@ -393,12 +307,39 @@
             <h3>Chỉnh sửa biệt danh</h3>
             <span class="close" onclick="document.getElementById('nicknameModal').style.display='none'">&times;</span>
         </div>
-        <div class="modal-body" id="nicknameListBody" style="padding: 15px;">
+        <div class="modal-body" id="nicknameListBody">
             <!-- Populated by JS -->
         </div>
         <div class="modal-footer">
             <button class="btn-primary"
                 onclick="document.getElementById('nicknameModal').style.display='none'">Xong</button>
+        </div>
+    </div>
+</div>
+
+<!-- Default Emoji Modal -->
+<div id="emojiDefaultModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Thay đổi biểu tượng cảm xúc</h3>
+            <span class="close"
+                onclick="document.getElementById('emojiDefaultModal').style.display='none'">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="emoji-default-grid" id="emojiDefaultGrid">
+                <div class="emoji-default-option" data-emoji="👍">👍</div>
+                <div class="emoji-default-option" data-emoji="❤️">❤️</div>
+                <div class="emoji-default-option" data-emoji="😂">😂</div>
+                <div class="emoji-default-option" data-emoji="😮">😮</div>
+                <div class="emoji-default-option" data-emoji="😢">😢</div>
+                <div class="emoji-default-option" data-emoji="😡">😡</div>
+                <div class="emoji-default-option" data-emoji="🔥">🔥</div>
+                <div class="emoji-default-option" data-emoji="🎉">🎉</div>
+                <div class="emoji-default-option" data-emoji="💯">💯</div>
+                <div class="emoji-default-option" data-emoji="🙏">🙏</div>
+                <div class="emoji-default-option" data-emoji="💪">💪</div>
+                <div class="emoji-default-option" data-emoji="✨">✨</div>
+            </div>
         </div>
     </div>
 </div>
@@ -435,8 +376,9 @@
         </div>
     </div>
 
-    <!-- Active Video Call -->
+    <!-- Active Video Call - Discord Style -->
     <div id="activeCallView" class="active-call-view">
+        <!-- Header Bar -->
         <div class="call-header">
             <div class="header-left">
                 <i class="fas fa-volume-up"></i>
@@ -445,38 +387,80 @@
                 <span id="callerInfo">User is streaming</span>
             </div>
             <div class="header-right">
-                <span class="quality-badge">720p 30FPS</span>
-                <span class="live-indicator">LIVE</span>
-                <button class="header-icon-btn"><i class="fas fa-comment-alt"></i></button>
+                <span class="quality-badge" id="qualityBadge">720p 30FPS</span>
+                <span class="live-indicator" id="liveIndicator">LIVE</span>
+                <button class="header-icon-btn" id="btnToggleChat" title="Toggle Chat"><i
+                        class="fas fa-comment-alt"></i></button>
+                <button class="header-icon-btn" id="btnFullscreen" title="Fullscreen"><i
+                        class="fas fa-expand"></i></button>
             </div>
         </div>
 
-        <div class="video-grid" id="videoGrid">
-            <div class="video-cell remote" id="remoteCell">
+        <!-- Main Content Area -->
+        <div class="call-main-content">
+            <!-- Primary Stream/Screen Share -->
+            <div class="primary-stream" id="primaryStream">
                 <video id="remoteVideo" autoplay playsinline></video>
-                <div class="video-overlay-name" id="remoteNameTag">Remote User</div>
+                <div class="primary-placeholder" id="remotePlaceholder"
+                    style="display:none; position:absolute; inset:0; background:#0f172a; align-items:center; justify-content:center; color:#64748b; flex-direction:column; z-index:5;">
+                    <i class="fas fa-user-circle" style="font-size: 8rem; margin-bottom: 2rem;"></i>
+                    <span style="font-size: 1.5rem; color: #94a3b8;">Audio Only</span>
+                </div>
+                <div class="stream-overlay">
+                    <div class="stream-name" id="remoteNameTag">Remote User</div>
+                </div>
+                <div class="call-status-badge" id="callStatus">Connecting...</div>
             </div>
-            <div class="video-cell local" id="localCell">
+        </div>
+
+        <!-- Participant Strip at Bottom -->
+        <div class="participant-strip" id="participantStrip">
+            <div class="participant-item" id="localParticipant">
                 <video id="localVideo" autoplay playsinline muted></video>
-                <div class="video-overlay-name">You</div>
+                <div class="participant-name">You</div>
+                <div class="participant-status" id="localMicStatus">
+                    <i class="fas fa-microphone"></i>
+                </div>
             </div>
+            <!-- More participants will be added dynamically -->
         </div>
 
-        <div class="call-controls-wrapper">
-            <div class="call-controls-pill">
-                <button class="control-btn" id="btnToggleMic" title="Mute Mic"><i
-                        class="fas fa-microphone"></i></button>
-                <button class="control-btn" id="btnToggleCam" title="Toggle Camera"><i
-                        class="fas fa-video"></i></button>
-                <button class="control-btn" id="btnShareScreen" title="Share Screen"><i
-                        class="fas fa-desktop"></i></button>
-                <button class="control-btn" id="btnMoreOptions"><i class="fas fa-ellipsis-h"></i></button>
-                <button class="control-btn btn-disconnect" id="btnEndCall" title="Disconnect"><i
-                        class="fas fa-phone-slash"></i></button>
+        <!-- Control Bar -->
+        <div class="call-controls-bar">
+            <div class="controls-left">
+                <!-- Optional: stream info -->
+            </div>
+            <div class="controls-center">
+                <button class="control-btn" id="btnToggleMic" title="Mute Mic">
+                    <i class="fas fa-microphone"></i>
+                    <span class="btn-chevron"><i class="fas fa-chevron-up"></i></span>
+                </button>
+                <button class="control-btn" id="btnToggleCam" title="Toggle Camera">
+                    <i class="fas fa-video"></i>
+                    <span class="btn-chevron"><i class="fas fa-chevron-up"></i></span>
+                </button>
+                <button class="control-btn" id="btnShareScreen" title="Share Screen">
+                    <i class="fas fa-desktop"></i>
+                </button>
+                <button class="control-btn" id="btnGridView" title="Grid View">
+                    <i class="fas fa-th"></i>
+                </button>
+                <button class="control-btn" id="btnMoreOptions" title="More Options">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+                <button class="control-btn btn-disconnect" id="btnEndCall" title="Disconnect">
+                    <i class="fas fa-phone-slash"></i>
+                </button>
+            </div>
+            <div class="controls-right">
+                <button class="control-btn control-btn-sm" id="btnPiP" title="Picture in Picture">
+                    <i class="fas fa-external-link-square-alt"></i>
+                </button>
+                <button class="control-btn control-btn-sm" id="btnPopout" title="Pop Out">
+                    <i class="fas fa-expand-alt"></i>
+                </button>
             </div>
         </div>
-
-        <div class="call-status-badge" id="callStatus" style="display: none;">Connecting...</div>
     </div>
 </div>
 {% endblock %}

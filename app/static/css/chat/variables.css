@@ -1,0 +1,65 @@
+/* Variables & Global Utilities */
+:root {
+    --messenger-blue: #0084ff;
+    --messenger-blue-dark: #006acc;
+    --messenger-blue-light: #e7f3ff;
+    --bg-primary: #ffffff;
+    --bg-secondary: #f0f2f5;
+    --bg-hover: #e4e6eb;
+    --text-primary: #050505;
+    --text-secondary: #65676b;
+    --border-color: #dddfe2;
+    --online-green: #31a24c;
+}
+
+/* Discord Colors for isolated use */
+.discord-colors {
+    --discord-blue: #5865f2;
+    --discord-green: #23a55a;
+    --discord-red: #f23f43;
+    --discord-dark-bg: #313338;
+}
+
+.glass-effect {
+    background: rgba(43, 45, 49, 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Dark Mode Overrides */
+[data-bs-theme="dark"] {
+    --bg-primary: #242526;
+    --bg-secondary: #3a3b3c;
+    --bg-hover: #4e4f50;
+    --text-primary: #e4e6eb;
+    --text-secondary: #b0b3b8;
+    --border-color: #3e4042;
+    --messenger-blue-light: #1d3a5c;
+}
+
+/* Utilities extracted from templates */
+.theme-option:hover {
+    transform: scale(1.1);
+    border: 2px solid white;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+}
+
+.media-item:hover {
+    filter: brightness(0.9);
+}
+
+.btn-primary {
+    background-color: var(--messenger-blue);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    opacity: 0.9;
+}

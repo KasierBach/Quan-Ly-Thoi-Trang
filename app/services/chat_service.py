@@ -76,6 +76,10 @@ class ChatService(BaseService):
         before_id: Optional[int] = None
     ) -> List[Dict[str, Any]]:
         """Fetch message history with attachments and reactions."""
+        import os
+        from flask import current_app
+        from urllib.parse import urlparse
+        
         conn = ChatService.get_connection()
         cursor = conn.cursor()
         try:
@@ -118,6 +122,27 @@ class ChatService(BaseService):
                     iso_time = msg['created_at'].isoformat()
                     msg['created_at'] = iso_time
                     msg['timestamp'] = iso_time
+                
+                # Validate attachments - filter out files that don't exist
+                if msg.get('attachments'):
+                    valid_attachments = []
+                    for att in msg['attachments']:
+                        file_url = att.get('file_url', '')
+                        # Check if it's a local file (not external URL like stickers from Bing)
+                        if '/static/uploads/' in file_url:
+                            parsed = urlparse(file_url)
+                            path_parts = parsed.path.split('/static/')
+                            if len(path_parts) > 1:
+                                relative_path = path_parts[1]
+                                full_path = os.path.join(current_app.root_path, 'static', relative_path)
+                                if os.path.exists(full_path):
+                                    valid_attachments.append(att)
+                                # Skip invalid local files
+                        else:
+                            # External URLs (stickers, etc) - keep them but mark for potential error handling
+                            valid_attachments.append(att)
+                    msg['attachments'] = valid_attachments if valid_attachments else None
+                
                 messages.append(msg)
             return messages
         finally:

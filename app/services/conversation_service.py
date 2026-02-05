@@ -42,12 +42,22 @@ class ConversationService(BaseService):
         conn = ConversationService.get_connection()
         cursor = conn.cursor()
         try:
-            cursor.execute('SELECT * FROM vw_ConversationSummary WHERE conversation_id = %s', (conversation_id,))
+            cursor.execute('''
+                SELECT c.*, 
+                       (SELECT content FROM Messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message,
+                       (SELECT created_at FROM Messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) as last_message_at
+                FROM Conversations c
+                WHERE c.id = %s
+            ''', (conversation_id,))
             res = cursor.fetchone()
             if res:
                 conv = dict(res)
                 if conv.get('last_message_at'):
                     conv['last_message_at'] = conv['last_message_at'].isoformat()
+                if conv.get('created_at'):
+                    conv['created_at'] = conv['created_at'].isoformat()
+                if conv.get('updated_at'):
+                    conv['updated_at'] = conv['updated_at'].isoformat()
                 return conv
             return None
         finally:

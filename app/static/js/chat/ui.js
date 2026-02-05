@@ -171,16 +171,20 @@ class ChatUI {
 
         let bubbleContent = this.escapeHtml(content);
         if (msgType === 'sticker') {
-            bubbleContent = `<div class="message-sticker"><img src="${content}" class="sticker-img" alt="Sticker"></div>`;
-        } else if (msgType === 'image' || (attachments && attachments[0] && attachments[0].file_type === 'image')) {
-            const url = attachments ? attachments[0].file_url : content;
-            bubbleContent = `<div class="message-image" onclick="window.chatApp.viewer.open('${url}')"><img src="${url}"></div>`;
-        } else if (msgType === 'video' || (attachments && attachments[0] && attachments[0].file_type === 'video')) {
-            const url = attachments ? attachments[0].file_url : content;
-            bubbleContent = `<div class="message-video"><video controls src="${url}"></video></div>`;
+            bubbleContent = `<div class="message-sticker"><img src="${content}" class="sticker-img" alt="Sticker" onerror="this.onerror=null; this.src='/static/images/sticker-error.png'; this.classList.add('img-error');"></div>`;
+        } else if (attachments && attachments[0] && attachments[0].file_type === 'image') {
+            // Only render as image if we have a valid attachment
+            const url = attachments[0].file_url;
+            bubbleContent = `<div class="message-image" onclick="window.chatApp.viewer.open('${url}')"><img src="${url}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'img-error-placeholder\\'><i class=\\'fas fa-image\\'></i><span>Ảnh không khả dụng</span></div>';"></div>`;
+        } else if (attachments && attachments[0] && attachments[0].file_type === 'video') {
+            const url = attachments[0].file_url;
+            bubbleContent = `<div class="message-video"><video controls src="${url}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'img-error-placeholder\\'><i class=\\'fas fa-video\\'></i><span>Video không khả dụng</span></div>';"></video></div>`;
         } else if (attachments && attachments[0]) {
             const att = attachments[0];
             bubbleContent = `<a href="${att.file_url}" download class="file-attachment"><i class="fas fa-file"></i> ${att.file_name}</a>`;
+        } else if (msgType === 'image' || msgType === 'video' || msgType === 'audio') {
+            // Media message but attachment file is missing - show placeholder
+            bubbleContent = `<div class="img-error-placeholder"><i class="fas fa-${msgType === 'image' ? 'image' : msgType === 'video' ? 'video' : 'music'}"></i><span>File đã bị xóa</span></div>`;
         }
 
         // Detect single emoji for "Big Emoji" effect (Messenger style)
@@ -395,12 +399,12 @@ class ChatUI {
         title.textContent = type === 'image' ? 'File phương tiện' : 'File';
         grid.innerHTML = attachments.length > 0
             ? attachments.map(a => `
-                <div class="media-item" style="border: 1px solid #ddd; border-radius: 8px; overflow: hidden; cursor: pointer;" onclick="window.chatApp.viewer.show(['${a.file_url}'])">
+                <div class="media-item" onclick="window.chatApp.viewer.open('${a.file_url}')">
                     ${a.file_type === 'image'
-                    ? `<img src="${a.file_url}" style="width: 100%; height: 100px; object-fit: cover;">`
-                    : `<div style="height: 100px; display: flex; align-items: center; justify-content: center; background: #f0f2f5;"><i class="fas fa-file-alt fa-2x"></i></div>`
+                    ? `<img src="${a.file_url}" class="media-thumb">`
+                    : `<div class="media-thumb file"><i class="fas fa-file-alt fa-2x"></i></div>`
                 }
-                    <div style="padding: 5px; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; text-align: center;">${a.file_name}</div>
+                    <div class="media-caption" title="${a.file_name}">${a.file_name}</div>
                 </div>
             `).join('')
             : '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">Không có file nào</div>';
