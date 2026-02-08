@@ -63,6 +63,21 @@ export class CallManager {
 
         this.bindEvents();
         this.checkPersistentCall();
+
+        // Listen for incoming call chat messages
+        if (this.socket?.socket) {
+            this.socket.socket.on('call_chat_message', (data) => {
+                // Don't show our own messages (already added locally)
+                if (data.sender_id == this.app.userId) return;
+
+                this.addCallChatMessage({
+                    sender_name: data.sender_name,
+                    text: data.text,
+                    timestamp: data.timestamp,
+                    own: false
+                });
+            });
+        }
     }
 
     checkPersistentCall() {
@@ -113,7 +128,44 @@ export class CallManager {
                         track.enabled = !track.enabled;
                         this.elements.btnMic.classList.toggle('btn-danger', !track.enabled);
                         this.elements.btnMic.classList.toggle('active', !track.enabled);
-                        console.log('Mic enabled:', track.enabled);
+
+                        // Update mic icon in button
+                        const btnIcon = this.elements.btnMic.querySelector('i');
+                        if (btnIcon) {
+                            btnIcon.className = track.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+                        }
+
+                        // Update local participant status indicator
+                        const localMicStatus = document.getElementById('localMicStatus');
+                        if (localMicStatus) {
+                            localMicStatus.classList.toggle('muted', !track.enabled);
+                            const statusIcon = localMicStatus.querySelector('i');
+                            if (statusIcon) {
+                                statusIcon.className = track.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+                            }
+                        }
+
+                        // Broadcast mic status to remote participant
+                        const cid = this.app.currentConversationId || this.pendingCall?.conversation_id;
+
+                        if (cid) {
+                            this.socket.emit('media_status', {
+                                conversation_id: cid,
+                                user_id: this.app.userId,
+                                type: 'mic',
+                                enabled: track.enabled
+                            });
+                        } else {
+                            console.warn('No conversation_id for media_status emit!');
+                        }
+
+
+
+                        // Save state to persist across refresh
+                        const convId = this.app.currentConversationId || this.pendingCall?.conversation_id;
+                        if (convId) {
+                            this.saveCallState(convId, !!this.localStream?.getVideoTracks().length);
+                        }
                     }
                 }
             };
@@ -127,7 +179,40 @@ export class CallManager {
                         track.enabled = !track.enabled;
                         this.elements.btnCam.classList.toggle('btn-danger', !track.enabled);
                         this.elements.btnCam.classList.toggle('active', !track.enabled);
-                        console.log('Cam enabled:', track.enabled);
+
+                        // Update camera icon in button
+                        const btnIcon = this.elements.btnCam.querySelector('i');
+                        if (btnIcon) {
+                            btnIcon.className = track.enabled ? 'fas fa-video' : 'fas fa-video-slash';
+                        }
+
+                        // Show/hide local video placeholder
+                        const localVideo = document.getElementById('localVideo');
+                        const localParticipant = document.getElementById('localParticipant');
+                        if (localParticipant) {
+                            let placeholder = localParticipant.querySelector('.participant-placeholder');
+                            if (!placeholder && !track.enabled) {
+                                placeholder = document.createElement('div');
+                                placeholder.className = 'participant-placeholder';
+                                placeholder.innerHTML = '<i class="fas fa-video-slash"></i>';
+                                placeholder.style.cssText = 'display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:#334155; color:#94a3b8; font-size:2rem; position:absolute; inset:0;';
+                                localParticipant.appendChild(placeholder);
+                            }
+                            if (placeholder) {
+                                placeholder.style.display = track.enabled ? 'none' : 'flex';
+                            }
+                            if (localVideo) {
+                                localVideo.style.display = track.enabled ? 'block' : 'none';
+                            }
+                        }
+
+
+
+                        // Save state to persist across refresh
+                        const convId = this.app.currentConversationId || this.pendingCall?.conversation_id;
+                        if (convId) {
+                            this.saveCallState(convId, true);
+                        }
                     }
                 }
             };
@@ -141,6 +226,132 @@ export class CallManager {
         if (this.elements.btnGridView) {
             this.elements.btnGridView.onclick = () => this.toggleGridView();
         }
+
+        // Local participant click - switch to show local stream as primary
+        const localParticipant = document.getElementById('localParticipant');
+        if (localParticipant) {
+            localParticipant.onclick = () => {
+
+                if (this.isGridView) {
+                    this.toggleGridView();
+                }
+                const primaryVideo = document.getElementById('remoteVideo');
+                const stream = this.screenStream || this.localStream;
+                if (primaryVideo && stream) {
+                    primaryVideo.srcObject = stream;
+                    primaryVideo.play().catch(e => console.warn('Primary video play failed:', e));
+
+                    const nameTag = document.getElementById('remoteNameTag');
+                    if (nameTag) {
+                        nameTag.textContent = this.screenStream ? 'You (Screen Sharing)' : 'You';
+                    }
+                }
+
+                // Show video, hide placeholder for local
+                const placeholder = document.getElementById('remotePlaceholder');
+                if (placeholder) placeholder.style.display = 'none';
+                if (primaryVideo) primaryVideo.style.display = 'block';
+            };
+        }
+
+        // Call Chat Panel Toggle
+        const btnToggleChat = document.getElementById('btnToggleChat');
+        const btnCloseCallChat = document.getElementById('btnCloseCallChat');
+        const callChatPanel = document.getElementById('callChatPanel');
+        const callMainContent = document.querySelector('.call-main-content');
+
+        if (btnToggleChat && callChatPanel) {
+            btnToggleChat.onclick = () => this.toggleCallChat();
+        }
+        if (btnCloseCallChat && callChatPanel) {
+            btnCloseCallChat.onclick = () => this.toggleCallChat(false);
+        }
+
+        // Call Chat Send
+        const btnSendCallChat = document.getElementById('btnSendCallChat');
+        const callChatInput = document.getElementById('callChatInput');
+
+        if (btnSendCallChat && callChatInput) {
+            btnSendCallChat.onclick = () => this.sendCallChatMessage();
+            callChatInput.onkeypress = (e) => {
+                if (e.key === 'Enter') this.sendCallChatMessage();
+            };
+        }
+    }
+
+    toggleCallChat(forceState = null) {
+        const callChatPanel = document.getElementById('callChatPanel');
+        const activeCallView = document.getElementById('activeCallView');
+        const btnToggleChat = document.getElementById('btnToggleChat');
+
+        if (!callChatPanel) return;
+
+        const shouldOpen = forceState !== null ? forceState : !callChatPanel.classList.contains('active');
+
+        callChatPanel.classList.toggle('active', shouldOpen);
+        activeCallView?.classList.toggle('chat-open', shouldOpen);
+        btnToggleChat?.classList.toggle('active', shouldOpen);
+
+        if (shouldOpen) {
+            // Focus input
+            document.getElementById('callChatInput')?.focus();
+        }
+
+
+    }
+
+    sendCallChatMessage() {
+        const input = document.getElementById('callChatInput');
+        const text = input?.value.trim();
+
+        if (!text) return;
+
+        // Send via socket
+        this.socket.emit('call_chat_message', {
+            conversation_id: this.app.currentConversationId || (this.pendingCall?.conversation_id),
+            sender_id: this.app.userId,
+            sender_name: this.app.userName,
+            text: text,
+            timestamp: new Date().toISOString()
+        });
+
+        // Add to local UI immediately
+        this.addCallChatMessage({
+            sender_name: this.app.userName,
+            text: text,
+            timestamp: new Date().toISOString(),
+            own: true
+        });
+
+        input.value = '';
+    }
+
+    addCallChatMessage(msg) {
+        const container = document.getElementById('callChatMessages');
+        if (!container) return;
+
+        // Remove empty state if exists
+        const emptyState = container.querySelector('.call-chat-empty');
+        if (emptyState) emptyState.remove();
+
+        const time = new Date(msg.timestamp).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+
+        const msgEl = document.createElement('div');
+        msgEl.className = `call-chat-message${msg.own ? ' own' : ''}`;
+        msgEl.innerHTML = `
+            <span class="sender">${msg.sender_name}</span>
+            <span class="text">${this.escapeHtml(msg.text)}</span>
+            <span class="time">${time}</span>
+        `;
+
+        container.appendChild(msgEl);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 
     toggleGridView() {
@@ -154,11 +365,11 @@ export class CallManager {
             this.elements.btnGridView.classList.toggle('active', this.isGridView);
         }
 
-        console.log('Grid view:', this.isGridView);
+
     }
 
     addRemoteParticipant() {
-        console.log('Adding remote participant to strip...');
+
 
         // Find participant strip if not already cached
         const strip = this.elements.participantStrip || document.getElementById('participantStrip');
@@ -172,10 +383,10 @@ export class CallManager {
         if (existingItem) {
             // If it's a placeholder (has 'connecting' class), remove it and continue to create real one
             if (existingItem.classList.contains('connecting')) {
-                console.log('Replacing placeholder with real remote participant');
+
                 existingItem.remove();
             } else {
-                console.log('Remote participant exists, updating state');
+
                 const video = existingItem.querySelector('video');
                 let placeholder = existingItem.querySelector('.participant-placeholder');
 
@@ -188,6 +399,9 @@ export class CallManager {
                     if (video) existingItem.insertBefore(placeholder, existingItem.querySelector('.participant-name'));
                 }
 
+                // Fix: define hasVideo in this scope
+                const hasVideo = this.remoteStream && this.remoteStream.getVideoTracks().some(t => t.enabled);
+
                 if (video && this.remoteStream) {
                     if (hasVideo) {
                         video.srcObject = this.remoteStream;
@@ -198,11 +412,37 @@ export class CallManager {
                         video.style.display = 'none';
                         if (placeholder) placeholder.style.display = 'flex';
                     }
-
-                    // Re-attach listeners? Actually track listeners persist on track object.
-                    // But if stream changed, we need new listeners.
-                    // Ideally we should remove old ones but for simplicity we rely on garbage collection of old stream/tracks
                 }
+
+                // Ensure click handler exists for this update path
+                const headerName = document.getElementById('chatHeaderName')?.textContent;
+                const remoteName = this.pendingCall?.sender_name || headerName || 'Remote User';
+
+                existingItem.onclick = () => {
+
+                    if (this.isGridView) {
+                        this.toggleGridView();
+                    }
+                    const primaryVideo = document.getElementById('remoteVideo');
+                    if (primaryVideo && this.remoteStream) {
+                        primaryVideo.srcObject = this.remoteStream;
+                        primaryVideo.play().catch(e => console.warn('Primary video play failed:', e));
+
+                        const nameTag = document.getElementById('remoteNameTag');
+                        if (nameTag) nameTag.textContent = remoteName;
+                    }
+
+                    const currentHasVideo = this.remoteStream && this.remoteStream.getVideoTracks().some(t => t.enabled);
+                    const remotePlaceholder = document.getElementById('remotePlaceholder');
+                    if (remotePlaceholder) {
+                        remotePlaceholder.style.display = currentHasVideo ? 'none' : 'flex';
+                    }
+                    const remoteVid = document.getElementById('remoteVideo');
+                    if (remoteVid) {
+                        remoteVid.style.display = currentHasVideo ? 'block' : 'none';
+                    }
+                };
+
                 return;
             }
         }
@@ -247,13 +487,37 @@ export class CallManager {
 
         // Click to focus on this participant (switch to focus mode and set as primary)
         item.onclick = () => {
+
+            // Switch to focus mode if in grid
             if (this.isGridView) {
-                this.toggleGridView(); // Switch to focus mode
+                this.toggleGridView();
+            }
+            // Set remote stream as primary
+            const primaryVideo = document.getElementById('remoteVideo');
+            if (primaryVideo && this.remoteStream) {
+                primaryVideo.srcObject = this.remoteStream;
+                primaryVideo.play().catch(e => console.warn('Primary video play failed:', e));
+
+                // Update the primary name tag
+                const nameTag = document.getElementById('remoteNameTag');
+                if (nameTag) {
+                    nameTag.textContent = remoteName;
+                }
+            }
+
+            // Show/hide placeholder based on video track
+            const hasRemoteVideo = this.remoteStream && this.remoteStream.getVideoTracks().some(t => t.enabled);
+            const placeholder = document.getElementById('remotePlaceholder');
+            if (placeholder) {
+                placeholder.style.display = hasRemoteVideo ? 'none' : 'flex';
+            }
+            if (primaryVideo) {
+                primaryVideo.style.display = hasRemoteVideo ? 'block' : 'none';
             }
         };
 
         strip.appendChild(item);
-        console.log('Remote participant added successfully');
+
     }
 
     removeRemoteParticipant() {
@@ -309,6 +573,9 @@ export class CallManager {
             await this.createPeerConnection();
             this.addLocalTracks();
 
+            // Join conversation room for chat messages
+            this.socket.emit('join_conversation', { conversation_id: this.app.currentConversationId });
+
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
 
@@ -323,7 +590,7 @@ export class CallManager {
             });
 
             this.saveCallState(this.app.currentConversationId, video);
-            console.log('Call offer sent successfully');
+
 
         } catch (e) {
             console.error('Start Call Error:', e);
@@ -398,7 +665,7 @@ export class CallManager {
             return;
         }
 
-        console.log('Showing incoming call modal for:', data.sender_name, 'isResume:', data.isResume);
+
         this.pendingCall = data;
         this.showOverlay();
         this.showIncomingModal(data);
@@ -418,6 +685,9 @@ export class CallManager {
 
             await this.createPeerConnection();
             this.addLocalTracks();
+
+            // Join conversation room for chat messages
+            this.socket.emit('join_conversation', { conversation_id: this.pendingCall.conversation_id });
 
             await this.peerConnection.setRemoteDescription(new RTCSessionDescription(this.pendingCall.offer));
 
@@ -625,18 +895,28 @@ export class CallManager {
     }
 
     async handleIceCandidate(data) {
-        if (data.candidate) {
-            this.keepAlivePersistentCall();
-            if (this.peerConnection && this.peerConnection.remoteDescription) {
-                try {
-                    await this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-                } catch (e) {
-                    console.error('Error adding ice candidate:', e);
-                }
-            } else {
-                console.log('Queuing ICE candidate (PC or RemoteDesc not ready)');
-                this.iceCandidateQueue.push(data.candidate);
+        if (!data.candidate) return;
+
+        this.keepAlivePersistentCall();
+
+        // If peerConnection doesn't exist yet, queue for later
+        if (!this.peerConnection) {
+            console.log('Queuing ICE candidate (peerConnection not created yet)');
+            this.iceCandidateQueue.push(data.candidate);
+            return;
+        }
+
+        // If remoteDescription is set, add immediately
+        if (this.peerConnection.remoteDescription) {
+            try {
+                await this.peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
+            } catch (e) {
+                console.warn('Error adding ice candidate (may be expected):', e.message);
             }
+        } else {
+            // Otherwise queue for processing after setRemoteDescription
+            console.log('Queuing ICE candidate (RemoteDesc not ready)');
+            this.iceCandidateQueue.push(data.candidate);
         }
     }
 
@@ -837,7 +1117,7 @@ export class CallManager {
         if (this.elements.callerInfo) this.elements.callerInfo.textContent = info;
     }
     showIncomingModal(data) {
-        console.log('showIncomingModal called for:', data.sender_name);
+
 
         // Setup Modal content for INCOMING
         if (this.elements.incomingName) this.elements.incomingName.textContent = data.sender_name || 'Unknown';
@@ -863,7 +1143,7 @@ export class CallManager {
     }
 
     showOutgoingModal(peerName) {
-        console.log('showOutgoingModal called for:', peerName);
+
 
         // Setup Modal content for OUTGOING
         if (this.elements.incomingName) this.elements.incomingName.textContent = peerName || 'User';
@@ -908,16 +1188,63 @@ export class CallManager {
 
     // --- State Management ---
     saveCallState(conversationId, isVideo) {
+        // Get current mic/cam enabled state
+        const stream = this.localStream || this.screenStream;
+        const audioTrack = stream?.getAudioTracks()[0];
+        const videoTrack = stream?.getVideoTracks()[0];
+
         const state = {
             conversation_id: conversationId,
             isVideo: isVideo,
-            timestamp: Date.now()
+            timestamp: Date.now(),
+            micEnabled: audioTrack?.enabled ?? true,
+            camEnabled: videoTrack?.enabled ?? true
         };
         localStorage.setItem('active_call_state', JSON.stringify(state));
     }
 
     clearCallState() {
         localStorage.removeItem('active_call_state');
+    }
+
+    // Restore mic/cam state after reconnecting
+    restoreMediaState(state) {
+        if (!this.localStream) return;
+
+        // Restore mic state
+        const audioTrack = this.localStream.getAudioTracks()[0];
+        if (audioTrack && state.micEnabled !== undefined) {
+            audioTrack.enabled = state.micEnabled;
+            // Update UI
+            const btnMic = document.getElementById('btnToggleMic');
+            const micIcon = btnMic?.querySelector('i');
+            if (micIcon) {
+                micIcon.className = state.micEnabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+            }
+            const localMicStatus = document.getElementById('localMicStatus');
+            if (localMicStatus) {
+                localMicStatus.classList.toggle('muted', !state.micEnabled);
+            }
+
+        }
+
+        // Restore cam state
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (videoTrack && state.camEnabled !== undefined) {
+            videoTrack.enabled = state.camEnabled;
+            // Update UI
+            const btnCam = document.getElementById('btnToggleCam');
+            const camIcon = btnCam?.querySelector('i');
+            if (camIcon) {
+                camIcon.className = state.camEnabled ? 'fas fa-video' : 'fas fa-video-slash';
+            }
+            // Show/hide placeholder
+            const placeholder = document.querySelector('#localParticipant .participant-placeholder');
+            if (placeholder) {
+                placeholder.style.display = state.camEnabled ? 'none' : 'flex';
+            }
+
+        }
     }
 
     keepAlivePersistentCall() {
@@ -957,6 +1284,9 @@ export class CallManager {
                 await this.getMedia(state.isVideo);
                 await this.createPeerConnection();
                 this.addLocalTracks();
+
+                // Restore mic/cam state from saved state
+                this.restoreMediaState(state);
 
                 const offer = await this.peerConnection.createOffer();
                 await this.peerConnection.setLocalDescription(offer);
@@ -1008,7 +1338,7 @@ export class CallManager {
         const hasRemoteAudio = this.remoteStream && this.remoteStream.getAudioTracks().length > 0;
 
         if (hasRemoteVideo) {
-            console.log('Showing remote video in primary view');
+
             this.elements.remoteVideo.srcObject = this.remoteStream;
             this.elements.remoteVideo.style.display = 'block';
             if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
@@ -1024,7 +1354,7 @@ export class CallManager {
             // Actually, if I am sharing screen, I see my screen. This is fine. Use visual toggle in strip to see remote.
             // BUT if I am NOT sharing screen (Receiving only), I want to see placeholder instead of "you".
 
-            console.log('Showing remote audio placeholder in primary view');
+
             this.elements.remoteVideo.style.display = 'none';
             if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'flex';
 
@@ -1032,7 +1362,7 @@ export class CallManager {
                 this.elements.remoteNameTag.textContent = (this.pendingCall?.sender_name || 'Remote User') + ' (Audio Only)';
             }
         } else if (this.isSharingScreen && this.screenStream) {
-            console.log('Mirroring local screen share to primary view');
+
             this.elements.remoteVideo.srcObject = this.screenStream;
             this.elements.remoteVideo.style.display = 'block';
             if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
@@ -1041,7 +1371,7 @@ export class CallManager {
                 this.elements.remoteNameTag.textContent = 'You (Screen Sharing)';
             }
         } else if (this.localStream && this.localStream.getVideoTracks().length > 0) {
-            console.log('Mirroring local camera to primary view');
+
             this.elements.remoteVideo.srcObject = this.localStream;
             this.elements.remoteVideo.style.display = 'block';
             if (document.getElementById('remotePlaceholder')) document.getElementById('remotePlaceholder').style.display = 'none';
@@ -1050,7 +1380,7 @@ export class CallManager {
                 this.elements.remoteNameTag.textContent = 'You';
             }
         } else {
-            console.log('No video available, showing placeholder');
+
             this.elements.remoteVideo.srcObject = null;
             this.elements.remoteVideo.style.display = 'none';
             // Show placeholder if we have remote connection but no video?

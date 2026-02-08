@@ -139,6 +139,34 @@ class ChatSocket {
             // data: { conversation_id, target_user_id, viewer_id, viewer_name }
             this.app.callManager?.handleStreamRequest(data);
         });
+
+        // Media status (mic/camera) sync between call participants
+        this.socket.on('media_status', (data) => {
+            // Don't update our own status
+            if (data.user_id == this.app.userId) return;
+
+            // Update remote participant indicator
+            const remoteParticipant = document.getElementById('remoteParticipant');
+            if (remoteParticipant) {
+                let statusEl = remoteParticipant.querySelector('.participant-status');
+
+                // Create status element if not exists
+                if (!statusEl) {
+                    statusEl = document.createElement('div');
+                    statusEl.className = 'participant-status';
+                    statusEl.innerHTML = '<i class="fas fa-microphone"></i>';
+                    remoteParticipant.appendChild(statusEl);
+                }
+
+                if (data.type === 'mic') {
+                    statusEl.classList.toggle('muted', !data.enabled);
+                    const icon = statusEl.querySelector('i');
+                    if (icon) {
+                        icon.className = data.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
+                    }
+                }
+            }
+        });
     }
 
 

@@ -411,6 +411,30 @@
                 </div>
                 <div class="call-status-badge" id="callStatus">Connecting...</div>
             </div>
+
+            <!-- Call Chat Panel -->
+            <div class="call-chat-panel" id="callChatPanel">
+                <div class="call-chat-header">
+                    <span><i class="fas fa-comments"></i> Live Chat</span>
+                    <button class="call-chat-close" id="btnCloseCallChat" title="Close Chat">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="call-chat-messages" id="callChatMessages">
+                    <!-- Messages will be added here -->
+                    <div class="call-chat-empty">
+                        <i class="fas fa-comment-dots"></i>
+                        <span>Chưa có tin nhắn nào</span>
+                    </div>
+                </div>
+                <div class="call-chat-input-area">
+                    <input type="text" class="call-chat-input" id="callChatInput" placeholder="Nhập tin nhắn..."
+                        autocomplete="off">
+                    <button class="call-chat-send" id="btnSendCallChat" title="Send">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Participant Strip at Bottom -->

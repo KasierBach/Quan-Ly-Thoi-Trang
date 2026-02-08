@@ -44,6 +44,8 @@ class ChatSocketHandlers:
         self.socketio.on('call_resume')(self.handle_call_resume)
         self.socketio.on('stream_status')(self.handle_stream_status)
         self.socketio.on('request_stream')(self.handle_request_stream)
+        self.socketio.on('call_chat_message')(self.handle_call_chat_message)
+        self.socketio.on('media_status')(self.handle_media_status)
 
     def handle_connect(self, auth=None):
         session_id = request.args.get('session_id')
@@ -378,6 +380,20 @@ class ChatSocketHandlers:
             # Signal the streamer that someone wants to watch
             self.socketio.emit('stream_request', data, room=target_room)
             logger.info(f"Stream request forwarded to {target_room}")
+
+    def handle_call_chat_message(self, data):
+        """Handle chat messages during a call/livestream."""
+        cid = data.get('conversation_id')
+        if cid:
+            room = f"conv_{cid}"
+            self.socketio.emit('call_chat_message', data, to=room)
+
+    def handle_media_status(self, data):
+        """Handle mic/camera status changes during a call."""
+        cid = data.get('conversation_id')
+        if cid:
+            room = f"conv_{cid}"
+            self.socketio.emit('media_status', data, to=room)
 
 def register_socket_events(socketio):
 

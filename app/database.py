@@ -74,6 +74,13 @@ class PooledConnection:
         if self.pool and self.conn:
             self.pool.putconn(self.conn)
             self.conn = None
+    
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+        return False
 
     def commit(self):
         return self.conn.commit()
@@ -92,8 +99,8 @@ def init_db_pool(app):
     global db_pool
     if not db_pool:
         db_pool = ThreadedConnectionPool(
-            minconn=1,
-            maxconn=10, # Conservative limit for Supabase free tier
+            minconn=2,
+            maxconn=20, # Increased from 10 for better concurrency
             dsn=app.config['SQLALCHEMY_DATABASE_URI'],
             cursor_factory=CaseInsensitiveCursor
         )

@@ -706,7 +706,7 @@ class ChatApp {
         // Hide all others
         document.querySelectorAll('.hover-reaction-bar.active').forEach(b => b.classList.remove('active'));
 
-        if (!wasActive) {
+        if (!wasActive) {   
             bar.classList.add('active');
         }
     }
