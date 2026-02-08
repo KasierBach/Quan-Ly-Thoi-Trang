@@ -499,5 +499,5 @@
         window.isChatAdmin = '{{ session.get("is_admin", False) }}'.toLowerCase() === 'true';
     })();
 </script>
-<script type="module" src="{{ url_for('static', filename='js/chat/app.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/chat/core/ChatApp.js') }}"></script>
 {% endblock %}

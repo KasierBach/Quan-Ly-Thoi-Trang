@@ -1,10 +1,10 @@
-import ChatAPI from '/static/js/chat/api.js';
-import ChatUI from '/static/js/chat/ui.js';
-import ChatSocket from '/static/js/chat/socket.js';
-import ImageViewer from '/static/js/chat/viewer.js';
-import ChatRecorder from '/static/js/chat/recorder.js';
-import { initEmojiPicker, renderStickers, renderGifs } from '/static/js/chat/utils.js';
-import { CallManager } from '/static/js/chat/call.js';
+import ChatAPI from '/static/js/chat/core/ChatAPI.js';
+import ChatUI from '/static/js/chat/ui/ChatUI.js';
+import ChatSocket from '/static/js/chat/core/ChatSocket.js';
+import ImageViewer from '/static/js/chat/call/StreamViewer.js';
+import ChatRecorder from '/static/js/chat/media/MediaRecorder.js';
+import { initEmojiPicker, renderStickers, renderGifs } from '/static/js/chat/utils/helpers.js';
+import { CallManager } from '/static/js/chat/call/CallManager.js';
 
 class ChatApp {
     constructor() {
@@ -706,7 +706,7 @@ class ChatApp {
         // Hide all others
         document.querySelectorAll('.hover-reaction-bar.active').forEach(b => b.classList.remove('active'));
 
-        if (!wasActive) {   
+        if (!wasActive) {
             bar.classList.add('active');
         }
     }

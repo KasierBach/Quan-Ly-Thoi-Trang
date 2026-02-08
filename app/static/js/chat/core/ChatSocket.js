@@ -164,6 +164,17 @@ class ChatSocket {
                     if (icon) {
                         icon.className = data.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
                     }
+                } else if (data.type === 'cam') {
+                    const video = remoteParticipant.querySelector('video');
+                    const placeholder = remoteParticipant.querySelector('.participant-placeholder');
+
+                    if (data.enabled) {
+                        if (video) video.style.display = 'block';
+                        if (placeholder) placeholder.style.display = 'none';
+                    } else {
+                        if (video) video.style.display = 'none';
+                        if (placeholder) placeholder.style.display = 'flex';
+                    }
                 }
             }
         });

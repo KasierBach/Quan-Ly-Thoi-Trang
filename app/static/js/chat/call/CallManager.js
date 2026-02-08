@@ -1198,8 +1198,10 @@ export class CallManager {
             isVideo: isVideo,
             timestamp: Date.now(),
             micEnabled: audioTrack?.enabled ?? true,
-            camEnabled: videoTrack?.enabled ?? true
+            camEnabled: videoTrack?.enabled ?? true,
+            isSharingScreen: this.isSharingScreen || false
         };
+        console.log('Saving call state:', state);
         localStorage.setItem('active_call_state', JSON.stringify(state));
     }
 
@@ -1221,11 +1223,14 @@ export class CallManager {
             if (micIcon) {
                 micIcon.className = state.micEnabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
             }
+            if (btnMic) {
+                btnMic.classList.toggle('btn-danger', !state.micEnabled);
+                btnMic.classList.toggle('active', !state.micEnabled);
+            }
             const localMicStatus = document.getElementById('localMicStatus');
             if (localMicStatus) {
                 localMicStatus.classList.toggle('muted', !state.micEnabled);
             }
-
         }
 
         // Restore cam state
@@ -1238,12 +1243,21 @@ export class CallManager {
             if (camIcon) {
                 camIcon.className = state.camEnabled ? 'fas fa-video' : 'fas fa-video-slash';
             }
+            if (btnCam) {
+                btnCam.classList.toggle('btn-danger', !state.camEnabled);
+                btnCam.classList.toggle('active', !state.camEnabled);
+            }
             // Show/hide placeholder
             const placeholder = document.querySelector('#localParticipant .participant-placeholder');
             if (placeholder) {
                 placeholder.style.display = state.camEnabled ? 'none' : 'flex';
             }
+        }
 
+        // Notify if was screen sharing (can't auto-restore due to browser security)
+        if (state.isSharingScreen) {
+            console.log('Was screen sharing before refresh - user needs to re-enable manually');
+            // Optionally show a toast or notification here
         }
     }
 
@@ -1260,7 +1274,7 @@ export class CallManager {
     }
 
     async resumeCall(state) {
-        console.log('Requesting call resume from peer:', state);
+        console.log('Resuming call from state:', state);
 
         // Show UI first
         this.app.currentConversationId = state.conversation_id;
@@ -1269,57 +1283,58 @@ export class CallManager {
 
         if (this.elements.status) {
             this.elements.status.style.display = 'block';
-            this.elements.status.textContent = 'Reconnecting...';
+            this.elements.status.textContent = 'Restoring connection...';
         }
 
-        // Set up timeout - if no response in 8 seconds, try to restart call ourselves
-        this.resumeTimeout = setTimeout(async () => {
-            console.log('Resume timeout - attempting to restart call');
+        try {
+            // Immediately try to restore the call
+            // 1. Get media
+            await this.getMedia(state.isVideo);
+
+            // 2. Create peer connection
+            await this.createPeerConnection();
+            this.addLocalTracks();
+
+            // 3. Restore local state (mic/cam buttons)
+            this.restoreMediaState(state);
+
+            // 4. Join socket room for chat
+            this.socket.emit('join_conversation', { conversation_id: state.conversation_id });
+
+            // 5. Broadcast our media status to peers immediately
+            this.broadcastMediaStatus();
+
+            // 6. Create offer to reconnect WebRTC
+            const offer = await this.peerConnection.createOffer();
+            await this.peerConnection.setLocalDescription(offer);
+
+            this.socket.emit('call_user', {
+                conversation_id: state.conversation_id,
+                sender_id: this.app.userId,
+                session_id: this.app.sessionId,
+                sender_name: this.app.userName || 'User',
+                offer: offer,
+                isVideo: state.isVideo,
+                isResume: true
+            });
+
+            // Update timestamp
+            this.saveCallState(state.conversation_id, state.isVideo);
+
+            console.log('Call resume initiated successfully');
             if (this.elements.status) {
-                this.elements.status.textContent = 'Restarting call...';
+                this.elements.status.textContent = 'Connected';
+                setTimeout(() => { if (this.elements.status) this.elements.status.style.display = 'none'; }, 2000);
             }
 
-            try {
-                // Try to restart the call ourselves
-                await this.getMedia(state.isVideo);
-                await this.createPeerConnection();
-                this.addLocalTracks();
-
-                // Restore mic/cam state from saved state
-                this.restoreMediaState(state);
-
-                const offer = await this.peerConnection.createOffer();
-                await this.peerConnection.setLocalDescription(offer);
-
-                this.socket.emit('call_user', {
-                    conversation_id: state.conversation_id,
-                    sender_id: this.app.userId,
-                    session_id: this.app.sessionId,
-                    sender_name: this.app.userName || 'User',
-                    offer: offer,
-                    isVideo: state.isVideo,
-                    isResume: true
-                });
-
-                this.saveCallState(state.conversation_id, state.isVideo);
-                console.log('Call restarted successfully');
-            } catch (e) {
-                console.error('Failed to restart call:', e);
-                if (this.elements.status) {
-                    this.elements.status.textContent = 'Connection failed. Please try again.';
-                }
-                // Close after 3 seconds
-                setTimeout(() => this.closeOverlay(), 3000);
-                this.clearCallState();
+        } catch (e) {
+            console.error('Failed to resume call:', e);
+            if (this.elements.status) {
+                this.elements.status.textContent = 'Connection failed. Please try again.';
             }
-        }, 8000);
-
-        // Notify peer that we refreshed and want them to re-offer
-        this.socket.emit('call_resume', {
-            conversation_id: state.conversation_id,
-            sender_id: this.app.userId,
-            session_id: this.app.sessionId
-        });
+            setTimeout(() => this.closeOverlay(), 3000);
+            this.clearCallState();
+        }
     }
 
     cancelResumeTimeout() {
@@ -1393,6 +1408,49 @@ export class CallManager {
             if (this.elements.remoteNameTag) {
                 this.elements.remoteNameTag.textContent = hasRemoteAudio ? (this.pendingCall?.sender_name || 'Remote User') : 'No Video';
             }
+        }
+    }
+
+    // --- Media State Sync ---
+    broadcastMediaStatus() {
+        if (!this.localStream) return;
+        const cid = this.app.currentConversationId || this.pendingCall?.conversation_id;
+        if (!cid) return;
+
+        const audioTrack = this.localStream.getAudioTracks()[0];
+        if (audioTrack) {
+            this.socket.emit('media_status', {
+                conversation_id: cid,
+                user_id: this.app.userId,
+                type: 'mic',
+                enabled: audioTrack.enabled
+            });
+        }
+
+        const videoTrack = this.localStream.getVideoTracks()[0];
+        if (videoTrack) {
+            this.socket.emit('media_status', {
+                conversation_id: cid,
+                user_id: this.app.userId,
+                type: 'cam',
+                enabled: videoTrack.enabled
+            });
+        }
+
+        if (this.isSharingScreen) {
+            this.socket.emit('stream_status', {
+                conversation_id: cid,
+                user_id: this.app.userId,
+                is_streaming: true
+            });
+        }
+    }
+
+    handleCallResume(data) {
+        console.log('Call resume signal received from peer:', data);
+        // Resend our media status to the peer who just resumed
+        if (this.isCallActive || this.peerConnection) {
+            this.broadcastMediaStatus();
         }
     }
 }
