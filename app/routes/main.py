@@ -82,3 +82,20 @@ def subscribe_newsletter():
         return jsonify({'success': False, 'message': str(e)})
     finally:
         conn.close()
+
+@main_bp.route('/health')
+def health_check():
+    """Health check endpoint for uptime monitoring (e.g., Better Stack)."""
+    health = {'status': 'healthy', 'timestamp': request.date}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute('SELECT 1')
+        conn.close()
+        health['database'] = 'connected'
+    except Exception as e:
+        health['status'] = 'unhealthy'
+        health['database'] = f'error: {str(e)}'
+        return jsonify(health), 500
+        
+    return jsonify(health), 200
