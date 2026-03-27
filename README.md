@@ -1,99 +1,111 @@
-# 👕 Hệ Thống Quản Lý Cửa Hàng Thời Trang
+# 👕 HỆ THỐNG QUẢN LÝ CỬA HÀNG THỜI TRANG (FASHION STORE MANAGEMENT)
 
 [![Flask](https://img.shields.io/badge/Flask-2.3.3-blue.svg)](https://flask.palletsprojects.com/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)](https://www.docker.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
 [![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-orange.svg)](https://socket.io/)
+[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 
-Một ứng dụng web hiện đại được xây dựng để quản lý cửa hàng thời trang, hỗ trợ đầy đủ các tính năng từ mua hàng, giỏ hàng đến quản trị viên và trò chuyện trực tuyến thời gian thực.
-
----
-
-## 🚀 Các Tính Năng Nổi Bật
-
-- **🔐 Xác thực người dùng**: Đăng ký, đăng nhập và quản lý phiên làm việc bảo mật.
-- **🛍️ Quản lý sản phẩm**: Hiển thị danh sách sản phẩm theo danh mục, tìm kiếm và chi tiết sản phẩm.
-- **🛒 Giỏ hàng thông minh**: Thêm, sửa, xóa sản phẩm trong giỏ hàng một cách nhanh chóng.
-- **💬 Trò chuyện trực tuyến**: Hệ thống chat realtime giữa khách hàng và quản trị viên sử dụng Socket.IO.
-- **🛠️ Bảng điều khiển Admin**: Quản lý sản phẩm, đơn hàng và người dùng chuyên nghiệp.
-- **📧 Thông báo email**: Tích hợp Flask-Mail để gửi thông báo cho người dùng.
-- **📱 Giao diện tương thích**: Hoạt động mượt mà trên cả desktop và thiết bị di động.
+Hệ thống Quản lý Cửa hàng Thời trang là một ứng dụng web toàn diện được thiết kế để tối ưu hóa quy trình kinh doanh và trải nghiệm khách hàng. Dự án này được xây dựng theo mô hình MVC (Model-View-Controller) và tuân thủ các nguyên lý thiết kế phần mềm hiện đại như SOLID, đảm bảo tính mở rộng và dễ bảo trì.
 
 ---
 
-## 🛠️ Công Nghệ Sử Dụng
+## 📂 Cấu Trúc Thư Mục Dự Án (Project Structure)
 
-### Backend
-- **Ngôn ngữ**: Python 3.11
-- **Framework**: Flask
-- **Database**: PostgreSQL (với Flask-SQLAlchemy)
-- **Real-time**: Flask-SocketIO (với Gevent)
-- **WSGI Server**: Gunicorn
-
-### Frontend
-- **Template Engine**: Jinja2
-- **Styling**: Vanilla CSS / Bootstrap (tùy cấu hình)
-- **Script**: JavaScript (xử lý Socket.IO và UI)
-
----
-
-## 📦 Hướng Dẫn Cài Đặt
-
-### 1. Sử dụng Docker (Khuyên dùng) - Nhanh chóng & Tiện lợi
-
-Yêu cầu: Đã cài đặt [Docker](https://docs.docker.com/get-docker/) và [Docker Compose](https://docs.docker.com/compose/install/).
-
-```powershell
-# Khởi chạy toàn bộ hệ thống (App + Database)
-docker compose up --build -d
+```text
+thua-2.0/
+├── app/                        # Thư mục chính của ứng dụng
+│   ├── routes/                 # Quản lý điều hướng (Blueprints)
+│   │   ├── admin.py            # Chức năng quản trị viên
+│   │   ├── auth.py             # Xác thực người dùng
+│   │   ├── cart.py             # Quản lý giỏ hàng
+│   │   ├── chat.py             # Xử lý trò chuyện thời gian thực
+│   │   ├── main.py             # Trang chủ và logic chung
+│   │   └── product.py          # Quản lý danh mục và sản phẩm
+│   ├── services/               # Lớp xử lý logic nghiệp vụ (Business Logic)
+│   ├── static/                 # Tài nguyên tĩnh (CSS, JS, Images)
+│   ├── templates/              # Giao diện Jinja2 (HTML)
+│   ├── __init__.py             # Khởi tạo App Factory & Extensions
+│   ├── config.py               # Cấu hình hệ thống (Environment variables)
+│   ├── database.py             # Cấu hình kết nối PostgreSQL & SQLAlchemy
+│   ├── sockets.py              # Xử lý sự kiện WebSocket (Socket.IO)
+│   └── utils.py                # Các hàm tiện ích bổ trợ
+├── .data/                      # Thư mục lưu trữ dữ liệu cục bộ
+├── .scripts/                   # Các script hỗ trợ tự động hóa
+├── Dockerfile                  # Cấu hình Docker image
+├── docker-compose.yml          # Cấu hình điều phối container (App & DB)
+├── .dockerignore               # Loại bỏ tệp rác khỏi Docker context
+├── .env                        # Chứa các biến môi trường nhạy cảm
+├── requirements.txt            # Danh sách các thư viện Python cần thiết
+├── run.py                      # Điểm khởi chạy ứng dụng (Entry point)
+├── render.yaml                 # Cấu hình triển khai lên Render.com
+└── vercel.json                 # Cấu hình triển khai lên Vercel
 ```
 
-Ứng dụng sẽ khả dụng tại: `http://localhost:4000`
+---
 
-### 2. Cài đặt thủ công (Local Development)
+## 🏗️ Kiến Trúc Hệ Thống (System Architecture)
 
-Yêu cầu: Python 3.11+ và PostgreSQL.
+Hệ thống được thiết kế theo kiến trúc phân lớp, tách biệt rõ ràng giữa các thành phần:
 
-1. **Clone dự án**:
-   ```bash
-   git clone <url-cua-ban>
-   cd thua-2.0
-   ```
-
-2. **Tạo môi trường ảo và cài đặt thư viện**:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Hoặc venv\Scripts\activate trên Windows
-   pip install -r requirements.txt
-   ```
-
-3. **Cấu hình môi trường**:
-   - Sao chép tệp `.env.example` thành `.env`.
-   - Cập nhật các thông số `DATABASE_URL`, `SECRET_KEY`, v.v.
-
-4. **Chạy ứng dụng**:
-   ```bash
-   python run.py
-   ```
+1.  **Presentation Layer (Jinja2 Templates)**: Giao diện người dùng tương tác, thực hiện render phía server để tối ưu SEO.
+2.  **Controller Layer (Flask Blueprints)**: Điều hướng yêu cầu và phản hồi từ người dùng.
+3.  **Service Layer**: Chứa toàn bộ logic nghiệp vụ, giúp mã nguồn tại Controller gọn gàng và dễ kiểm tra (Unit Test).
+4.  **Data Access Layer (SQLAlchemy ORM + Psycopg2)**: Giao tiếp với cơ sở dữ liệu PostgreSQL. Hệ thống sử dụng **ThreadedConnectionPool** để tối ưu hóa hiệu suất truy vấn trong môi trường đa luồng.
+5.  **Real-time Layer (Socket.IO)**: Duy trì kết nối song công (Full-duplex) để phục vụ tính năng Chat hỗ trợ khách hàng tức thì.
 
 ---
 
-## 🐳 Cấu Hình Docker
+## 🚀 Tính Năng Chính (Key Features)
 
-Hệ thống được thiết kế với kiến trúc Microservices đơn giản:
-- **Web Service**: Chạy Flask với Gunicorn (Gevent worker) để hỗ trợ async tốt nhất.
-- **DB Service**: Chạy PostgreSQL 15-alpine, hỗ trợ volume lưu trữ dữ liệu bền vững.
+### Đối với Khách Hàng:
+- **Duyệt sản phẩm**: Xem danh sách theo danh mục, tìm kiếm nâng cao (tích hợp Pixabay API cho hình ảnh minh họa).
+- **Giỏ hàng**: Trải nghiệm thêm/sửa/xóa sản phẩm không cần tải lại trang (AJAX).
+- **Thanh toán**: Quy trình đặt hàng trực quan.
+- **Hỗ trợ trực tuyến**: Chat trực tiếp với admin để được giải đáp thắc mắc.
 
-Dữ liệu database được lưu tại volume: `postgres_data`.
+### Đối với Quản Trị Viên (Admin):
+- **Dashboard**: Thống kê tổng quan tình hình kinh doanh.
+- **Quản lý kho**: Thêm, sửa, xóa sản phẩm và danh mục linh hoạt.
+- **Quản lý đơn hàng**: Theo dõi trạng thái và xử lý đơn hàng của khách.
+- **Quản lý người dùng**: Kiểm soát quyền hạn và thông tin tài khoản.
+
+---
+
+## 🔧 Hướng Dẫn Vận Hành
+
+### Sử dụng Docker (Professional Environment)
+Dự án đã được container hóa hoàn toàn, giúp triển khai đồng nhất trên mọi môi trường:
+
+```powershell
+# Cài đặt và chạy đồng thời App và Cơ sở dữ liệu
+docker compose up --build -d
+```
+*Hệ thống sẽ tự động khởi tạo database PostgreSQL 15 và kết nối với Flask qua mạng nội bộ của Docker.*
+
+### Biến môi trường quan trọng (.env)
+| Biến | Mô tả |
+| :--- | :--- |
+| `SECRET_KEY` | Mã khóa bảo mật phiên làm việc |
+| `DATABASE_URL` | Đường dẫn kết nối PostgreSQL |
+| `MAIL_SERVER` | Server gửi email (mặc định smtp.gmail.com) |
+| `PIXABAY_API_KEY` | API Key để tìm kiếm hình ảnh sản phẩm |
 
 ---
 
-## 📝 Tài Liệu Tiểu Luận
-
-Dự án này tuân thủ các nguyên tắc thiết kế phần mềm sạch (Clean Code) và nguyên lý SOLID:
-- **Modular Design**: Các chức năng được chia nhỏ thành các Blueprint (Auth, Product, Admin, etc.).
-- **Service Layer**: Tách biệt logic xử lý dữ liệu khỏi Controller.
-- **Real-time Architecture**: Sử dụng WebSocket để tối ưu hóa trải nghiệm người dùng trong tính năng Chat.
+## 📈 Hướng Phát Triển (Future Roadmap)
+- [ ] Tích hợp cổng thanh toán trực tuyến (VNPay, Momo).
+- [ ] Áp dụng AI để gợi ý sản phẩm dựa trên hành vi người dùng.
+- [ ] Xây dựng Ứng dụng di động (React Native) kết nối qua API hiện có.
 
 ---
-⭐ Nếu bạn thấy dự án này hữu ích, hãy cho nó 1 sao nhé!
+
+## 🎓 Tài Liệu Tham Khảo cho Tiểu Luận
+- Kiến trúc phần mềm: MVC, SOLID.
+- Công nghệ: Python Flask, PostgreSQL, WebSocket, Docker Virtualization.
+- Quy trình: Agile/Scrum (giả định).
+
+---
+**Dự án được thực hiện bởi: [Tên của bạn]**  
+*Mã số sinh viên: [MSSV của bạn]*  
+*Trường: [Tên Trường của bạn]*
