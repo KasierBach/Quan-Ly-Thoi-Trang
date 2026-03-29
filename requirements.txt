@@ -11,3 +11,4 @@ locust
 flask-socketio
 gevent
 gevent-websocket
+Flask-Limiter==3.5.0

@@ -1,40 +1,30 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, jsonify
-from app.database import get_db_connection
-import psycopg2
-from datetime import datetime
-import decimal
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
 from app.services.feedback_service import FeedbackService
+from app.decorators import handle_db_errors
 
 product_bp = Blueprint('product', __name__)
 
 @product_bp.route('/products')
+@handle_db_errors
 def products():
-    category_id = request.args.get('category', type=int)
-    search_term = request.args.get('search', '')
-    min_price = request.args.get('min_price', type=float)
-    max_price = request.args.get('max_price', type=float)
-    color_id = request.args.get('color', type=int)
-    size_id = request.args.get('size', type=int)
-    in_stock_only = request.args.get('in_stock', type=int, default=0)
-    
-    page = request.args.get('page', 1, type=int)
-    per_page = request.args.get('per_page', 12, type=int)
-    sort = request.args.get('sort', 'newest')
+    args = request.args
+    category_id = args.get('category', type=int)
+    search_term = args.get('search', '')
+    min_price, max_price = args.get('min_price', type=float), args.get('max_price', type=float)
+    color_id, size_id = args.get('color', type=int), args.get('size', type=int)
+    in_stock_only = args.get('in_stock', type=int, default=0)
+    page, per_page = args.get('page', 1, type=int), args.get('per_page', 12, type=int)
+    sort = args.get('sort', 'newest')
     
     if page < 1: page = 1
-    if per_page not in [12, 24, 48]: per_page = 12 # Common values for 3-4 column grid
+    if per_page not in [12, 24, 48]: per_page = 12
 
-    colors = ProductService.get_all_colors()
-    sizes = ProductService.get_all_sizes()
-    
-    # Search via Service
     search_result = ProductService.search_products(
         search_term, category_id, min_price, max_price, 
         color_id, size_id, in_stock_only, page, per_page, sort
     )
-    products = search_result['products']
     
     paging_data = {
         'total_records': search_result['total_records'],
@@ -45,12 +35,10 @@ def products():
         'end_index': min(search_result['offset'] + per_page, search_result['total_records'])
     }
     
-
-    
     return render_template('products.html', 
-                          products=products, 
-                          colors=colors,
-                          sizes=sizes,
+                          products=search_result['products'], 
+                          colors=ProductService.get_all_colors(),
+                          sizes=ProductService.get_all_sizes(),
                           current_category=category_id,
                           search_term=search_term,
                           min_price=min_price,
@@ -62,212 +50,91 @@ def products():
                           sort=sort)
 
 @product_bp.route('/product/<int:product_id>')
+@handle_db_errors
 def product_detail(product_id):
     product = ProductService.get_product_by_id(product_id)
-    
     if not product:
         flash('Sản phẩm không tồn tại', 'error')
         return redirect(url_for('product.products'))
     
     variants = ProductService.get_product_variants(product_id)
+    colors, sizes, variants_map = {}, {}, {}
     
-    colors = {}
-    sizes = {}
-    variants_map = {}
+    for v in variants:
+        if v.ColorID not in colors: colors[v.ColorID] = {'id': v.ColorID, 'name': v.ColorName}
+        if v.SizeID not in sizes: sizes[v.SizeID] = {'id': v.SizeID, 'name': v.SizeName}
+        variants_map[f"{v.ColorID}_{v.SizeID}"] = {'variant_id': v.VariantID, 'quantity': v.Quantity}
     
-    for variant in variants:
-        color_id = variant.ColorID
-        size_id = variant.SizeID
-        if color_id not in colors:
-            colors[color_id] = {'id': color_id, 'name': variant.ColorName}
-        if size_id not in sizes:
-            sizes[size_id] = {'id': size_id, 'name': variant.SizeName}
-        
-        key = f"{color_id}_{size_id}"
-        variants_map[key] = {'variant_id': variant.VariantID, 'quantity': variant.Quantity}
-    
-
-    
-    # Get rating stats from FeedbackService
     feedback_data = FeedbackService.get_product_reviews(product_id)
-    rating_breakdown = feedback_data.get('rating_breakdown', {1:0, 2:0, 3:0, 4:0, 5:0})
-    average_rating = feedback_data.get('average_rating', 0)
-    total_reviews = feedback_data.get('total_reviews', 0)
-
     return render_template('product_detail.html',
                           product=product,
                           colors=list(colors.values()),
                           sizes=list(sizes.values()),
                           variants=variants_map,
-                          rating_breakdown=rating_breakdown,
-                          average_rating=float(average_rating),
-                          total_reviews=int(total_reviews))
+                          rating_breakdown=feedback_data.get('rating_breakdown', {1:0,2:0,3:0,4:0,5:0}),
+                          average_rating=float(feedback_data.get('average_rating', 0)),
+                          total_reviews=int(feedback_data.get('total_reviews', 0)))
 
 @product_bp.route('/api/get_variant', methods=['POST'])
+@handle_db_errors
 def get_variant():
-    product_id = request.form.get('product_id', type=int)
-    color_id = request.form.get('color_id', type=int)
-    size_id = request.form.get('size_id', type=int)
+    pid, cid, sid = request.form.get('product_id', type=int), request.form.get('color_id', type=int), request.form.get('size_id', type=int)
+    if not all([pid, cid, sid]): return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
-    if not product_id or not color_id or not size_id:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+    v = ProductService.get_variant_by_details(pid, cid, sid)
+    if not v: return jsonify({'success': False, 'message': 'Không tìm thấy biến thể'})
     
-    variant = ProductService.get_variant_by_details(product_id, color_id, size_id)
-    
-    if not variant:
-        return jsonify({'success': False, 'message': 'Không tìm thấy biến thể sản phẩm'})
-    
-    return jsonify({
-        'success': True,
-        'variant_id': variant.VariantID,
-        'quantity': variant.Quantity
-    })
+    return jsonify({'success': True, 'variant_id': v.VariantID, 'quantity': v.Quantity})
 
 @product_bp.route('/add_review', methods=['POST'])
+@handle_db_errors
 def add_review():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Vui lòng đăng nhập để đánh giá sản phẩm'})
+    uid = session.get('user_id')
+    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
     
-    product_id = request.form.get('product_id', type=int)
-    rating = request.form.get('rating', type=int)
-    comment = request.form.get('comment')
+    pid, rating, comment = request.form.get('product_id', type=int), request.form.get('rating', type=int), request.form.get('comment')
+    if not pid or not (1 <= (rating or 0) <= 5): return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
-    if not product_id or not rating or rating < 1 or rating > 5:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
-    
-    result = FeedbackService.add_review(session['user_id'], product_id, rating, comment)
-    if result['success']:
-        return jsonify(result)
-    else:
-        return jsonify(result) # Propagate failure message
-
-@product_bp.route('/add_comment', methods=['POST'])
-def add_comment():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Vui lòng đăng nhập để bình luận sản phẩm'})
-    
-    product_id = request.form.get('product_id', type=int)
-    content = request.form.get('content')
-    
-    if not product_id or not content:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
-    
-    result = FeedbackService.add_comment(session['user_id'], product_id, content)
-    if result['success']:
-        return jsonify(result)
-    else:
-        return jsonify(result)
-
-@product_bp.route('/api/get_product_comments', methods=['GET'])
-def get_product_comments():
-    product_id = request.args.get('product_id', type=int)
-    if not product_id:
-        return jsonify({'success': False, 'message': 'Product ID required'})
-    
-    result = FeedbackService.get_product_comments(product_id)
-    return jsonify(result)
-
-@product_bp.route('/api/get_product_reviews', methods=['GET'])
-def get_product_reviews():
-    product_id = request.args.get('product_id', type=int)
-    if not product_id:
-        return jsonify({'success': False, 'message': 'Product ID required'})
-    
-    result = FeedbackService.get_product_reviews(product_id)
-    return jsonify(result)
-
-@product_bp.route('/api/search_autocomplete')
-def search_autocomplete():
-    """API endpoint for live search autocomplete"""
-    query = request.args.get('q', '').strip()
-    if len(query) < 1:
-        return jsonify({'success': True, 'products': []})
-    
-    products = ProductService.search_autocomplete(query, limit=8)
-    return jsonify({'success': True, 'products': products})
-
-@product_bp.route('/api/track_product_view', methods=['POST'])
-def track_product_view():
-    product_id = request.form.get('product_id', type=int)
-    if not product_id: return jsonify({'success': False})
-    
-    if 'recently_viewed' not in session: session['recently_viewed'] = []
-    if product_id in session['recently_viewed']: session['recently_viewed'].remove(product_id)
-    session['recently_viewed'].insert(0, product_id)
-    session['recently_viewed'] = session['recently_viewed'][:5]
-    session.modified = True
-    return jsonify({'success': True})
+    return jsonify(FeedbackService.add_review(uid, pid, rating, comment))
 
 @product_bp.route('/api/get_recently_viewed')
+@handle_db_errors
 def get_recently_viewed():
-    if 'recently_viewed' not in session or not session['recently_viewed']:
-        return jsonify({'success': True, 'products': []})
+    rv = session.get('recently_viewed', [])
+    if not rv: return jsonify({'success': True, 'products': []})
     
-    product_ids = session['recently_viewed']
-    product_ids_str = ','.join(map(str, product_ids))
-    
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute(f'''
-        SELECT p.ProductID, p.ProductName, p.Price, p.ImageURL, c.CategoryName
-        FROM Products p
-        JOIN Categories c ON p.CategoryID = c.CategoryID
-        WHERE p.ProductID IN ({product_ids_str})
-    ''')
-    products = cursor.fetchall()
-    conn.close()
-    
-    result = []
-    for product_id in product_ids:
-        for product in products:
-            if product.ProductID == product_id:
-                result.append({
-                    'product_id': product.ProductID,
-                    'product_name': product.ProductName,
-                    'price': float(product.Price),
-                    'image_url': product.ImageURL,
-                    'category_name': product.CategoryName
-                })
-                break
-    return jsonify({'success': True, 'products': result})
+    return jsonify({'success': True, 'products': ProductService.get_recently_viewed_products(rv)})
 
 @product_bp.route('/add_to_wishlist', methods=['POST'])
+@handle_db_errors
 def add_to_wishlist():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Vui lòng đăng nhập để sử dụng tính năng này'})
+    uid = session.get('user_id')
+    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
     
-    if request.is_json:
-        data = request.get_json()
-        product_id = data.get('product_id', None)
-    else:
-        product_id = request.form.get('product_id', type=int)
+    pid = (request.get_json() if request.is_json else request.form).get('product_id')
+    try: pid = int(pid)
+    except: pid = None
     
-    try: product_id = int(product_id)
-    except: product_id = None
+    if not pid: return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
-    if not product_id:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
-    
-    success, message = WishlistService.add_to_wishlist(session['user_id'], product_id)
+    success, message = WishlistService.add_to_wishlist(uid, pid)
     return jsonify({'success': success, 'message': message})
 
 @product_bp.route('/wishlist')
+@handle_db_errors
 def view_wishlist():
-    if 'user_id' not in session:
-        return redirect(url_for('auth.login', next=url_for('product.view_wishlist')))
-    
-    wishlist_items = WishlistService.get_wishlist_by_user(session['user_id'])
-    
-    return render_template('wishlist.html', wishlist_items=wishlist_items)
+    uid = session.get('user_id')
+    if not uid: return redirect(url_for('auth.login', next=url_for('product.view_wishlist')))
+    return render_template('wishlist.html', wishlist_items=WishlistService.get_wishlist_by_user(uid))
 
 @product_bp.route('/remove_from_wishlist', methods=['POST'])
+@handle_db_errors
 def remove_from_wishlist():
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
+    uid = session.get('user_id')
+    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
     
-    wishlist_id = request.form.get('wishlist_id', type=int)
-    if not wishlist_id:
-        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+    wid = request.form.get('wishlist_id', type=int)
+    if not wid: return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
-    success, message = WishlistService.remove_from_wishlist(session['user_id'], wishlist_id)
+    success, message = WishlistService.remove_from_wishlist(uid, wid)
     return jsonify({'success': success, 'message': message})

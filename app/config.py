@@ -28,3 +28,11 @@ class Config:
     # Third Party (Pixabay for image search)
     PIXABAY_API_KEY = os.environ.get('PIXABAY_API_KEY', '50476586-5521aa05792328277ee09bd80')
     PIXABAY_ENDPOINT = 'https://pixabay.com/api/'
+
+    # Security Config (Cookies)
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SECURE = os.environ.get('FLASK_ENV') != 'development'
+    SESSION_COOKIE_SAMESITE = 'Lax'
+    # Fallback to true if missing env
+    if os.environ.get('FLASK_ENV') == 'production':
+        SESSION_COOKIE_SECURE = True

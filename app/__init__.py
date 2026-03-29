@@ -11,12 +11,25 @@ import flask.json
 # Monkey patch for flask-wtf/recaptcha compatibility
 flask.json.JSONEncoder = json.JSONEncoder
 
-# Initialize SocketIO as global variable for import
-socketio = SocketIO(cors_allowed_origins="*", async_mode='threading')
+# Initialize SocketIO
+socketio = SocketIO(cors_allowed_origins=os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(','), async_mode='threading')
+
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",
+)
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    # Initialize Limiter with app
+    limiter.init_app(app)
+    app.limiter = limiter
     
     # Initialize extensions
     db.init_app(app)

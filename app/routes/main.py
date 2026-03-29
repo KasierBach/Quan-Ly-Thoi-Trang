@@ -1,101 +1,60 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-from app.database import get_db_connection
-from app.utils import send_email
+from app.services.main_service import MainService
+from app.services.product_service import ProductService
+from app.decorators import handle_db_errors
 import re
+from datetime import datetime
 
 main_bp = Blueprint('main', __name__)
 
 @main_bp.route('/')
+@handle_db_errors
 def home():
-    # Use ProductService to fetch data
-    from app.services.product_service import ProductService
-    
-    featured_products = ProductService.get_featured_products(8)
+    featured = ProductService.get_featured_products(8)
     best_selling = ProductService.get_best_selling_products(8)
-    
-    return render_template('index.html', 
-                          featured_products=featured_products,
-                          best_selling=best_selling)
+    return render_template('index.html', featured_products=featured, best_selling=best_selling)
 
 @main_bp.route('/contact', methods=['GET', 'POST'])
+@handle_db_errors
 def contact():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        subject = request.form.get('subject')
-        message = request.form.get('message')
+    if request.method == 'GET':
+        return render_template('contact.html')
         
-        if not name or not email or not message:
-            flash('Vui lòng điền đầy đủ thông tin', 'error')
-            return redirect(url_for('main.contact'))
-        
-        if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-            flash('Email không hợp lệ', 'error')
-            return redirect(url_for('main.contact'))
-        
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        try:
-            cursor.execute('''
-                INSERT INTO ContactMessages (Name, Email, Subject, Message, SubmitDate, Status)
-                VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, 'New')
-            ''', (name, email, subject, message))
-            conn.commit()
-            flash('Cảm ơn bạn đã liên hệ!', 'success')
-        except Exception as e:
-            conn.rollback()
-            flash(f'Lỗi: {str(e)}', 'error')
-        finally:
-            conn.close()
+    name, email = request.form.get('name'), request.form.get('email')
+    subj, msg = request.form.get('subject'), request.form.get('message')
+    
+    if not all([name, email, msg]):
+        flash('Vui lòng điền đầy đủ thông tin', 'error')
         return redirect(url_for('main.contact'))
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    # categories fetching removed - handled by context processor
-    conn.close()
+    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
+        flash('Email không hợp lệ', 'error')
+        return redirect(url_for('main.contact'))
     
-    return render_template('contact.html')
+    res = MainService.add_contact_message(name, email, subj, msg)
+    if res['success']:
+        flash('Cảm ơn bạn đã liên hệ!', 'success')
+    else:
+        flash('Gửi tin không thành công', 'error')
+    
+    return redirect(url_for('main.contact'))
 
 @main_bp.route('/subscribe_newsletter', methods=['POST'])
+@handle_db_errors
 def subscribe_newsletter():
     email = request.form.get('email')
     if not email or not re.match(r"[^@]+@[^@]+\.[^@]+", email):
         return jsonify({'success': False, 'message': 'Email không hợp lệ'})
     
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    try:
-        cursor.execute('SELECT * FROM NewsletterSubscribers WHERE Email = %s', (email,))
-        if cursor.fetchone():
-            return jsonify({'success': True, 'message': 'Email đã đăng ký'})
-        
-        cursor.execute('''
-            INSERT INTO NewsletterSubscribers (Email, SubscribeDate, IsActive)
-            VALUES (%s, CURRENT_TIMESTAMP, 1)
-        ''', (email,))
-        conn.commit()
-        return jsonify({'success': True, 'message': 'Đăng ký nhận bản tin thành công!'})
-    except Exception as e:
-        conn.rollback()
-        return jsonify({'success': False, 'message': str(e)})
-    finally:
-        conn.close()
+    return jsonify(MainService.subscribe_newsletter(email))
 
 @main_bp.route('/health')
 def health_check():
-    """Health check endpoint for uptime monitoring (e.g., Better Stack)."""
-    health = {'status': 'healthy', 'timestamp': request.date}
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute('SELECT 1')
-        conn.close()
-        health['database'] = 'connected'
-    except Exception as e:
-        health['status'] = 'unhealthy'
-        health['database'] = f'error: {str(e)}'
-        return jsonify(health), 500
-        
-    return jsonify(health), 200
+    """Health check endpoint for uptime monitoring."""
+    is_healthy = MainService.check_health()
+    status = 'healthy' if is_healthy else 'unhealthy'
+    return jsonify({
+        'status': status,
+        'database': 'connected' if is_healthy else 'error',
+        'timestamp': datetime.now().isoformat()
+    }), (200 if is_healthy else 500)
