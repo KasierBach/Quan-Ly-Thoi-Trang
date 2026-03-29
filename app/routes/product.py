@@ -87,11 +87,10 @@ def get_variant():
     return jsonify({'success': True, 'variant_id': v.VariantID, 'quantity': v.Quantity})
 
 @product_bp.route('/add_review', methods=['POST'])
+@login_required
 @handle_db_errors
 def add_review():
-    uid = session.get('user_id')
-    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
-    
+    uid = session['user_id']
     pid, rating, comment = request.form.get('product_id', type=int), request.form.get('rating', type=int), request.form.get('comment')
     if not pid or not (1 <= (rating or 0) <= 5): return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
@@ -106,10 +105,10 @@ def get_recently_viewed():
     return jsonify({'success': True, 'products': ProductService.get_recently_viewed_products(rv)})
 
 @product_bp.route('/add_to_wishlist', methods=['POST'])
+@login_required
 @handle_db_errors
 def add_to_wishlist():
-    uid = session.get('user_id')
-    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
+    uid = session['user_id']
     
     pid = (request.get_json() if request.is_json else request.form).get('product_id')
     try: pid = int(pid)
@@ -121,17 +120,17 @@ def add_to_wishlist():
     return jsonify({'success': success, 'message': message})
 
 @product_bp.route('/wishlist')
+@login_required
 @handle_db_errors
 def view_wishlist():
-    uid = session.get('user_id')
-    if not uid: return redirect(url_for('auth.login', next=url_for('product.view_wishlist')))
+    uid = session['user_id']
     return render_template('wishlist.html', wishlist_items=WishlistService.get_wishlist_by_user(uid))
 
 @product_bp.route('/remove_from_wishlist', methods=['POST'])
+@login_required
 @handle_db_errors
 def remove_from_wishlist():
-    uid = session.get('user_id')
-    if not uid: return jsonify({'success': False, 'message': 'Vui lòng đăng nhập'})
+    uid = session['user_id']
     
     wid = request.form.get('wishlist_id', type=int)
     if not wid: return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})

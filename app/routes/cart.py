@@ -97,6 +97,7 @@ def remove_from_cart():
     return jsonify({'success': True, 'total': sum(item['price'] * item['quantity'] for item in cart)})
 
 @cart_bp.route('/checkout', methods=['GET', 'POST'])
+@login_required
 @handle_db_errors
 def checkout():
     is_buy_now = request.args.get('buy_now', type=int, default=0)
@@ -105,23 +106,19 @@ def checkout():
         flash('Giỏ hàng trống', 'error')
         return redirect(url_for('cart.view_cart'))
     
+    uid = session['user_id']
     if request.method == 'GET':
         addr = ''
-        if 'user_id' in session:
-            cust = AuthService.get_customer_profile(session['user_id'])
-            if cust: addr = cust.Address
+        cust = AuthService.get_customer_profile(uid)
+        if cust: addr = cust.Address
         return render_template('checkout.html', cart=cart, total=sum(item['price'] * item['quantity'] for item in cart), address=addr)
 
-    if 'user_id' not in session:
-        flash('Vui lòng đăng nhập', 'error')
-        return redirect(url_for('auth.login', next=url_for('cart.checkout')))
-    
     addr, pm = request.form.get('shipping_address'), request.form.get('payment_method')
     if not addr or not pm:
         flash('Thiếu thông tin giao hàng', 'error')
         return redirect(url_for('cart.checkout'))
     
-    res = OrderService.create_order(session['user_id'], pm, addr, cart)
+    res = OrderService.create_order(uid, pm, addr, cart)
     if not res['success']:
         flash(res['message'], 'error')
         return redirect(url_for('cart.checkout'))

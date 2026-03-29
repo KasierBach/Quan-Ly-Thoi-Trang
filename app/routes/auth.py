@@ -27,13 +27,20 @@ def login():
         flash('Email hoặc mật khẩu không đúng', 'error')
         return redirect(url_for('auth.login'))
     
+    # Security: Clear session before login to prevent Session Fixation
+    session.clear()
     session.update({
         'user_id': user.CustomerID, 'user_name': user.FullName,
         'is_admin': user.IsAdmin, 'role': user.Role, 'dark_mode': user.DarkModeEnabled
     })
     
+    # Security: Validate 'next' parameter to prevent Open Redirect
     next_page = request.args.get('next')
-    if next_page: return redirect(next_page)
+    if next_page:
+        # Only redirect to relative paths that start with / and not //
+        if next_page.startswith('/') and not next_page.startswith('//'):
+            return redirect(next_page)
+    
     if user.Role == 'admin': return redirect(url_for('admin.admin_dashboard'))
 
     flash('Đăng nhập thành công!', 'success')
@@ -57,6 +64,8 @@ def register():
         flash(res['message'], 'error')
         return redirect(url_for('auth.register'))
 
+    # Security: Clear session before register auto-login
+    session.clear()
     session.update({'user_id': res['customer_id'], 'user_name': res['full_name'], 'role': 'customer', 'dark_mode': False})
     
     flash('Đăng ký thành công!', 'success')
@@ -79,6 +88,7 @@ def my_account():
 
 @auth_bp.route('/api/profile/avatar', methods=['POST'])
 @login_required
+@limiter.limit("5 per minute")
 @handle_db_errors
 def upload_avatar():
     if 'avatar' not in request.files: return jsonify({'success': False, 'message': 'Không có file'}), 400
@@ -135,6 +145,7 @@ def update_address():
 
 @auth_bp.route('/change_password', methods=['POST'])
 @login_required
+@limiter.limit("5 per hour")
 @handle_db_errors
 def change_password():
     cur, new, conf = request.form.get('current_password'), request.form.get('new_password'), request.form.get('confirm_password')
@@ -184,6 +195,7 @@ def forgot_password():
     return render_template('forgot_password.html', email_sent=email)
 
 @auth_bp.route('/reset_password/<token>', methods=['GET', 'POST'])
+@limiter.limit("5 per hour")
 @handle_db_errors
 def reset_password(token):
     if request.method == 'GET': return render_template('reset_password.html', token=token)

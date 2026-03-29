@@ -99,6 +99,31 @@ def create_app(config_class=Config):
         # Place any global before_request logic here if needed
         pass
 
+    # Security Headers Middleware
+    @app.after_request
+    def add_security_headers(response):
+        # Prevent Clickjacking
+        response.headers['X-Frame-Options'] = 'DENY'
+        # Prevent MIME Sniffing
+        response.headers['X-Content-Type-Options'] = 'nosniff'
+        # Strict-Transport-Security (HSTS) - Only in production
+        if not app.debug:
+            response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+        
+        # Content Security Policy (CSP)
+        # Allows self, Google Fonts, and FontAwesome
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+            "img-src 'self' data: https://images.pixabay.com https://pixabay.com; "
+            "connect-src 'self' ws: wss:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers['Content-Security-Policy'] = csp
+        return response
+
     # Register Blueprints
     from .routes.auth import auth_bp
     from .routes.main import main_bp

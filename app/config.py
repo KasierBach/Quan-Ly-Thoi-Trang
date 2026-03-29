@@ -36,3 +36,6 @@ class Config:
     # Fallback to true if missing env
     if os.environ.get('FLASK_ENV') == 'production':
         SESSION_COOKIE_SECURE = True
+    
+    # Upload limits
+    MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB limit
