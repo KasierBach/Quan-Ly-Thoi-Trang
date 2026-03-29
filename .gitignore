@@ -49,3 +49,11 @@ products_list.txt
 
 # Logs
 *.log
+
+# Documentation & Tools
+*.docx
+Tai_Lieu_Mo_Rong_Tieu_Luan.md
+Tieu_Luan_Ban_Day_Du.md
+extracted_text.txt
+update_docx.py
+

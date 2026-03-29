@@ -1,4 +1,4 @@
-# 👕 HỆ THỐNG QUẢN LÝ CỬA HÀNG THỜI TRANG (FASHION STORE MANAGEMENT)
+# 👕 HỆ THỐNG QUẢN LÝ CỬA HÀNG THỜI TRANG (FASHION STORE)
 
 [![Flask](https://img.shields.io/badge/Flask-2.3.3-blue.svg)](https://flask.palletsprojects.com/)
 [![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)](https://www.docker.com/)
@@ -6,7 +6,7 @@
 [![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-orange.svg)](https://socket.io/)
 [![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
 
-Hệ thống Quản lý Cửa hàng Thời trang là một ứng dụng web toàn diện được thiết kế để tối ưu hóa quy trình kinh doanh và trải nghiệm khách hàng. Dự án này được xây dựng theo mô hình MVC (Model-View-Controller) và tuân thủ các nguyên lý thiết kế phần mềm hiện đại như SOLID, đảm bảo tính mở rộng và dễ bảo trì.
+Hệ thống Quản lý Cửa hàng Thời trang là một ứng dụng web toàn diện được thiết kế để tối ưu hóa quy trình kinh doanh và trải nghiệm khách hàng. Dự án này được xây dựng theo mô hình **MVC (Model-View-Controller)** và tuân thủ các nguyên lý thiết kế phần mềm hiện đại như **SOLID**, đảm bảo tính mở rộng và dễ bảo trì.
 
 ---
 
@@ -16,96 +16,132 @@ Hệ thống Quản lý Cửa hàng Thời trang là một ứng dụng web toà
 thua-2.0/
 ├── app/                        # Thư mục chính của ứng dụng
 │   ├── routes/                 # Quản lý điều hướng (Blueprints)
-│   │   ├── admin.py            # Chức năng quản trị viên
-│   │   ├── auth.py             # Xác thực người dùng
-│   │   ├── cart.py             # Quản lý giỏ hàng
-│   │   ├── chat.py             # Xử lý trò chuyện thời gian thực
-│   │   ├── main.py             # Trang chủ và logic chung
-│   │   └── product.py          # Quản lý danh mục và sản phẩm
+│   │   ├── admin/              # Module quản trị (Sản phẩm, Đơn hàng, Thống kê)
+│   │   ├── auth.py             # Xác thực người dùng (Login, Register, Password Reset)
+│   │   ├── cart.py             # Quản lý giỏ hàng & Thanh toán
+│   │   ├── chat.py             # API cho hệ thống trò chuyện
+│   │   ├── main.py             # Trang chủ & Logic chung
+│   │   └── product.py          # Hiển thị & tìm kiếm sản phẩm
 │   ├── services/               # Lớp xử lý logic nghiệp vụ (Business Logic)
+│   │   ├── auth_service.py     # Xử lý xác thực & phân quyền
+│   │   ├── product_service.py  # Xử lý dữ liệu sản phẩm & kho
+│   │   └── chat_service.py     # Logic tin nhắn & thời gian thực
 │   ├── static/                 # Tài nguyên tĩnh (CSS, JS, Images)
 │   ├── templates/              # Giao diện Jinja2 (HTML)
 │   ├── __init__.py             # Khởi tạo App Factory & Extensions
 │   ├── config.py               # Cấu hình hệ thống (Environment variables)
-│   ├── database.py             # Cấu hình kết nối PostgreSQL & SQLAlchemy
+│   ├── database.py             # Cấu hình kết nối PostgreSQL (Pooled Connection)
 │   ├── sockets.py              # Xử lý sự kiện WebSocket (Socket.IO)
-│   └── utils.py                # Các hàm tiện ích bổ trợ
-├── .data/                      # Thư mục lưu trữ dữ liệu cục bộ
-├── .scripts/                   # Các script hỗ trợ tự động hóa
+│   └── utils.py                # Các hàm tiện ích (Email, Slugify, Image Resolver)
+├── .data/                      # Script SQL khởi tạo (Schema & Data)
+├── .scripts/                   # Công cụ hỗ trợ (Import DB, Generate Data, Locust Test)
 ├── Dockerfile                  # Cấu hình Docker image
-├── docker-compose.yml          # Cấu hình điều phối container (App & DB)
-├── .dockerignore               # Loại bỏ tệp rác khỏi Docker context
-├── .env                        # Chứa các biến môi trường nhạy cảm
-├── requirements.txt            # Danh sách các thư viện Python cần thiết
-├── run.py                      # Điểm khởi chạy ứng dụng (Entry point)
-├── render.yaml                 # Cấu hình triển khai lên Render.com
-└── vercel.json                 # Cấu hình triển khai lên Vercel
+├── docker-compose.yml          # Cấu hình App & Database containers
+├── requirements.txt            # Danh sách thư viện Python
+└── run.py                      # Điểm khởi chạy ứng dụng (Entry point)
 ```
 
 ---
 
-## 🏗️ Kiến Trúc Hệ Thống (System Architecture)
+## 🏗️ Kiến Trúc & Công Nghệ (Technical Stack)
 
-Hệ thống được thiết kế theo kiến trúc phân lớp, tách biệt rõ ràng giữa các thành phần:
+### Backend
+- **Flask Framework**: Sử dụng `Blueprint` để module hóa các chức năng.
+- **PostgreSQL**: Cơ sở dữ liệu quan hệ mạnh mẽ.
+- **Psycopg2 with ThreadedConnectionPool**: Tối ưu hóa hiệu suất truy vấn, hỗ trợ đa luồng.
+- **SQLAlchemy (Core/ORM)**: Hỗ trợ quản lý session và cấu trúc bảng.
+- **Flask-SocketIO**: Hỗ trợ giao tiếp song công (Full-duplex) cho tính năng chat.
 
-1.  **Presentation Layer (Jinja2 Templates)**: Giao diện người dùng tương tác, thực hiện render phía server để tối ưu SEO.
-2.  **Controller Layer (Flask Blueprints)**: Điều hướng yêu cầu và phản hồi từ người dùng.
-3.  **Service Layer**: Chứa toàn bộ logic nghiệp vụ, giúp mã nguồn tại Controller gọn gàng và dễ kiểm tra (Unit Test).
-4.  **Data Access Layer (SQLAlchemy ORM + Psycopg2)**: Giao tiếp với cơ sở dữ liệu PostgreSQL. Hệ thống sử dụng **ThreadedConnectionPool** để tối ưu hóa hiệu suất truy vấn trong môi trường đa luồng.
-5.  **Real-time Layer (Socket.IO)**: Duy trì kết nối song công (Full-duplex) để phục vụ tính năng Chat hỗ trợ khách hàng tức thì.
-
----
-
-## 🚀 Tính Năng Chính (Key Features)
-
-### Đối với Khách Hàng:
-- **Duyệt sản phẩm**: Xem danh sách theo danh mục, tìm kiếm nâng cao (tích hợp Pixabay API cho hình ảnh minh họa).
-- **Giỏ hàng**: Trải nghiệm thêm/sửa/xóa sản phẩm không cần tải lại trang (AJAX).
-- **Thanh toán**: Quy trình đặt hàng trực quan.
-- **Hỗ trợ trực tuyến**: Chat trực tiếp với admin để được giải đáp thắc mắc.
-
-### Đối với Quản Trị Viên (Admin):
-- **Dashboard**: Thống kê tổng quan tình hình kinh doanh.
-- **Quản lý kho**: Thêm, sửa, xóa sản phẩm và danh mục linh hoạt.
-- **Quản lý đơn hàng**: Theo dõi trạng thái và xử lý đơn hàng của khách.
-- **Quản lý người dùng**: Kiểm soát quyền hạn và thông tin tài khoản.
+### Frontend
+- **Jinja2**: Server-side rendering cho tính tương thích SEO cao.
+- **Vanilla CSS & JavaScript (AJAX)**: Đảm bảo trải nghiệm người dùng mượt mà mà không làm nặng trang.
+- **FontAwesome & Google Fonts**: Giao diện hiện đại, chuyên nghiệp.
 
 ---
 
-## 🔧 Hướng Dẫn Vận Hành
+## ⚙️ Hướng Dẫn Cài Đặt (Installation)
 
-### Sử dụng Docker (Professional Environment)
-Dự án đã được container hóa hoàn toàn, giúp triển khai đồng nhất trên mọi môi trường:
+### 🐳 Cách 1: Sử dụng Docker (Khuyên dùng)
+Dự án đã được đóng gói hoàn chỉnh, giúp chạy ngay lập tức mà không cần cài đặt môi trường máy local:
 
 ```powershell
-# Cài đặt và chạy đồng thời App và Cơ sở dữ liệu
+# Di chuyển vào thư mục dự án
+cd thua-2.0
+
+# Khởi động toàn bộ dịch vụ (App + DB)
 docker compose up --build -d
 ```
-*Hệ thống sẽ tự động khởi tạo database PostgreSQL 15 và kết nối với Flask qua mạng nội bộ của Docker.*
+*Truy cập tại: `http://localhost:5000`*
 
-### Biến môi trường quan trọng (.env)
-| Biến | Mô tả |
-| :--- | :--- |
-| `SECRET_KEY` | Mã khóa bảo mật phiên làm việc |
-| `DATABASE_URL` | Đường dẫn kết nối PostgreSQL |
-| `MAIL_SERVER` | Server gửi email (mặc định smtp.gmail.com) |
-| `PIXABAY_API_KEY` | API Key để tìm kiếm hình ảnh sản phẩm |
+### 💻 Cách 2: Cài đặt Thủ công (Local)
+Nếu bạn muốn chạy trực tiếp trên máy tính:
+
+1. **Yêu cầu:** Đã cài đặt Python 3.10+ và PostgreSQL 15+.
+2. **Khởi tạo môi trường ảo:**
+   ```powershell
+   python -m venv .venv
+   .venv\Scripts\activate
+   ```
+3. **Cài đặt thư viện:**
+   ```powershell
+   pip install -r requirements.txt
+   ```
+4. **Cấu hình biến môi trường (`.env`):**
+   Tạo file `.env` từ `.env.example` và điền thông tin `DATABASE_URL`.
+5. **Khởi tạo Database:**
+   ```powershell
+   python .scripts/import_db.py
+   ```
+6. **Chạy ứng dụng:**
+   ```powershell
+   python run.py
+   ```
 
 ---
 
-## 📈 Hướng Phát Triển (Future Roadmap)
-- [ ] Tích hợp cổng thanh toán trực tuyến (VNPay, Momo).
-- [ ] Áp dụng AI để gợi ý sản phẩm dựa trên hành vi người dùng.
-- [ ] Xây dựng Ứng dụng di động (React Native) kết nối qua API hiện có.
+## 📊 Kiến Trúc Dữ Liệu (Database Schema)
+
+Hệ thống sử dụng các stored procedures (SP) để xử lý logic phức tạp ở tầng DB, giúp tăng tốc độ và bảo mật:
+
+- **Bảng chính:**
+    - `Customers`: Thông tin tài khoản, vai trò (admin/customer), địa chỉ.
+    - `Products`: Thông tin chung về sản phẩm.
+    - `ProductVariants`: Quản lý tồn kho theo Màu sắc & Kích thước.
+    - `Orders` & `OrderDetails`: Lưu trữ lịch sử giao dịch.
+    - `Messages`: Lưu trữ lịch sử chat.
+- **Stored Procedures tiêu biểu:**
+    - `sp_AddProduct`: Tự tạo sản phẩm mới và gán thuộc tính.
+    - `sp_CreateOrder`: Xử lý transaction đặt hàng và trừ tồn kho.
+    - `sp_SearchProducts`: Tìm kiếm nâng cao với nhiều bộ lọc.
 
 ---
 
-## 🎓 Tài Liệu Tham Khảo cho Tiểu Luận
-- Kiến trúc phần mềm: MVC, SOLID.
-- Công nghệ: Python Flask, PostgreSQL, WebSocket, Docker Virtualization.
-- Quy trình: Agile/Scrum (giả định).
+## 🛡️ Bảo Mật (Security Implementation)
+
+Dự án ưu tiên tính an toàn dữ liệu với các biện pháp:
+1.  **Chống SQL Injection**: Sử dụng *Parameterized Queries* thông qua thư viện psycopg2.
+2.  **Xác thực mật khẩu**: Sử dụng `PBKDF2` (Werkzeug hashing) để lưu trữ mật khẩu an toàn.
+3.  **CSRF Protection**: Tích hợp `Flask-WTF` bảo vệ toàn bộ các form nhập liệu.
+4.  **Phân quyền (RBAC)**: Hệ thống Decorator (`@admin_required`) kiểm soát chặt chẽ quyền truy cập.
+5.  **Bảo mật Session**: Cấu hình Secure Cookies để ngăn chặn các cuộc tấn công đánh cắp phiên.
 
 ---
-**Dự án được thực hiện bởi: [Tên của bạn]**  
-*Mã số sinh viên: [MSSV của bạn]*  
-*Trường: [Tên Trường của bạn]*
+
+## 📱 Tính Năng Real-time Chat
+
+Hệ thống hỗ trợ khách hàng tích hợp sẵn cho phép:
+- Khách vãng lai chat trực tiếp với Admin thông qua ID phiên (Session ID).
+- Người dùng đã đăng nhập có thể xem lại lịch sử trò chuyện.
+- Thông báo trạng thái Online/Offline và Đang nhập liệu (Typing indicator).
+
+---
+
+## 🚀 Lộ Trình Phát Triển (Future Roadmap)
+- [ ] Tích hợp cổng thanh toán trực tuyến (VNPay/Momo).
+- [ ] Xây dựng hệ thống gợi ý sản phẩm dựa trên AI (Collaborative Filtering).
+- [ ] Phát triển phiên bản Mobile App sử dụng React Native.
+
+---
+**Tác giả:** [Tên Của Bạn]  
+**MSSV:** [Mã Số Sinh Viên]  
+**Đồ án:** Quản lý Hệ thống Thương mại Điện tử Thời trang

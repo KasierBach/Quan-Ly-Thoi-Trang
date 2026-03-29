@@ -29,3 +29,10 @@ docker-compose.yml
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation
+*.docx
+Tai_Lieu_Mo_Rong_Tieu_Luan.md
+Tieu_Luan_Ban_Day_Du.md
+extracted_text.txt
+update_docx.py

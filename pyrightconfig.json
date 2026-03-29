@@ -8,6 +8,7 @@
             "root": ".",
             "extraPaths": ["."]
         }
+    ],
     "include": [
         "app",
         "run.py"
