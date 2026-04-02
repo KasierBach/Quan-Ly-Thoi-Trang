@@ -2,7 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
 from app.services.feedback_service import FeedbackService
-from app.decorators import handle_db_errors
+from app.decorators import handle_db_errors, login_required
 
 product_bp = Blueprint('product', __name__)
 
@@ -86,6 +86,30 @@ def get_variant():
     
     return jsonify({'success': True, 'variant_id': v.VariantID, 'quantity': v.Quantity})
 
+@product_bp.route('/api/track_product_view', methods=['POST'])
+@handle_db_errors
+def track_product_view():
+    pid = request.form.get('product_id', type=int)
+    if not pid:
+        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+
+    recently_viewed = session.get('recently_viewed', [])
+    if pid in recently_viewed:
+        recently_viewed.remove(pid)
+    recently_viewed.insert(0, pid)
+    session['recently_viewed'] = recently_viewed[:10]
+
+    return jsonify({'success': True})
+
+@product_bp.route('/api/get_product_reviews')
+@handle_db_errors
+def get_product_reviews():
+    pid = request.args.get('product_id', type=int)
+    if not pid:
+        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+
+    return jsonify(FeedbackService.get_product_reviews(pid))
+
 @product_bp.route('/add_review', methods=['POST'])
 @login_required
 @handle_db_errors
@@ -95,6 +119,27 @@ def add_review():
     if not pid or not (1 <= (rating or 0) <= 5): return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
     
     return jsonify(FeedbackService.add_review(uid, pid, rating, comment))
+
+@product_bp.route('/add_comment', methods=['POST'])
+@login_required
+@handle_db_errors
+def add_comment():
+    uid = session['user_id']
+    pid = request.form.get('product_id', type=int)
+    content = request.form.get('content')
+    if not pid or not content: 
+        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+    
+    return jsonify(FeedbackService.add_comment(uid, pid, content))
+
+@product_bp.route('/api/get_product_comments')
+@handle_db_errors
+def get_product_comments():
+    pid = request.args.get('product_id', type=int)
+    if not pid: 
+        return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
+    
+    return jsonify(FeedbackService.get_product_comments(pid))
 
 @product_bp.route('/api/get_recently_viewed')
 @handle_db_errors
