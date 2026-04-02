@@ -64,19 +64,30 @@ thua-2.0/
 ### 🐳 Cách 1: Sử dụng Docker (Khuyên dùng)
 Dự án đã được đóng gói hoàn chỉnh, giúp chạy ngay lập tức mà không cần cài đặt môi trường máy local:
 
-```powershell
-# Di chuyển vào thư mục dự án
-cd thua-2.0
+1. **Cấu hình biến môi trường:**
+   Đảm bảo bạn đã có file `.env` chứa chuỗi kết nối Cloud Database (ví dụ: Supabase).
+   `DATABASE_URL=postgresql://user:password@aws-host.supabase.com:6543/postgres`
 
-# Khởi động toàn bộ dịch vụ (App + DB)
-docker compose up --build -d
-```
-*Truy cập tại: `http://localhost:5000`*
+2. **Khởi động dịch vụ Web bằng Docker:**
+   ```powershell
+   # Di chuyển vào thư mục dự án
+   cd thua-2.0
+   
+   # Build và khởi động container
+   docker-compose up --build -d
+   ```
+
+3. **Khởi tạo Database (Chỉ áp dụng lần đầu):**
+   Nếu cơ sở dữ liệu Supabase của bạn trống, hãy chạy lệnh sau để tự tạo bảng và nạp dữ liệu mẫu:
+   ```powershell
+   docker-compose exec web python .scripts/import_db.py
+   ```
+   *Truy cập tại: `http://localhost:4000`* (Cổng mặc định theo file cấu hình)
 
 ### 💻 Cách 2: Cài đặt Thủ công (Local)
 Nếu bạn muốn chạy trực tiếp trên máy tính:
 
-1. **Yêu cầu:** Đã cài đặt Python 3.10+ và PostgreSQL 15+.
+1. **Yêu cầu:** Đã cài đặt Python 3.10+
 2. **Khởi tạo môi trường ảo:**
    ```powershell
    python -m venv .venv
@@ -87,7 +98,7 @@ Nếu bạn muốn chạy trực tiếp trên máy tính:
    pip install -r requirements.txt
    ```
 4. **Cấu hình biến môi trường (`.env`):**
-   Tạo file `.env` từ `.env.example` và điền thông tin `DATABASE_URL`.
+   Tạo file `.env` từ `.env.example` và điền thông tin `DATABASE_URL` của Supabase hoặc PostgreSQL.
 5. **Khởi tạo Database:**
    ```powershell
    python .scripts/import_db.py
