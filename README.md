@@ -151,8 +151,3 @@ Hệ thống hỗ trợ khách hàng tích hợp sẵn cho phép:
 - [ ] Tích hợp cổng thanh toán trực tuyến (VNPay/Momo).
 - [ ] Xây dựng hệ thống gợi ý sản phẩm dựa trên AI (Collaborative Filtering).
 - [ ] Phát triển phiên bản Mobile App sử dụng React Native.
-
----
-**Tác giả:** [Tên Của Bạn]  
-**MSSV:** [Mã Số Sinh Viên]  
-**Đồ án:** Quản lý Hệ thống Thương mại Điện tử Thời trang
