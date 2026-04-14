@@ -45,7 +45,7 @@ def messages_page():
 @chat_bp.route('/admin/messages')
 def admin_messages_page():
     if not session.get('is_admin'): return render_template('404.html'), 404
-    return render_template('admin/messages.html')
+    return render_template('messages.html')
 
 @chat_bp.route('/admin/chat/conversations')
 @handle_db_errors
