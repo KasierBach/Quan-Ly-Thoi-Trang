@@ -38,4 +38,8 @@ def admin_customer_detail(customer_id):
         flash('Khách hàng không tồn tại', 'error')
         return redirect(url_for('admin.admin_customers'))
     
-    return render_template('admin/customer_detail.html', customer=details['customer'], orders=details['orders'])
+    return render_template('admin/customer_detail.html', 
+                           customer=details['customer'], 
+                           orders=details['orders'],
+                           comments=details.get('comments', []),
+                           stats=details.get('stats', {'totalorders': 0, 'totalspent': 0}))

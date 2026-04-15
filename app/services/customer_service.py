@@ -76,7 +76,28 @@ class CustomerService(BaseService):
                 """, (customer_id,))
                 orders = cursor.fetchall()
                 
-                return {'customer': customer, 'orders': orders}
+                # Fetch comments
+                cursor.execute("""
+                    SELECT c.*, p.ProductName 
+                    FROM Comments c
+                    JOIN Products p ON c.ProductID = p.ProductID
+                    WHERE c.CustomerID = %s
+                    ORDER BY c.CommentDate DESC
+                """, (customer_id,))
+                comments = cursor.fetchall()
+                
+                # Compute stats safely
+                try:
+                    total_spent = sum((float(o.get('totalamount') or o.get('TotalAmount', 0))) for o in orders if type(o) == dict)
+                except:
+                    total_spent = sum((float(o['totalamount'] or o['TotalAmount'] or 0)) for o in orders) if orders and type(orders[0]) != dict else 0
+                    
+                stats = {
+                    'totalorders': len(orders),
+                    'totalspent': total_spent
+                }
+                
+                return {'customer': customer, 'orders': orders, 'comments': comments, 'stats': stats}
         finally:
             conn.close()
 

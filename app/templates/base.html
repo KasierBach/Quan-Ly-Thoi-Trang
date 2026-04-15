@@ -90,8 +90,11 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
                             <i class="fas fa-user me-1"></i>{{ session.user_name }}
-                            {% if role %}
-                            <span class="badge bg-{{ 'danger' if role == 'admin' else 'info' }} ms-1"
+                            {% if is_admin %}
+                            <span class="badge bg-danger ms-1"
+                                style="font-size: 0.7em; vertical-align: middle;">Admin</span>
+                            {% elif role %}
+                            <span class="badge bg-info ms-1"
                                 style="font-size: 0.7em; vertical-align: middle;">{{ role|capitalize }}</span>
                             {% endif %}
                         </a>
