@@ -49,6 +49,18 @@ def products():
                           paging=paging_data,
                           sort=sort)
 
+@product_bp.route('/api/search_autocomplete')
+@handle_db_errors
+def search_autocomplete():
+    query = request.args.get('q', '').strip()
+    if len(query) < 1:
+        return jsonify({'success': True, 'products': []})
+
+    return jsonify({
+        'success': True,
+        'products': ProductService.search_autocomplete(query)
+    })
+
 @product_bp.route('/product/<int:product_id>')
 @handle_db_errors
 def product_detail(product_id):

@@ -29,11 +29,13 @@ class ChatAPI {
     }
 
     async getPinnedMessages(convId) {
+        if (!/^\d+$/.test(String(convId))) return { pinned: [] };
         const res = await fetch(`/api/chat/conversations/${convId}/pinned`);
         return res.ok ? await res.json() : { pinned: [] };
     }
 
     async getParticipants(convId) {
+        if (!/^\d+$/.test(String(convId))) return { participants: [] };
         const res = await fetch(`/api/conversations/${convId}/participants`);
         return res.ok ? await res.json() : { participants: [] };
     }
@@ -115,6 +117,7 @@ class ChatAPI {
     }
 
     async updateConversationSettings(convId, settings) {
+        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
         const res = await fetch(`/api/conversations/${convId}/settings`, {
             method: 'PATCH',
             headers: {
@@ -127,6 +130,7 @@ class ChatAPI {
     }
 
     async updateMySettings(convId, settings) {
+        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
         const res = await fetch(`/api/conversations/${convId}/participants/me`, {
             method: 'PATCH',
             headers: {
@@ -139,6 +143,7 @@ class ChatAPI {
     }
 
     async updateParticipantSettings(convId, userId, settings) {
+        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
         const res = await fetch(`/api/conversations/${convId}/participants/${userId}`, {
             method: 'PATCH',
             headers: {
@@ -150,7 +155,13 @@ class ChatAPI {
         return await res.json();
     }
 
+    async getUserStatus(userId) {
+        const res = await fetch(`/api/users/${userId}/status`);
+        return res.ok ? await res.json() : { online: false, last_seen: null };
+    }
+
     async getAttachments(convId, type = null) {
+        if (!/^\d+$/.test(String(convId))) return { attachments: [] };
         let url = `/api/conversations/${convId}/attachments`;
         if (type) url += `?type=${type}`;
         const res = await fetch(url);

@@ -31,7 +31,7 @@ class MainService(BaseService):
                 
                 cursor.execute('''
                     INSERT INTO NewsletterSubscribers (Email, SubscribeDate, IsActive)
-                    VALUES (%s, CURRENT_TIMESTAMP, 1)
+                    VALUES (%s, CURRENT_TIMESTAMP, TRUE)
                 ''', (email,))
                 conn.commit()
                 return MainService.success(message="Đăng ký thành công")
@@ -66,7 +66,7 @@ class MainService(BaseService):
             with conn.cursor() as cursor:
                 cursor.execute('UPDATE ContactMessages SET Status = %s WHERE MessageID = %s', (new_status, message_id))
                 conn.commit()
-                return {'success': True}
+                return {'success': True, 'message': 'Cập nhật trạng thái thành công'}
         except Exception as e:
             conn.rollback()
             return MainService.handle_error(e)

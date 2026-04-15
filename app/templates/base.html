@@ -337,6 +337,7 @@
 
         const baseData = JSON.parse(document.getElementById('base-data').textContent);
         const isUserLoggedIn = baseData.isLoggedIn;
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
         // Auto-hide flash messages after 5 seconds
         setTimeout(function () {
@@ -362,6 +363,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
                 },
                 body: `email=${email}`
             })
@@ -399,6 +401,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': csrfToken
                     },
                     body: `dark_mode=${newTheme === 'dark' ? 1 : 0}`
                 });

@@ -48,6 +48,22 @@ class OrderService(BaseService):
             conn.close()
 
     @staticmethod
+    def get_customer_orders(user_id):
+        """Return a customer's orders for the account page."""
+        conn = OrderService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('''
+                    SELECT OrderID, OrderDate, TotalAmount, Status, PaymentMethod
+                    FROM Orders
+                    WHERE CustomerID = %s
+                    ORDER BY OrderDate DESC
+                ''', (user_id,))
+                return cursor.fetchall()
+        finally:
+            conn.close()
+
+    @staticmethod
     def get_user_order_detail(order_id, user_id):
         """Get order details with ownership verification."""
         conn = OrderService.get_connection()

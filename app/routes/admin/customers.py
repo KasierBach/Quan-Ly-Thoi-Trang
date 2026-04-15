@@ -1,4 +1,4 @@
-from flask import render_template, request, redirect, url_for, flash
+from flask import render_template, request, redirect, url_for, flash, jsonify
 from app.services.customer_service import CustomerService
 from .blueprint import admin_bp, admin_required
 from app.decorators import handle_db_errors
@@ -23,6 +23,8 @@ def admin_customers():
 @handle_db_errors
 def admin_delete_customer(customer_id):
     res = CustomerService.delete_customer(customer_id)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return jsonify(res)
     flash(res.get('message', 'Thành công') if not res['success'] else 'Xóa khách hàng thành công', 
           'success' if res['success'] else 'error')
     return redirect(url_for('admin.admin_customers'))

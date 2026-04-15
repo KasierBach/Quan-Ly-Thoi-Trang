@@ -1,8 +1,10 @@
-from flask import render_template, request, jsonify, flash, redirect, url_for
+from flask import render_template, request, jsonify, flash, redirect, url_for, current_app
 from app.services.feedback_service import FeedbackService
 from app.services.main_service import MainService
 from .blueprint import admin_bp, admin_required
 from app.decorators import handle_db_errors
+from flask_mail import Message
+import socket
 
 @admin_bp.route('/admin/reply_comment', methods=['POST'])
 @admin_required
@@ -31,6 +33,32 @@ def admin_update_message_status_json():
     
     res = MainService.update_contact_message_status(mid, status)
     return jsonify(res)
+
+@admin_bp.route('/admin/reply_contact_message', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_reply_contact_message():
+    mid = request.form.get('message_id', type=int)
+    recipient = request.form.get('email', '').strip()
+    reply_text = request.form.get('reply', '').strip()
+
+    if not mid or not recipient or not reply_text:
+        return jsonify({'success': False, 'message': 'Thiếu dữ liệu phản hồi'}), 400
+
+    m_user, m_pass = current_app.config.get('MAIL_USERNAME'), current_app.config.get('MAIL_PASSWORD')
+    if not m_user or not m_pass:
+        return jsonify({'success': False, 'message': 'Hệ thống chưa cấu hình Email SMTP.'}), 500
+
+    msg = Message(subject='[FashionStore] Phản hồi liên hệ', recipients=[recipient], body=reply_text)
+    orig_timeout = socket.getdefaulttimeout()
+    try:
+        socket.setdefaulttimeout(15)
+        current_app.mail.send(msg)
+    finally:
+        socket.setdefaulttimeout(orig_timeout)
+
+    MainService.update_contact_message_status(mid, 'Answered')
+    return jsonify({'success': True, 'message': 'Đã gửi phản hồi thành công'})
 
 @admin_bp.route('/admin/comments')
 @admin_required

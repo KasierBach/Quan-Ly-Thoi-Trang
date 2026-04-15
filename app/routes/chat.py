@@ -112,6 +112,41 @@ def get_conversation_details(cid):
     conv = ConversationService.get_conversation(cid)
     return jsonify(conv) if conv else (jsonify({'error': 'Not found'}), 404)
 
+@chat_bp.route('/api/chat/conversations/<int:cid>/pinned', methods=['GET'])
+@handle_db_errors
+def get_pinned_messages(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants):
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    return jsonify({'pinned': ChatService.get_pinned_messages(cid)})
+
+@chat_bp.route('/api/conversations/<int:cid>/participants', methods=['GET', 'POST'])
+@handle_db_errors
+def conversation_participants(cid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+
+    participants = ConversationService.get_participants(cid)
+    if not any(p['id'] == uid for p in participants):
+        return jsonify({'error': 'Unauthorized'}), 403
+
+    if request.method == 'GET':
+        return jsonify({'participants': participants})
+
+    data = request.get_json(silent=True) or {}
+    target_uid = data.get('user_id')
+    if not target_uid:
+        return jsonify({'error': 'User ID required'}), 400
+
+    res = ConversationService.add_participant(cid, target_uid)
+    if res.get('success'):
+        return jsonify({'status': 'success'})
+    return jsonify({'error': res.get('message', 'Fail')}), 500
+
 @chat_bp.route('/api/chat/send', methods=['POST'])
 @handle_db_errors
 def handle_chat_send():
@@ -234,7 +269,7 @@ def mark_read(cid):
     if not str(cid).isdigit(): return jsonify({'status': 'success'})
     return jsonify({'status': 'success'}) if ConversationService.mark_as_read(int(cid), uid) else (jsonify({'error': 'Fail'}), 500)
 
-@chat_bp.route('/api/conversations/<int:cid>/settings', methods=['PATCH'])
+@chat_bp.route('/api/conversations/<int:cid>/settings', methods=['PATCH', 'PUT'])
 def update_conversation_settings(cid):
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Auth needed'}), 401
@@ -244,22 +279,22 @@ def update_conversation_settings(cid):
     if not any(p['id'] == uid for p in participants):
         return jsonify({'error': 'Unauthorized'}), 403
         
-    data = request.json
+    data = request.get_json(silent=True) or {}
     if ConversationService.update_conversation_settings(cid, data):
         return jsonify({'status': 'success'})
     return jsonify({'error': 'Fail'}), 500
 
-@chat_bp.route('/api/conversations/<int:cid>/participants/me', methods=['PATCH'])
+@chat_bp.route('/api/conversations/<int:cid>/participants/me', methods=['PATCH', 'PUT'])
 def update_my_participant_settings(cid):
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Auth needed'}), 401
     
-    data = request.json
+    data = request.get_json(silent=True) or {}
     if ConversationService.update_participant_settings(cid, uid, data):
         return jsonify({'status': 'success'})
     return jsonify({'error': 'Fail'}), 500
 
-@chat_bp.route('/api/conversations/<int:cid>/participants/<int:target_uid>', methods=['PATCH'])
+@chat_bp.route('/api/conversations/<int:cid>/participants/<int:target_uid>', methods=['PATCH', 'PUT'])
 def update_participant_settings_specific(cid, target_uid):
     uid = session.get('user_id')
     if not uid: return jsonify({'error': 'Auth needed'}), 401
@@ -269,10 +304,17 @@ def update_participant_settings_specific(cid, target_uid):
     if not any(p['id'] == uid for p in participants):
         return jsonify({'error': 'Unauthorized'}), 403
         
-    data = request.json
+    data = request.get_json(silent=True) or {}
     if ConversationService.update_participant_settings(cid, target_uid, data):
         return jsonify({'status': 'success'})
     return jsonify({'error': 'Fail'}), 500
+
+@chat_bp.route('/api/users/<int:target_uid>/status', methods=['GET'])
+@handle_db_errors
+def get_user_status(target_uid):
+    uid = session.get('user_id')
+    if not uid: return jsonify({'error': 'Auth needed'}), 401
+    return jsonify(ChatService.get_user_status(target_uid))
 
 @chat_bp.route('/api/conversations/<int:cid>/attachments', methods=['GET'])
 def get_conversation_attachments(cid):

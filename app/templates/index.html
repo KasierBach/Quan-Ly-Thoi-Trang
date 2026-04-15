@@ -369,6 +369,7 @@
 </script>
 <script>
     const indexConfig = JSON.parse(document.getElementById('index-config').textContent);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
     // Hero newsletter subscription
     document.getElementById('hero-subscribe-btn').addEventListener('click', function () {
@@ -389,6 +390,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
             },
             body: `email=${email}`
         })

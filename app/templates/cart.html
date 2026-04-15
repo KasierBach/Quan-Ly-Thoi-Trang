@@ -127,11 +127,13 @@
 </script>
 <script>
     const cartConfig = JSON.parse(document.getElementById('cart-config').textContent);
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
     // Cập nhật số lượng sản phẩm trong giỏ hàng
     function updateQuantity(variantId, change) {
         const quantityInput = document.getElementById(`quantity-${variantId}`);
-        let quantity = parseInt(quantityInput.value);
+        const previousQuantity = parseInt(quantityInput.value);
+        let quantity = previousQuantity;
 
         if (change !== 0) {
             quantity += change;
@@ -150,6 +152,7 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': csrfToken
             },
             body: `variant_id=${variantId}&quantity=${quantity}`
         })
@@ -157,7 +160,8 @@
             .then(data => {
                 if (data.success) {
                     // Update subtotal for this item
-                    const price = parseFloat(document.getElementById(`subtotal-${variantId}`).textContent.replace(/[^\d]/g, '')) / (quantity - change);
+                    const baseQty = change === 0 ? previousQuantity : (quantity - change);
+                    const price = parseFloat(document.getElementById(`subtotal-${variantId}`).textContent.replace(/[^\d]/g, '')) / Math.max(baseQty, 1);
                     document.getElementById(`subtotal-${variantId}`).textContent = formatCurrency(price * quantity);
 
                     // Update total
@@ -166,7 +170,7 @@
                 } else {
                     alert(data.message);
                     // Reset quantity
-                    quantityInput.value = quantity - change;
+                    quantityInput.value = previousQuantity;
                 }
             })
             .catch(error => {
@@ -182,6 +186,7 @@
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
                 },
                 body: `variant_id=${variantId}`
             })

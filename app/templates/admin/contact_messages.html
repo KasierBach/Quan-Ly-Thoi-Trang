@@ -177,13 +177,16 @@
 </script>
 <script type="text/template" id="messages-config">
     {
-        "updateStatusUrl": "{{ url_for('admin.admin_update_message_status_json') }}"
+        "updateStatusUrl": "{{ url_for('admin.admin_update_message_status_json') }}",
+        "replyUrl": "{{ url_for('admin.admin_reply_contact_message') }}"
     }
 </script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Message data
         const messages = JSON.parse(document.getElementById('messages-json').textContent);
+        const messagesConfig = JSON.parse(document.getElementById('messages-config').textContent);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
         let currentMessageId = null;
         let isProcessing = false;
@@ -279,11 +282,11 @@
             btn.textContent = 'Đang cập nhật...';
             btn.disabled = true;
 
-            const messagesConfig = JSON.parse(document.getElementById('messages-config').textContent);
             fetch(messagesConfig.updateStatusUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
                 },
                 body: `message_id=${currentMessageId}&status=${encodeURIComponent(newStatus)}`
             })
@@ -315,18 +318,50 @@
 
         function sendReply() {
             const replyText = document.getElementById('replyText').value.trim();
+            const currentMessage = messages[currentMessageId];
 
-            if (!replyText) {
+            if (!currentMessage || !replyText) {
                 alert('Vui lòng nhập nội dung trả lời');
                 return;
             }
 
-            // Set status to Answered and update
-            document.getElementById('statusSelect').value = 'Answered';
-            updateStatus();
+            isProcessing = true;
+            const btn = document.getElementById('sendReplyBtn');
+            const originalText = btn.textContent;
+            btn.textContent = 'Đang gửi...';
+            btn.disabled = true;
 
-            // Clear reply text
-            document.getElementById('replyText').value = '';
+            fetch(messagesConfig.replyUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRFToken': csrfToken
+                },
+                body: `message_id=${currentMessageId}&email=${encodeURIComponent(currentMessage.email)}&reply=${encodeURIComponent(replyText)}`
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateMessageStatus(currentMessageId, 'Answered');
+                        document.getElementById('statusSelect').value = 'Answered';
+                        document.getElementById('replyText').value = '';
+                        showNotification('success', data.message);
+                        setTimeout(() => {
+                            bootstrap.Modal.getInstance(document.getElementById('messageModal')).hide();
+                        }, 1000);
+                    } else {
+                        showNotification('error', data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showNotification('error', 'Đã xảy ra lỗi khi gửi phản hồi');
+                })
+                .finally(() => {
+                    isProcessing = false;
+                    btn.textContent = originalText;
+                    btn.disabled = false;
+                });
         }
 
         function updateMessageStatus(messageId, newStatus) {
