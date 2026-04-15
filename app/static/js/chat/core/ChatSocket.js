@@ -13,7 +13,8 @@ class ChatSocket {
     initSocket() {
         if (typeof io === 'undefined') return null;
         return io({
-            query: { session_id: this.sessionId }
+            query: { session_id: this.sessionId },
+            transports: ['websocket']
         });
     }
 
