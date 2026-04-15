@@ -95,9 +95,9 @@
                                                 <small class="text-muted">Màu: {{ item.ColorName }}<br>Size: {{
                                                     item.SizeName }}</small>
                                             </td>
-                                            <td>{{ "{:,.0f}".format(item.Price) }} đ</td>
+                                            <td>{{ "{:,.0f}".format(item.UnitPrice) }} đ</td>
                                             <td class="text-center">{{ item.Quantity }}</td>
-                                            <td>{{ "{:,.0f}".format(item.Subtotal) }} đ</td>
+                                            <td>{{ "{:,.0f}".format(item.UnitPrice * item.Quantity) }} đ</td>
                                         </tr>
                                         {% endfor %}
                                     </tbody>

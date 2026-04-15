@@ -127,7 +127,7 @@ class OrderService(BaseService):
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT o.*, c.FullName, c.Email FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID WHERE o.OrderID = %s', (order_id,))
+                cursor.execute('SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID WHERE o.OrderID = %s', (order_id,))
                 order = cursor.fetchone()
                 if not order: return None
                 
