@@ -69,7 +69,7 @@ class CustomerService(BaseService):
                 
                 cursor.execute("""
                     SELECT o.*, 
-                           (SELECT SUM(Quantity * UnitPrice) FROM OrderDetails WHERE OrderID = o.OrderID) AS TotalAmount
+                           (SELECT SUM(Quantity * Price) FROM OrderDetails WHERE OrderID = o.OrderID) AS TotalAmount
                     FROM Orders o 
                     WHERE CustomerID = %s 
                     ORDER BY OrderDate DESC
@@ -87,10 +87,13 @@ class CustomerService(BaseService):
                 comments = cursor.fetchall()
                 
                 # Compute stats safely
-                try:
-                    total_spent = sum((float(o.get('totalamount') or o.get('TotalAmount', 0))) for o in orders if type(o) == dict)
-                except:
-                    total_spent = sum((float(o['totalamount'] or o['TotalAmount'] or 0)) for o in orders) if orders and type(orders[0]) != dict else 0
+                total_spent = 0
+                for o in orders:
+                    try:
+                        amt = getattr(o, 'totalamount', None) or getattr(o, 'TotalAmount', None) or 0
+                        total_spent += float(amt)
+                    except (TypeError, ValueError):
+                        pass
                     
                 stats = {
                     'totalorders': len(orders),
