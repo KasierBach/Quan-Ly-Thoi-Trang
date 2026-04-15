@@ -78,11 +78,11 @@ class CustomerService(BaseService):
                 
                 # Fetch comments
                 cursor.execute("""
-                    SELECT c.*, p.ProductName 
-                    FROM Comments c
-                    JOIN Products p ON c.ProductID = p.ProductID
-                    WHERE c.CustomerID = %s
-                    ORDER BY c.CommentDate DESC
+                    SELECT pc.*, p.ProductName 
+                    FROM ProductComments pc
+                    JOIN Products p ON pc.ProductID = p.ProductID
+                    WHERE pc.CustomerID = %s
+                    ORDER BY pc.CommentDate DESC
                 """, (customer_id,))
                 comments = cursor.fetchall()
                 
