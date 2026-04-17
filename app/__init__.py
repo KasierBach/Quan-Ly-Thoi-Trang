@@ -1,4 +1,4 @@
-from flask import Flask, session, render_template, request, jsonify
+from flask import Flask, session, render_template, request, jsonify, url_for
 from .config import Config
 from .database import db
 from flask_mail import Mail
@@ -73,6 +73,13 @@ def create_app(config_class=Config):
     
     # Register template filters
     app.jinja_env.filters['resolve_image'] = resolve_image
+    
+    @app.template_filter('image_url')
+    def image_url_filter(obj):
+        path = resolve_image(obj)
+        if path and (path.startswith('http://') or path.startswith('https://')):
+            return path
+        return url_for('static', filename=path or 'images/default.jpg')
 
     # Global Context Processors
     @app.context_processor
@@ -121,7 +128,7 @@ def create_app(config_class=Config):
             "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; "
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
             "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: https://images.pixabay.com https://pixabay.com; "
+            "img-src 'self' data: *; "
             "connect-src 'self' ws: wss:; "
             "frame-ancestors 'none';"
         )

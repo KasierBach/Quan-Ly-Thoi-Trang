@@ -16,7 +16,7 @@
     <div class="row g-4" style="min-height: 450px;">
         <!-- Left image column -->
         <div class="col-md-6 d-flex justify-content-center align-items-center" style="min-height: 100%;">
-            <img id="mainImage" src="{{ url_for('static', filename=product|resolve_image) }}" class="img-fluid rounded"
+            <img id="mainImage" src="{{ product|image_url }}" class="img-fluid rounded"
                 alt="{{ product.ProductName }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
         </div>
 
@@ -645,7 +645,7 @@
                             container.innerHTML += `
                             <div class="col-md-3 mb-3">
                                 <div class="card product-card h-100">
-                                    <img src="${product.image_url ? '/static/' + product.image_url : 'https://via.placeholder.com/300?text=No+Image'}" class="card-img-top product-img" alt="${product.product_name}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300?text=No+Image'">
+                                    <img src="${product.image_url ? (product.image_url.startsWith('http') ? product.image_url : '/static/' + product.image_url) : 'https://via.placeholder.com/300?text=No+Image'}" class="card-img-top product-img" alt="${product.product_name}" onerror="this.onerror=null;this.src='https://via.placeholder.com/300?text=No+Image'">
                                     <div class="card-body">
                                         <h5 class="card-title">${product.product_name}</h5>
                                         <p class="card-text text-muted">${product.category_name}</p>

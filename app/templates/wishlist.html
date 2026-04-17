@@ -17,7 +17,7 @@
                         <i class="fas fa-trash-alt"></i> Xóa
                     </button>
                 </div>
-                <img src="{{ url_for('static', filename=item|resolve_image) }}" class="card-img-top product-img"
+                <img src="{{ item|image_url }}" class="card-img-top product-img"
                     alt="{{ item.ProductName }}">
                 <div class="card-body">
                     <h5 class="card-title">{{ item.ProductName }}</h5>

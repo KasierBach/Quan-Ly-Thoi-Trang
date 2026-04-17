@@ -281,10 +281,10 @@
                                 <div class="d-flex align-items-center mb-3 pb-3 border-bottom">
                                     {% set default_image = url_for('static', filename='images/default-product.png') %}
                                     <div class="position-relative me-3">
-                                        <img src="{{ url_for('static', filename=item.image_url if item.image_url else 'images/default-product.png') }}"
+                                        <img src="{{ item|image_url }}"
                                             alt="{{ item.product_name }}" class="rounded"
                                             style="width:60px; height:60px; object-fit:cover;"
-                                            onerror="this.onerror=null;this.src='{{ default_image }}';">
+                                            onerror="this.src='/static/images/default.jpg'; this.onerror=null;">
                                         <span
                                             class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-primary">
                                             {{ item.quantity }}
