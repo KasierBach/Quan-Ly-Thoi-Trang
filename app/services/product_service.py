@@ -176,7 +176,7 @@ class ProductService(BaseService):
         conn = BaseService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s, %s) AS ProductID', (name, description, price, category_id, original_price))
+                cursor.execute('SELECT sp_AddProduct(%s, %s, %s, %s, %s) AS ProductID', (name, description, price, original_price, category_id))
                 pid = cursor.fetchone().ProductID
                 conn.commit()
                 return {'success': True, 'product_id': pid}
