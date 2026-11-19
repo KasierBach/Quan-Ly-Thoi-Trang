@@ -1,84 +1,145 @@
-from flask import render_template, request, jsonify, flash, redirect, url_for, current_app
+from flask import abort, current_app, jsonify, render_template, request
+from markupsafe import escape
+
+from app.decorators import handle_db_errors
 from app.services.feedback_service import FeedbackService
 from app.services.main_service import MainService
-from .blueprint import admin_bp, admin_required
-from app.decorators import handle_db_errors
-from flask_mail import Message
-import socket
+from app.utils import send_email
+from app.validation import ValidationError, email_address, positive_int, required_text
+
+from .blueprint import admin_bp, admin_required, paging_args, service_response
+
+
+def _date_text(value):
+    return value.strftime('%d/%m/%Y %H:%M') if value else ''
+
 
 @admin_bp.route('/admin/reply_comment', methods=['POST'])
 @admin_required
 @handle_db_errors
 def admin_reply_comment():
-    cid, reply = request.form.get('comment_id', type=int), request.form.get('reply')
-    if not cid or not reply: return jsonify({'success': False, 'message': 'Dữ liệu không hợp lệ'})
-    
-    res = FeedbackService.admin_reply_comment(cid, reply)
-    return jsonify(res)
+    try:
+        comment_id = positive_int(request.form.get('comment_id'), 'Bình luận', max_value=2147483647)
+        reply = required_text(request.form.get('reply'), 'Phản hồi', 5000)
+        return service_response(FeedbackService.admin_reply_comment(comment_id, reply))
+    except ValidationError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+
 
 @admin_bp.route('/admin/contact_messages')
 @admin_required
 @handle_db_errors
 def admin_contact_messages():
     status = request.args.get('status', '')
-    messages = MainService.get_contact_messages(status)
-    return render_template('admin/contact_messages.html', messages=messages, current_status=status)
+    page, per_page = paging_args(request.args)
+    try:
+        result = MainService.get_contact_messages(status, page, per_page)
+    except ValidationError as exc:
+        abort(400, description=str(exc))
+    message_data = {
+        str(row.MessageID): {
+            'id': row.MessageID,
+            'name': row.Name,
+            'email': row.Email,
+            'subject': row.Subject or 'Không có tiêu đề',
+            'message': row.Message,
+            'date': _date_text(row.SubmitDate),
+            'status': row.Status,
+        }
+        for row in result['messages']
+    }
+    return render_template(
+        'admin/contact_messages.html',
+        messages=result['messages'],
+        current_status=status,
+        paging=result,
+        message_data=message_data,
+        email_enabled=not current_app.testing
+        and not current_app.config.get('MAIL_SUPPRESS_SEND')
+        and bool(current_app.config.get('MAIL_SERVER') and current_app.config.get('MAIL_DEFAULT_SENDER')),
+    )
+
 
 @admin_bp.route('/admin/update_message_status', methods=['POST'])
 @admin_required
 @handle_db_errors
 def admin_update_message_status_json():
-    mid, status = request.form.get('message_id', type=int), request.form.get('status')
-    if not mid or not status: return jsonify({'success': False}), 400
-    
-    res = MainService.update_contact_message_status(mid, status)
-    return jsonify(res)
+    try:
+        return service_response(
+            MainService.update_contact_message_status(request.form.get('message_id'), request.form.get('status'))
+        )
+    except ValidationError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+
 
 @admin_bp.route('/admin/reply_contact_message', methods=['POST'])
 @admin_required
 @handle_db_errors
 def admin_reply_contact_message():
-    mid = request.form.get('message_id', type=int)
-    recipient = request.form.get('email', '').strip()
-    reply_text = request.form.get('reply', '').strip()
-
-    if not mid or not recipient or not reply_text:
-        return jsonify({'success': False, 'message': 'Thiếu dữ liệu phản hồi'}), 400
-
-    m_user, m_pass = current_app.config.get('MAIL_USERNAME'), current_app.config.get('MAIL_PASSWORD')
-    if not m_user or not m_pass:
-        return jsonify({'success': False, 'message': 'Hệ thống chưa cấu hình Email SMTP.'}), 500
-
-    msg = Message(subject='[FashionStore] Phản hồi liên hệ', recipients=[recipient], body=reply_text)
-    orig_timeout = socket.getdefaulttimeout()
     try:
-        socket.setdefaulttimeout(15)
-        current_app.mail.send(msg)
-    finally:
-        socket.setdefaulttimeout(orig_timeout)
+        message_id = positive_int(request.form.get('message_id'), 'Tin nhắn', max_value=2147483647)
+        reply = required_text(request.form.get('reply'), 'Phản hồi', 5000)
+    except ValidationError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+    message = MainService.get_contact_message(message_id)
+    if not message:
+        return jsonify({'success': False, 'message': 'Tin nhắn không tồn tại'}), 404
+    try:
+        # Bind the recipient to the persisted contact, never an arbitrary form address.
+        recipient = email_address(message.Email)
+    except ValidationError:
+        return jsonify({'success': False, 'message': 'Địa chỉ email trong tin nhắn không hợp lệ'}), 409
+    if (
+        current_app.testing
+        or current_app.config.get('MAIL_SUPPRESS_SEND')
+        or not current_app.config.get('MAIL_SERVER')
+        or not current_app.config.get('MAIL_DEFAULT_SENDER')
+    ):
+        return jsonify({'success': False, 'message': 'Gửi email chưa được cấu hình hoặc đang tắt'}), 503
+    if not send_email(recipient, '[FashionStore] Phản hồi liên hệ', f'<pre>{escape(reply)}</pre>'):
+        return jsonify({'success': False, 'message': 'Không thể gửi phản hồi qua email. Vui lòng thử lại sau.'}), 502
+    result = MainService.update_contact_message_status(message_id, 'Answered')
+    if not result['success']:
+        return jsonify({'success': False, 'message': 'Email đã gửi nhưng không thể cập nhật trạng thái tin nhắn.'}), 500
+    return jsonify({'success': True, 'message': 'Đã gửi phản hồi đến máy chủ email và cập nhật trạng thái'})
 
-    MainService.update_contact_message_status(mid, 'Answered')
-    return jsonify({'success': True, 'message': 'Đã gửi phản hồi thành công'})
 
 @admin_bp.route('/admin/comments')
 @admin_required
 @handle_db_errors
 def admin_comments():
-    args = request.args
-    ftype, page, per_page = args.get('filter', ''), args.get('page', 1, type=int), args.get('per_page', 15, type=int)
-    
-    if page < 1: page = 1
-    if per_page not in [10, 15, 20, 50, 100]: per_page = 15
+    filter_type = request.args.get('filter', '')
+    page, per_page = paging_args(request.args, default=15, allowed=(10, 15, 20, 50, 100))
+    try:
+        result = FeedbackService.get_admin_comments(filter_type, page, per_page)
+    except ValidationError as exc:
+        abort(400, description=str(exc))
+    comment_data = {
+        str(row.CommentID): {
+            'id': row.CommentID,
+            'productName': row.ProductName,
+            'productId': row.ProductID,
+            'customerName': row.CustomerName,
+            'content': row.Content,
+            'commentDate': _date_text(row.CommentDate),
+            'adminReply': row.AdminReply or '',
+            'replyDate': _date_text(row.ReplyDate),
+            'isVisible': bool(row.IsVisible),
+        }
+        for row in result['comments']
+    }
+    return render_template(
+        'admin/comments.html', comments=result['comments'], filter=filter_type, paging=result, comment_data=comment_data
+    )
 
-    res = FeedbackService.get_admin_comments(ftype, page, per_page)
-    return render_template('admin/comments.html', comments=res['comments'], filter=ftype, paging=res)
 
 @admin_bp.route('/admin/toggle_comment_visibility', methods=['POST'])
 @admin_required
 @handle_db_errors
 def admin_toggle_comment_visibility():
-    cid, visible = request.form.get('comment_id', type=int), request.form.get('visible', type=int)
-    if not cid: return jsonify({'success': False})
-    
-    res = FeedbackService.toggle_comment_visibility(cid, visible)
-    return jsonify(res)
+    try:
+        return service_response(
+            FeedbackService.toggle_comment_visibility(request.form.get('comment_id'), request.form.get('visible'))
+        )
+    except ValidationError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400

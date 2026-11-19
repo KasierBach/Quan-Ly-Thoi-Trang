@@ -115,7 +115,7 @@
                                         </div>
                                     </td>
                                     <td>{{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</td>
-                                    <td class="fw-bold text-primary">{{ "{:,.0f}".format(order.TotalAmount) }} đ</td>
+                                    <td class="fw-bold text-primary">{{ order.TotalAmount|money }} đ</td>
                                     <td>
                                         {% if order.Status == 'Pending' %}
                                         <span class="badge bg-warning text-dark">Chờ xử lý</span>

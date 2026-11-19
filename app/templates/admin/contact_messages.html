@@ -134,6 +134,20 @@
                     {% endif %}
                 </div>
             </div>
+            <div class="card mt-4">
+                <div class="card-body d-flex flex-wrap justify-content-between align-items-center gap-3">
+                    <span class="text-muted">Trang {{ paging.current_page }} / {{ paging.total_pages }} · {{ paging.start_index }}–{{ paging.end_index }} / {{ paging.total_records }} tin nhắn</span>
+                    <form method="get" class="d-flex align-items-center gap-2">
+                        <input type="hidden" name="status" value="{{ current_status }}">
+                        <label for="contactPage" class="small">Trang</label>
+                        <input type="number" class="form-control form-control-sm" style="width:80px" id="contactPage" name="page" min="1" max="{{ paging.total_pages }}" value="{{ paging.current_page }}">
+                        <select name="per_page" class="form-select form-select-sm" aria-label="Số tin nhắn mỗi trang">
+                            {% for size in [10, 20, 50, 100] %}<option value="{{ size }}" {% if size == paging.per_page %}selected{% endif %}>{{ size }} dòng</option>{% endfor %}
+                        </select>
+                        <button class="btn btn-sm btn-outline-primary">Xem</button>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -151,7 +165,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
-                <button type="button" class="btn btn-success" id="sendReplyBtn">Gửi trả lời</button>
+                <button type="button" class="btn btn-success" id="sendReplyBtn" {% if not email_enabled %}disabled title="Email chưa được cấu hình hoặc đang tắt"{% endif %}>Gửi trả lời</button>
                 <button type="button" class="btn btn-primary" id="updateStatusBtn">Cập nhật trạng thái</button>
             </div>
         </div>
@@ -160,21 +174,7 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="text/template" id="messages-json">
-    {
-        {% for message in messages %}
-        "{{ message.MessageID }}": {
-            "id": {{ message.MessageID }},
-            "name": "{{ message.Name }}",
-            "email": "{{ message.Email }}",
-            "subject": "{{ message.Subject or 'Không có tiêu đề' }}",
-            "message": "{{ message.Message|replace('\n', '\\n')|replace('"', '\\"')|replace('/', '\\/') }}",
-            "date": "{{ message.SubmitDate.strftime('%d/%m/%Y %H:%M') }}",
-            "status": "{{ message.Status }}"
-        }{{ "," if not loop.last }}
-        {% endfor %}
-    }
-</script>
+<script type="application/json" id="messages-json">{{ message_data|tojson }}</script>
 <script type="text/template" id="messages-config">
     {
         "updateStatusUrl": "{{ url_for('admin.admin_update_message_status_json') }}",
@@ -207,52 +207,29 @@
 
             currentMessageId = messageId;
 
-            // Update modal content
             document.getElementById('modalTitle').textContent = `Tin nhắn từ ${message.name}`;
-
+            // Static markup only; persisted contact text never becomes HTML.
             const modalBody = document.getElementById('modalBody');
             modalBody.innerHTML = `
-            <div class="mb-3">
-                <strong>Người gửi:</strong> ${message.name}
-            </div>
-            <div class="mb-3">
-                <strong>Email:</strong> ${message.email}
-            </div>
-            <div class="mb-3">
-                <strong>Tiêu đề:</strong> ${message.subject}
-            </div>
-            <div class="mb-3">
-                <strong>Ngày gửi:</strong> ${message.date}
-            </div>
-            <div class="mb-3">
-                <strong>Trạng thái:</strong> 
-                <span class="badge ${getBadgeClass(message.status)}" id="currentStatus">${message.status}</span>
-            </div>
-            <div class="mb-3">
-                <strong>Nội dung:</strong>
-                <div class="card mt-2">
-                    <div class="card-body">
-                        ${message.message.replace(/\\n/g, '<br>')}
-                    </div>
-                </div>
-            </div>
-            <div class="mb-3">
-                <label class="form-label"><strong>Cập nhật trạng thái:</strong></label>
-                <select class="form-select" id="statusSelect">
-                    <option value="New" ${message.status === 'New' ? 'selected' : ''}>Mới</option>
-                    <option value="Processing" ${message.status === 'Processing' ? 'selected' : ''}>Đang xử lý</option>
-                    <option value="Answered" ${message.status === 'Answered' ? 'selected' : ''}>Đã trả lời</option>
-                </select>
-            </div>
-            <div class="mb-3">
-                <label class="form-label"><strong>Gửi email trả lời:</strong></label>
-                <textarea class="form-control" id="replyText" rows="5" placeholder="Nhập nội dung email trả lời..."></textarea>
-            </div>
-        `;
-
-            // Show modal
-            const modal = new bootstrap.Modal(document.getElementById('messageModal'));
-            modal.show();
+                <div class="mb-3"><strong>Người gửi:</strong> <span id="messageName"></span></div>
+                <div class="mb-3"><strong>Email:</strong> <span id="messageEmail"></span></div>
+                <div class="mb-3"><strong>Tiêu đề:</strong> <span id="messageSubject"></span></div>
+                <div class="mb-3"><strong>Ngày gửi:</strong> <span id="messageDate"></span></div>
+                <div class="mb-3"><strong>Trạng thái:</strong> <span class="badge" id="currentStatus"></span></div>
+                <div class="mb-3"><strong>Nội dung:</strong><div class="card mt-2"><div class="card-body" id="messageContent" style="white-space: pre-wrap;"></div></div></div>
+                <div class="mb-3"><label for="statusSelect" class="form-label"><strong>Cập nhật trạng thái:</strong></label><select class="form-select" id="statusSelect"><option value="New">Mới</option><option value="Processing">Đang xử lý</option><option value="Answered">Đã trả lời</option></select></div>
+                <div class="mb-3"><label for="replyText" class="form-label"><strong>Gửi email trả lời:</strong></label><textarea class="form-control" id="replyText" rows="5" maxlength="5000" placeholder="Nhập nội dung email trả lời..."></textarea></div>
+            `;
+            document.getElementById('messageName').textContent = message.name;
+            document.getElementById('messageEmail').textContent = message.email;
+            document.getElementById('messageSubject').textContent = message.subject;
+            document.getElementById('messageDate').textContent = message.date;
+            document.getElementById('messageContent').textContent = message.message;
+            const statusBadge = document.getElementById('currentStatus');
+            statusBadge.textContent = message.status;
+            statusBadge.className = `badge ${getBadgeClass(message.status)}`;
+            document.getElementById('statusSelect').value = message.status;
+            bootstrap.Modal.getOrCreateInstance(document.getElementById('messageModal')).show();
         }
 
         // Update status button
@@ -337,7 +314,7 @@
                     'Content-Type': 'application/x-www-form-urlencoded',
                     'X-CSRFToken': csrfToken
                 },
-                body: `message_id=${currentMessageId}&email=${encodeURIComponent(currentMessage.email)}&reply=${encodeURIComponent(replyText)}`
+                body: `message_id=${currentMessageId}&reply=${encodeURIComponent(replyText)}`
             })
                 .then(response => response.json())
                 .then(data => {

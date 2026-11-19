@@ -127,7 +127,7 @@
                             <input type="text" class="form-control" id="image_url" name="image_url"
                                 value="{{ product.ImageURL or '' }}">
                             <button type="button" class="btn btn-secondary" data-bs-toggle="modal"
-                                data-bs-target="#pixabayModal">
+                                data-bs-target="#pixabayModal" {% if not pixabay_enabled %}disabled title="Pixabay chưa được cấu hình hoặc đang tắt"{% endif %}>
                                 <i class="fas fa-search me-1"></i>Pixabay
                             </button>
                         </div>
@@ -162,6 +162,7 @@
                                 action="{{ url_for('admin.admin_delete_variant', variant_id=variant.VariantID) }}"
                                 class="d-inline" onsubmit="return confirm('Xóa biến thể này?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="product_id" value="{{ product.ProductID }}">
                                 <button type="submit" class="btn btn-sm btn-outline-danger">
                                     <i class="fas fa-trash"></i>
                                 </button>
@@ -213,11 +214,10 @@
                         <button type="submit" class="btn btn-success">Thêm biến thể</button>
                     </div>
                 </div>
-
+            </form>
         </div>
     </div>
 </div>
-{% endblock %}
 
 <!-- Pixabay Modal -->
 <div class="modal fade" id="pixabayModal" tabindex="-1" aria-hidden="true">
@@ -231,14 +231,14 @@
                 <div class="input-group mb-3">
                     <input type="text" class="form-control" id="pixabayQuery" value="{{ product.ProductName }}"
                         placeholder="Nhập từ khóa...">
-                    <button class="btn btn-primary" type="button" id="btnSearchPixabay">
+                    <button class="btn btn-primary" type="button" id="btnSearchPixabay" {% if not pixabay_enabled %}disabled{% endif %}>
                         <i class="fas fa-search"></i> Tìm
                     </button>
                 </div>
                 <div id="pixabayResults" class="row g-2">
                     <div class="text-center text-muted py-5">
                         <i class="fas fa-image fa-3x mb-3"></i>
-                        <p>Nhập từ khóa và tìm kiếm để xem ảnh</p>
+                        <p>{% if pixabay_enabled %}Nhập từ khóa và tìm kiếm để xem ảnh{% else %}Pixabay chưa được cấu hình hoặc đang tắt{% endif %}</p>
                     </div>
                 </div>
             </div>
@@ -248,9 +248,12 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
 {% block scripts %}
+<script type="application/json" id="product-config">{{ {'productId': product.ProductID}|tojson }}</script>
 <script>
+    const productConfig = JSON.parse(document.getElementById('product-config').textContent);
     document.getElementById('editProductForm').addEventListener('submit', function (event) {
         const name = document.getElementById('product_name').value.trim();
         const price = parseFloat(document.getElementById('price').value);
@@ -303,7 +306,11 @@
                 if (data.success) {
                     displayPixabayResults(data.hits);
                 } else {
-                    pixabayResults.innerHTML = `<div class="text-center text-danger w-100 py-5">${data.message}</div>`;
+                    pixabayResults.replaceChildren();
+                    const message = document.createElement('div');
+                    message.className = 'text-center text-danger w-100 py-5';
+                    message.textContent = data.message || 'Không thể tìm kiếm ảnh';
+                    pixabayResults.appendChild(message);
                 }
             })
             .catch(error => {
@@ -322,11 +329,18 @@
         hits.forEach(hit => {
             const col = document.createElement('div');
             col.className = 'col-6 col-md-4 col-lg-3';
-            col.innerHTML = `
-                <div class="card h-100 cursor-pointer shadow-sm" onclick="selectPixabayImage('${hit.webformatURL}')" style="cursor: pointer;">
-                    <img src="${hit.previewURL}" class="card-img-top" style="height: 150px; object-fit: cover;" alt="${hit.tags}">
-                </div>
-            `;
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'card h-100 shadow-sm border-0 p-0';
+            button.addEventListener('click', () => selectPixabayImage(hit.webformatURL));
+            const image = document.createElement('img');
+            image.src = hit.previewURL;
+            image.className = 'card-img-top';
+            image.style.cssText = 'height: 150px; object-fit: cover;';
+            image.alt = hit.tags;
+            image.loading = 'lazy';
+            button.appendChild(image);
+            col.appendChild(button);
             pixabayResults.appendChild(col);
         });
     }
@@ -360,7 +374,7 @@
                     const modal = bootstrap.Modal.getInstance(modalEl);
                     if (modal) modal.hide();
 
-                    alert('Đã cập nhật ảnh sản phẩm!');
+                    alert('Đã tải ảnh. Bấm Cập nhật để lưu ảnh cho sản phẩm.');
                 } else {
                     alert('Lỗi: ' + data.message);
                 }
@@ -374,10 +388,5 @@
                 btnSearchPixabay.disabled = false;
             });
     };
-</script>
-<script type="text/template" id="product-config">
-    {
-        "productId": {{ product.ProductID }}
-    }
 </script>
 {% endblock %}

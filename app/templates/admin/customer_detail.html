@@ -109,14 +109,15 @@
                             <div class="card-body border-start border-primary border-4 rounded">
                                 <p class="text-muted small mb-1 uppercase fw-bold">Tổng đơn hàng</p>
                                 <h3 class="mb-0">{{ stats.totalorders }}</h3>
+                                <small class="text-muted">{{ stats.deliveredorders }} đơn đã giao</small>
                             </div>
                         </div>
                     </div>
                     <div class="col-md-6">
                         <div class="card stat-card bg-white h-100">
                             <div class="card-body border-start border-success border-4 rounded">
-                                <p class="text-muted small mb-1 uppercase fw-bold">Tổng chi tiêu</p>
-                                <h3 class="mb-0 text-success">{{ "{:,.0f}".format(stats.totalspent) }} VNĐ</h3>
+                                <p class="text-muted small mb-1 uppercase fw-bold">Chi tiêu đơn đã giao (Delivered)</p>
+                                <h3 class="mb-0 text-success">{{ stats.totalspent|money }} VNĐ</h3>
                             </div>
                         </div>
                     </div>
@@ -145,21 +146,19 @@
                                         <td class="ps-4">#{{ order.OrderID }}</td>
                                         <td>{{ order.OrderDate.strftime('%d/%m/%Y') if order.OrderDate else 'N/A' }}
                                         </td>
-                                        <td><strong>{{ "{:,.0f}".format(order.TotalAmount) }} VNĐ</strong></td>
+                                        <td><strong>{{ order.TotalAmount|money }} VNĐ</strong></td>
                                         <td>
                                             {% if order.Status == 'Pending' %}
                                             <span
                                                 class="badge bg-warning text-dark rounded-pill order-status-badge">Đang
                                                 xử lý</span>
-                                            {% elif order.Status == 'Confirmed' %}
-                                            <span class="badge bg-info text-dark rounded-pill order-status-badge">Đã xác
-                                                nhận</span>
-                                            {% elif order.Status == 'Shipping' %}
+                                            {% elif order.Status == 'Processing' %}
+                                            <span class="badge bg-info text-dark rounded-pill order-status-badge">Đang xử lý</span>
+                                            {% elif order.Status == 'Shipped' %}
                                             <span class="badge bg-primary rounded-pill order-status-badge">Đang
                                                 giao</span>
-                                            {% elif order.Status == 'Completed' %}
-                                            <span class="badge bg-success rounded-pill order-status-badge">Hoàn
-                                                thành</span>
+                                            {% elif order.Status == 'Delivered' %}
+                                            <span class="badge bg-success rounded-pill order-status-badge">Đã giao hàng</span>
                                             {% elif order.Status == 'Cancelled' %}
                                             <span class="badge bg-danger rounded-pill order-status-badge">Đã hủy</span>
                                             {% else %}

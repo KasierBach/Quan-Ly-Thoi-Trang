@@ -273,23 +273,7 @@
     <span id="notificationMessage"></span>
 </div>
 
-<script type="text/template" id="comments-json">
-    {
-        {% for comment in comments %}
-        "{{ comment.CommentID }}": {
-            "id": {{ comment.CommentID }},
-            "productName": "{{ comment.ProductName }}",
-            "productId": {{ comment.ProductID }},
-            "customerName": "{{ comment.CustomerName }}",
-            "content": "{{ comment.Content | replace('\n', '\\n') | replace('"', '\\"') | replace('/', '\\/') }}",
-            "commentDate": "{{ comment.CommentDate.strftime('%d/%m/%Y %H:%M') }}",
-            "adminReply": "{{ comment.AdminReply | replace('\n', '\\n') | replace('"', '\\"') | replace('/', '\\/') if comment.AdminReply else '' }}",
-            "replyDate": "{{ comment.ReplyDate.strftime('%d/%m/%Y %H:%M') if comment.ReplyDate else '' }}",
-            "isVisible": {{ 'true' if comment.IsVisible else 'false' }}
-        }{{ "," if not loop.last }}
-        {% endfor %}
-    }
-</script>
+<script type="application/json" id="comments-json">{{ comment_data|tojson }}</script>
 <script>
     // Comment data for modal
     const commentsData = JSON.parse(document.getElementById('comments-json').textContent);
@@ -315,63 +299,37 @@
         }
     });
 
-    // View comment details (Original function)
+    function renderComment(comment) {
+        const body = document.getElementById('commentModalBody');
+        // Static structure only; every persisted value is assigned as text below.
+        body.innerHTML = `
+            <div class="mb-3"><strong>Sản phẩm:</strong> <a id="modalProduct" target="_blank" rel="noopener"></a></div>
+            <div class="mb-3"><strong>Khách hàng:</strong> <span id="modalCustomer"></span></div>
+            <div class="mb-3"><strong>Ngày bình luận:</strong> <span id="modalDate"></span></div>
+            <div class="mb-3"><strong>Nội dung bình luận:</strong><div class="card mt-2"><div class="card-body" id="modalContent" style="white-space: pre-wrap;"></div></div></div>
+            <div class="mb-3" id="modalReplyGroup"><strong>Phản hồi của admin:</strong><div class="card mt-2 bg-light"><div class="card-body"><div id="modalReply" style="white-space: pre-wrap;"></div><div class="text-muted mt-2 small" id="modalReplyDate"></div></div></div></div>
+            <div class="mb-3"><label for="replyTextarea" class="form-label"><strong>Trả lời bình luận:</strong></label><textarea class="form-control" id="replyTextarea" rows="4" maxlength="5000"></textarea></div>
+        `;
+        const productLink = document.getElementById('modalProduct');
+        productLink.href = `/product/${Number(comment.productId)}`;
+        productLink.textContent = comment.productName;
+        document.getElementById('modalCustomer').textContent = comment.customerName;
+        document.getElementById('modalDate').textContent = comment.commentDate;
+        document.getElementById('modalContent').textContent = comment.content;
+        document.getElementById('modalReplyGroup').hidden = !comment.adminReply;
+        document.getElementById('modalReply').textContent = comment.adminReply;
+        document.getElementById('modalReplyDate').textContent = comment.replyDate;
+        document.getElementById('replyTextarea').value = comment.adminReply;
+    }
+
     function viewComment(commentId) {
         if (isProcessing) return;
-
         const comment = commentsData[commentId];
         if (!comment) return;
-
         currentCommentId = commentId;
-
         document.getElementById('commentModalTitle').textContent = `Bình luận từ ${comment.customerName}`;
-
-        let modalContent = `
-        <div class="mb-3">
-            <strong>Sản phẩm:</strong>
-            <a href="/product/${comment.productId}" target="_blank">${comment.productName}</a>
-        </div>
-        <div class="mb-3">
-            <strong>Khách hàng:</strong> ${comment.customerName}
-        </div>
-        <div class="mb-3">
-            <strong>Ngày bình luận:</strong> ${comment.commentDate}
-        </div>
-        <div class="mb-3">
-            <strong>Nội dung bình luận:</strong>
-            <div class="card mt-2">
-                <div class="card-body">${comment.content}</div>
-            </div>
-        </div>
-        `;
-
-        if (comment.adminReply) {
-            modalContent += `
-            <div class="mb-3">
-                <strong>Phản hồi của admin:</strong>
-                <div class="card mt-2 bg-light">
-                    <div class="card-body">
-                        ${comment.adminReply}
-                        <div class="text-muted mt-2 small">
-                            <em>Trả lời lúc: ${comment.replyDate}</em>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        }
-
-        modalContent += `
-        <div class="mb-3">
-            <label class="form-label"><strong>Trả lời bình luận:</strong></label>
-            <textarea class="form-control" id="replyTextarea" rows="4">${comment.adminReply}</textarea>
-        </div>
-        `;
-
-        document.getElementById('commentModalBody').innerHTML = modalContent;
-
-        const modal = new bootstrap.Modal(document.getElementById('commentModal'));
-        modal.show();
+        renderComment(comment);
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('commentModal')).show();
     }
 
     // Reply to comment
@@ -398,40 +356,17 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Update comment data
-                    commentsData[currentCommentId].adminReply = reply;
-                    commentsData[currentCommentId].replyDate = new Date().toLocaleString('vi-VN');
-
-                    // Update status badge
+                    commentsData[currentCommentId].adminReply = data.reply;
+                    commentsData[currentCommentId].replyDate = data.reply_date;
                     const statusBadge = document.getElementById(`status-${currentCommentId}`);
                     statusBadge.className = 'badge bg-success';
                     statusBadge.textContent = 'Đã trả lời';
-
-                    // Highlight the comment row to show it's updated
                     const row = document.getElementById(`comment-row-${currentCommentId}`);
+                    const replyCell = row.cells[6];
+                    replyCell.textContent = data.reply;
                     row.classList.add('table-success');
-                    row.style.transition = 'background 0.5s';
-                    setTimeout(() => {
-                        row.classList.remove('table-success');
-                    }, 2000);
-
-                    // Update reply section in modal immediately
-                    const modalBody = document.getElementById('commentModalBody');
-                    const textareaGroup = modalBody.querySelector('.mb-3:last-child');
-                    if (textareaGroup) {
-                        textareaGroup.innerHTML = `
-                    <strong>Phản hồi của admin:</strong>
-                    <div class="card mt-2 bg-light border-success border-2">
-                        <div class="card-body">
-                            <span class="text-success fw-bold">${reply}</span>
-                            <div class="text-muted mt-2 small">
-                                <em>Trả lời lúc: ${commentsData[currentCommentId].replyDate}</em>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                    }
-
+                    setTimeout(() => row.classList.remove('table-success'), 2000);
+                    renderComment(commentsData[currentCommentId]);
                     showNotification(data.message, 'success');
                 } else {
                     showNotification(data.message, 'danger');

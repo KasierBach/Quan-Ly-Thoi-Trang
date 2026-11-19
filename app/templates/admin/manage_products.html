@@ -163,10 +163,9 @@
                                 </td>
                                 <td class="text-center">
                                     {% if (product.OriginalPrice or 0) > product.Price %}
-                                    <div class="text-muted small text-decoration-line-through">{{
-                                        "{:,.0f}".format(product.OriginalPrice) }}</div>
+                                    <div class="text-muted small text-decoration-line-through">{{ product.OriginalPrice|money }}</div>
                                     {% endif %}
-                                    <div class="fw-bold text-danger">{{ "{:,.0f}".format(product.Price) }}</div>
+                                    <div class="fw-bold text-danger">{{ product.Price|money }}</div>
                                 </td>
                                 <td class="text-center">
                                     <span

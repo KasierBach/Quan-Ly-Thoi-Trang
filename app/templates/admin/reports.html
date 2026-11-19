@@ -3,9 +3,6 @@
 {% block title %}Báo cáo thống kê - Admin - Fashion Store{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
-
-<link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
 <style>
     :root {
         --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -569,20 +566,20 @@
                 <div class="page-header animate__animated animate__fadeInDown">
                     <div class="row align-items-center">
                         <div class="col-md-8">
-                            <h1 class="mb-2">📊 Báo cáo chi tiết</h1>
-                            <p class="mb-0 opacity-75">Phân tích dữ liệu kinh doanh và xu hướng thị trường</p>
+                            <h1 class="mb-2">Báo cáo chi tiết</h1>
+                            <p class="mb-0 opacity-75">Doanh thu thực hiện chỉ tính đơn đã giao (Delivered), theo ngày đặt. Danh mục và sản phẩm dùng giá trị dòng sản phẩm; không phải trạng thái thanh toán.</p>
                         </div>
                         <div class="col-md-4 text-end">
                             <button class="btn btn-light btn-custom me-2" onclick="window.print()">
                                 <i class="fas fa-print me-2"></i>In báo cáo
                             </button>
                             <button class="btn btn-info btn-custom me-2" data-bs-toggle="modal"
-                                data-bs-target="#emailReportModal">
+                                data-bs-target="#emailReportModal" {% if not email_enabled %}disabled title="Email chưa được cấu hình hoặc đang tắt"{% endif %}>
                                 <i class="fas fa-envelope me-2"></i>Gửi Email
                             </button>
-                            <button class="btn btn-warning btn-custom" onclick="exportToExcel()">
-                                <i class="fas fa-download me-2"></i>Xuất Excel
-                            </button>
+                            <a class="btn btn-warning btn-custom" href="{{ url_for('admin.admin_export_report', report_type='daily_revenue', start_date=start_date, end_date=end_date, group_by=group_by) }}">
+                                <i class="fas fa-download me-2"></i>Xuất CSV
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -606,10 +603,9 @@
                                     <div class="mb-3">
                                         <label class="form-label">Loại báo cáo</label>
                                         <select class="form-select" name="report_type">
-                                            <option value="daily_revenue">Doanh thu theo ngày</option>
-                                            <option value="category_revenue">Doanh thu theo danh mục</option>
-                                            <option value="best_selling">Sản phẩm bán chạy</option>
-                                            <option value="top_customers">Khách hàng VIP</option>
+                                            {% for report_type, report_name in report_names.items() %}
+                                            <option value="{{ report_type }}">{{ report_name }}</option>
+                                            {% endfor %}
                                         </select>
                                     </div>
                                     <div class="mb-3">
@@ -693,11 +689,8 @@
                         <div class="stat-icon">
                             <i class="fas fa-money-bill-wave"></i>
                         </div>
-                        <div class="stat-value">{{ "{:,.0f}".format(total_revenue) }} đ</div>
-                        <div class="stat-label">Tổng doanh thu</div>
-                        <div class="trend-indicator trend-up">
-                            <i class="fas fa-arrow-up me-1"></i>+12.5%
-                        </div>
+                        <div class="stat-value">{{ total_revenue|money }} đ</div>
+                        <div class="stat-label">Doanh thu đơn đã giao</div>
                     </div>
 
                     <div class="stat-card orders">
@@ -705,27 +698,15 @@
                             <i class="fas fa-shopping-cart"></i>
                         </div>
                         <div class="stat-value">{{ total_orders }}</div>
-                        <div class="stat-label">Tổng đơn hàng</div>
-                        <div class="trend-indicator trend-up">
-                            <i class="fas fa-arrow-up me-1"></i>+8.3%
-                        </div>
+                        <div class="stat-label">Số đơn đã giao</div>
                     </div>
 
                     <div class="stat-card customers">
                         <div class="stat-icon">
                             <i class="fas fa-users"></i>
                         </div>
-                        <div class="stat-value">
-                            {% if new_customers %}
-                            {{ new_customers }}
-                            {% else %}
-                            0
-                            {% endif %}
-                        </div>
-                        <div class="stat-label">Khách hàng mới</div>
-                        <div class="trend-indicator trend-up">
-                            <i class="fas fa-arrow-up me-1"></i>+15.7%
-                        </div>
+                        <div class="stat-value">{{ new_customers_range }}</div>
+                        <div class="stat-label">Khách hàng mới trong khoảng ngày</div>
                     </div>
 
                     <div class="stat-card products">
@@ -733,10 +714,7 @@
                             <i class="fas fa-box"></i>
                         </div>
                         <div class="stat-value">{{ best_selling|length }}</div>
-                        <div class="stat-label">Sản phẩm bán chạy</div>
-                        <div class="trend-indicator trend-up">
-                            <i class="fas fa-arrow-up me-1"></i>+5.2%
-                        </div>
+                        <div class="stat-label">Sản phẩm trong top 20 đã giao</div>
                     </div>
                 </div>
 
@@ -815,8 +793,7 @@
                                                 <span class="badge bg-success">{{ product.TotalSold }}</span>
                                             </td>
                                             <td>
-                                                <strong class="text-success">{{
-                                                    "{:,.0f}".format(product.TotalRevenue|default(0)) }} đ</strong>
+                                                <strong class="text-success">{{ product.TotalRevenue|default(0)|money }} đ</strong>
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -838,7 +815,8 @@
                         <div class="table-card animate__animated animate__fadeInUp">
                             <div class="table-header">
                                 <h5 class="mb-0">
-                                    <i class="fas fa-calendar-day me-2"></i>Hiệu suất theo ngày
+                                    <i class="fas fa-calendar-day me-2"></i>Doanh thu theo kỳ (10 kỳ đầu)
+                                    <small class="d-block text-muted">Kỳ nhóm theo {{ group_by }}; chỉ cộng đơn trong khoảng ngày đã chọn.</small>
                                 </h5>
                             </div>
                             <div class="table-responsive">
@@ -848,37 +826,23 @@
                                             <th>Ngày</th>
                                             <th>Đơn hàng</th>
                                             <th>Doanh thu</th>
-                                            <th>Hiệu suất</th>
+                                            <th>Tỷ trọng doanh thu đơn đã giao</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for day in daily_revenue[:10] %}
                                         <tr>
                                             <td>
-                                                <strong>{{ day.OrderDate.strftime('%d/%m/%Y') }}</strong>
-                                                <br><small class="text-muted">{{ day.OrderDate.strftime('%A') }}</small>
+                                                <strong>{{ period_labels[loop.index0] }}</strong>
                                             </td>
                                             <td>
                                                 <span class="badge bg-info">{{ day.OrderCount }}</span>
                                             </td>
                                             <td>
-                                                <strong>{{ "{:,.0f}".format(day.DailyRevenue) }} đ</strong>
+                                                <strong>{{ day.DailyRevenue|money }} đ</strong>
                                             </td>
                                             <td>
-                                                {% if daily_revenue|length > 0 %}
-                                                {% set avg_revenue = total_revenue|float / daily_revenue|length %}
-                                                {% set performance = (day.DailyRevenue|float / avg_revenue) * 100 if
-                                                avg_revenue != 0 else 0 %}
-                                                {% if performance > 120 %}
-                                                <span class="performance-badge performance-excellent">Xuất sắc</span>
-                                                {% elif performance > 80 %}
-                                                <span class="performance-badge performance-good">Tốt</span>
-                                                {% else %}
-                                                <span class="performance-badge performance-average">Trung bình</span>
-                                                {% endif %}
-                                                {% else %}
-                                                <span class="performance-badge performance-average">N/A</span>
-                                                {% endif %}
+                                                {{ '{:.1f}'.format(day.DailyRevenue / total_revenue * 100) if total_revenue > 0 else '0.0' }}%
                                             </td>
                                         </tr>
                                         {% endfor %}
@@ -917,23 +881,21 @@
                                                 <div>
                                                     <h6 class="mb-1 fw-bold">{{ category.CategoryName }}</h6>
                                                     <small class="text-muted">
-                                                        {% if total_revenue|float > 0 %}
-                                                        {{ "{:.1f}".format((category.CategoryRevenue|float /
-                                                        total_revenue|float) * 100) }}%
-                                                        tổng doanh thu
+                                                        {% if total_category_revenue > 0 %}
+                                                        {{ '{:.1f}'.format(category.CategoryRevenue / total_category_revenue * 100) }}%
+                                                        doanh thu dòng sản phẩm
                                                         {% else %}
-                                                        0% tổng doanh thu
+                                                        0% doanh thu dòng sản phẩm
                                                         {% endif %}
                                                     </small>
                                                 </div>
                                                 <div class="text-end">
-                                                    <strong class="text-primary">{{
-                                                        "{:,.0f}".format(category.CategoryRevenue) }} đ</strong>
+                                                    <strong class="text-primary">{{ category.CategoryRevenue|money }} đ</strong>
                                                 </div>
                                             </div>
                                             <div class="progress mt-2" style="height: 6px;">
                                                 <div class="progress-bar"
-                                                    data-width="{% if total_revenue|float > 0 %}{{ (category.CategoryRevenue|float / total_revenue|float) * 100 }}{% else %}0{% endif %}"
+                                                    data-width="{% if total_category_revenue > 0 %}{{ category.CategoryRevenue / total_category_revenue * 100 }}{% else %}0{% endif %}"
                                                     data-bg-color="{{ colors[loop.index0 % colors|length] }}">
                                                 </div>
                                             </div>
@@ -961,20 +923,18 @@
                             <h5 class="mb-3">
                                 <i class="fas fa-download me-2"></i>Xuất báo cáo
                             </h5>
-                            <div class="d-flex gap-2 flex-wrap">
-                                <button class="btn btn-success-custom btn-custom" onclick="exportToCSV()">
-                                    <i class="fas fa-file-csv me-2"></i>CSV
-                                </button>
-                                <button class="btn btn-warning-custom btn-custom" onclick="exportToPDF()">
-                                    <i class="fas fa-file-pdf me-2"></i>PDF
-                                </button>
-                                <button class="btn btn-info-custom btn-custom" onclick="emailReport()">
-                                    <i class="fas fa-envelope me-2"></i>Email
-                                </button>
-                                <button class="btn btn-primary-custom btn-custom" onclick="scheduleReport()">
-                                    <i class="fas fa-clock me-2"></i>Lên lịch
-                                </button>
-                            </div>
+                            <form method="get" action="{{ url_for('admin.admin_export_report') }}" class="d-flex gap-2 flex-wrap">
+                                <input type="hidden" name="start_date" value="{{ start_date }}">
+                                <input type="hidden" name="end_date" value="{{ end_date }}">
+                                <input type="hidden" name="group_by" value="{{ group_by }}">
+                                <select name="report_type" class="form-select" style="width: auto" aria-label="Loại báo cáo CSV">
+                                    {% for report_type, report_name in report_names.items() %}<option value="{{ report_type }}">{{ report_name }}</option>{% endfor %}
+                                </select>
+                                <button class="btn btn-success-custom btn-custom"><i class="fas fa-file-csv me-2"></i>Xuất CSV</button>
+                                <button type="button" class="btn btn-warning-custom btn-custom" onclick="window.print()"><i class="fas fa-print me-2"></i>In báo cáo</button>
+                                <button type="button" class="btn btn-info-custom btn-custom" onclick="emailReport()" {% if not email_enabled %}disabled{% endif %}><i class="fas fa-envelope me-2"></i>Email</button>
+                            </form>
+                            <p class="text-muted small mt-2 mb-0">Lên lịch tự động và định dạng XLSX/PDF chưa được tích hợp. CSV là định dạng xuất được hỗ trợ; tồn kho là ảnh chụp hiện tại không lọc ngày.</p>
                         </div>
                         <div class="col-md-6 text-end">
                             <div class="text-muted">
@@ -994,110 +954,11 @@
             </div>
         </div>
     </div>
-    <!-- Email Modal -->
-    <div class="modal fade" id="legacyEmailModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-envelope me-2"></i>Gửi báo cáo qua Email</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="legacyEmailForm">
-                        <div class="mb-3">
-                            <label class="form-label">Loại báo cáo</label>
-                            <select class="form-select" id="reportType" name="report_type">
-                                <option value="daily_revenue">📊 Doanh thu theo ngày</option>
-                                <option value="best_selling">📦 Sản phẩm bán chạy</option>
-                                <option value="category_revenue">📂 Doanh thu theo danh mục</option>
-                                <option value="top_customers">👥 Khách hàng VIP</option>
-                                <option value="low_stock">📉 Tồn kho thấp</option>
-                                <option value="order_details">📋 Chi tiết đơn hàng</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email người nhận</label>
-                            <input type="email" class="form-control" id="reportEmail" name="email"
-                                placeholder="example@gmail.com" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Lời nhắn (tùy chọn)</label>
-                            <textarea class="form-control" id="reportMessage" name="message" rows="3"
-                                placeholder="Gửi kèm lời nhắn cho người nhận..."></textarea>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" onclick="sendEmailReport()">Gửi ngay</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Schedule Modal -->
-    <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Lên lịch báo cáo tự động</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Tần suất gửi</label>
-                        <select class="form-select" id="scheduleFreq">
-                            <option value="Hàng ngày">Hàng ngày (08:00 AM)</option>
-                            <option value="Hàng tuần">Hàng tuần (Thứ Hai)</option>
-                            <option value="Hàng tháng">Hàng tháng (Ngày 01)</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Loại báo cáo</label>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" checked disabled>
-                            <label class="form-check-label">Tổng hợp doanh thu</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" checked>
-                            <label class="form-check-label">Chi tiết đơn hàng</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox">
-                            <label class="form-check-label">Phân tích danh mục</label>
-                        </div>
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label">Email nhận báo cáo</label>
-                        <input type="email" class="form-control" value="admin@fashionstore.com">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <button type="button" class="btn btn-primary" onclick="confirmSchedule()">Xác nhận lên lịch</button>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-<script type="text/template" id="csv-data">
-    [
-        {% for day in daily_revenue %}
-        {
-            "date": "{{ day.OrderDate.strftime('%d/%m/%Y') }}",
-            "count": {{ day.OrderCount }},
-            "revenue": {{ day.DailyRevenue }}
-        }{{ "," if not loop.last }}
-        {% endfor %}
-    ]
-</script>
-<script
-    src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@2.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='vendor/chart/chart.umd.js') }}"></script>
 <script type="text/template" id="chart-data">
     {
         "dailyLabels": {{ dates|tojson }},
@@ -1106,12 +967,7 @@
         "categoryData": {{ category_revenues|tojson }}
     }
 </script>
-<script type="text/template" id="report-config">
-    {
-        "startDate": "{{ start_date }}",
-        "endDate": "{{ end_date }}"
-    }
-</script>
+<script type="application/json" id="report-config">{{ {'startDate': start_date, 'endDate': end_date, 'groupBy': group_by, 'emailUrl': url_for('admin.admin_send_report_email')}|tojson }}</script>
 <script>
     // Dữ liệu cho biểu đồ
     const chartData = JSON.parse(document.getElementById('chart-data').textContent);
@@ -1231,25 +1087,6 @@
                 maintainAspectRatio: false,
                 cutout: '70%',
                 plugins: {
-                    datalabels: {
-                        color: '#fff',
-                        font: {
-                            weight: 'bold',
-                            size: 12
-                        },
-                        formatter: function (value, context) {
-                            let sum = 0;
-                            let dataArr = context.chart.data.datasets[0].data;
-                            dataArr.map(data => {
-                                sum += data;
-                            });
-                            const percentage = sum > 0 ? ((value / sum) * 100).toFixed(1) + '%' : '0%';
-                            return percentage;
-                        },
-                        display: function (context) {
-                            return context.dataset.data[context.dataIndex] > 0;
-                        }
-                    },
                     legend: {
                         position: 'right',
                         labels: {
@@ -1298,7 +1135,7 @@
                                     label += ': ';
                                 }
                                 const value = context.raw;
-                                const total = context.chart._metasets[context.datasetIndex].total;
+                                const total = context.dataset.data.reduce((sum, amount) => sum + Number(amount), 0);
                                 const percentage = total > 0 ? ((value / total) * 100).toFixed(1) + '%' : '0%';
                                 label += new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
                                 return `${label} (${percentage})`;
@@ -1306,42 +1143,43 @@
                         }
                     }
                 }
-            },
-            plugins: [ChartDataLabels]
+            }
         }
     );
 
     // Utility functions
+    function localDate(date) {
+        const pad = number => String(number).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
     function setDateRange(days) {
         const endDate = new Date();
         const groupBySelect = document.getElementById('group_by');
-
         if (days === 'all') {
             document.getElementById('start_date').value = '';
-            // Auto-switch to Month if "All Time" is selected for better readability
             groupBySelect.value = 'month';
         } else {
-            const startDate = new Date();
-            startDate.setDate(endDate.getDate() - days);
-            document.getElementById('start_date').value = startDate.toISOString().split('T')[0];
-
-            // Auto-switch back to Day for short ranges (e.g. 7 or 30 days)
-            if (days <= 60) {
-                groupBySelect.value = 'day';
-            }
+            const startDate = new Date(endDate);
+            // Both endpoints are inclusive: seven days means today plus six earlier days.
+            startDate.setDate(startDate.getDate() - days + 1);
+            document.getElementById('start_date').value = localDate(startDate);
+            if (days <= 60) groupBySelect.value = 'day';
         }
-
-        document.getElementById('end_date').value = endDate.toISOString().split('T')[0];
-
-        // Auto submit form
-        document.getElementById('dateFilterForm').submit();
+        document.getElementById('end_date').value = localDate(endDate);
+        updateReport();
     }
 
     function updateReport() {
+        const form = document.getElementById('dateFilterForm');
+        const start = document.getElementById('start_date').value;
+        const end = document.getElementById('end_date').value;
+        if (start && end && start > end) {
+            showNotification('Ngày bắt đầu phải trước hoặc bằng ngày kết thúc', 'warning');
+            return;
+        }
         showLoading();
-        setTimeout(() => {
-            document.getElementById('dateFilterForm').submit();
-        }, 500);
+        form.requestSubmit();
     }
 
     function showLoading() {
@@ -1352,67 +1190,13 @@
         document.getElementById('loadingSpinner').style.display = 'none';
     }
 
-    // Export functions
-    function exportToCSV() {
-        showNotification('Đang chuẩn bị file CSV...', 'info');
-
-        // Lấy dữ liệu từ script tag
-        const csvData = JSON.parse(document.getElementById('csv-data').textContent);
-
-        // Tạo header
-        let csvContent = "Ngày,Số đơn hàng,Doanh thu (VNĐ)\n";
-
-        // Thêm dữ liệu
-        csvData.forEach(day => {
-            csvContent += `${day.date},${day.count},${day.revenue}\n`;
-        });
-
-        // Sử dụng BOM để Excel nhận dạng tiếng Việt (UTF-8)
-        const BOM = '\uFEFF';
-        const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
-
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-
-        const reportConfig = JSON.parse(document.getElementById('report-config').textContent);
-        const fileName = `bao_cao_doanh_thu_${reportConfig.startDate}_den_${reportConfig.endDate}.csv`;
-
-        link.setAttribute("href", url);
-        link.setAttribute("download", fileName);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        showNotification('Đã xuất file CSV thành công!', 'success');
-    }
-
-    function exportToPDF() {
-        showNotification('Đang chuẩn bị bản in PDF...', 'info');
-        setTimeout(() => {
-            window.print();
-        }, 500);
-    }
-
-    function exportToExcel() {
-        showNotification('Đang xuất dữ liệu sang Excel...', 'info');
-        // Sử dụng hàm export CSV vì nó đã tương thích tốt với Excel thông qua BOM
-        exportToCSV();
-    }
-
-    const emailModal = new bootstrap.Modal(document.getElementById('emailReportModal'));
-    const scheduleModal = new bootstrap.Modal(document.getElementById('scheduleModal'));
-
     function emailReport() {
-        emailModal.show();
-    }
-
-    function scheduleReport() {
-        scheduleModal.show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('emailReportModal')).show();
     }
 
     function sendEmailReport() {
         const form = document.getElementById('emailReportForm');
+        if (!form.reportValidity()) return;
         const formData = new FormData(form);
         const data = Object.fromEntries(formData.entries());
 
@@ -1420,9 +1204,10 @@
         const reportConfig = JSON.parse(document.getElementById('report-config').textContent);
         data.start_date = reportConfig.startDate;
         data.end_date = reportConfig.endDate;
+        data.group_by = reportConfig.groupBy;
 
         const emailModalElement = document.getElementById('emailReportModal');
-        const modal = bootstrap.Modal.getInstance(emailModalElement);
+        const modal = bootstrap.Modal.getOrCreateInstance(emailModalElement);
 
         if (!data.email || !data.email.includes('@')) {
             showNotification('Vui lòng nhập email hợp lệ', 'warning');
@@ -1437,7 +1222,7 @@
         // Lấy CSRF token từ meta tag
         const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        fetch('/admin/api/send_report_email', {
+        fetch(reportConfig.emailUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -1467,7 +1252,7 @@
             })
             .catch(err => {
                 console.error(err);
-                showNotification('Lỗi khi gửi báo cáo: ' + err, 'danger');
+                showNotification('Không thể gửi báo cáo. Vui lòng thử lại sau.', 'danger');
             })
             .finally(() => {
                 btn.disabled = false;
@@ -1475,22 +1260,18 @@
             });
     }
 
-    function confirmSchedule() {
-        // Mock function for future schedule feature
-        const freq = document.getElementById('scheduleFreq').value;
-        showNotification(`Tính năng lên lịch báo cáo ${freq} đang được phát triển!`, 'info');
-        bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
-    }
-
     // Notification system
     function showNotification(message, type = 'info') {
         const notification = document.createElement('div');
         notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
         notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-        notification.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
+        notification.textContent = message;
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn-close';
+        close.setAttribute('data-bs-dismiss', 'alert');
+        close.setAttribute('aria-label', 'Đóng');
+        notification.appendChild(close);
 
         document.body.appendChild(notification);
 

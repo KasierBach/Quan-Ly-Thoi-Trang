@@ -3,7 +3,6 @@
 {% block title %}Quản trị - Dashboard - Fashion Store{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
@@ -57,7 +56,8 @@
 
             <!-- Main Content -->
             <div class="col-md-9 col-lg-10">
-                <h2 class="mb-4">Dashboard</h2>
+                <h2 class="mb-2">Dashboard</h2>
+                <p class="text-muted mb-4">Doanh thu thực hiện chỉ tính đơn đã giao (Delivered), theo ngày đặt. Dữ liệu lịch sử từ {{ history_start_date }} đến {{ history_end_date }}; doanh thu danh mục là giá trị dòng sản phẩm, không phải tiền đã thanh toán.</p>
 
                 <!-- Stats Cards -->
                 <div class="row mb-4">
@@ -68,7 +68,7 @@
                                     <div>
                                         <h6 class="text-muted">Doanh thu tháng này</h6>
                                         <h3 class="mb-0">
-                                            {{ "{:,.0f}".format(current_month_revenue) }} đ
+                                            {{ current_month_revenue|money }} đ
                                         </h3>
                                     </div>
                                     <div class="bg-light rounded-circle p-3">
@@ -83,7 +83,7 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="text-muted">Đơn hàng tháng này</h6>
+                                        <h6 class="text-muted">Đơn đã giao đặt tháng này</h6>
                                         <h3 class="mb-0">
                                             {{ current_month_orders }}
                                         </h3>
@@ -100,7 +100,7 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="text-muted">Sản phẩm đã bán</h6>
+                                        <h6 class="text-muted">Số lượng đã giao (lịch sử)</h6>
                                         <h3 class="mb-0">
                                             {{ total_sold }}
                                         </h3>
@@ -117,7 +117,7 @@
                             <div class="card-body">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div>
-                                        <h6 class="text-muted">Khách hàng mới</h6>
+                                        <h6 class="text-muted">Khách hàng mới tháng này</h6>
                                         <h3 class="mb-0">{{ new_customers }}</h3>
                                     </div>
                                     <div class="bg-light rounded-circle p-3">
@@ -176,7 +176,7 @@
                                         <td>{{ product.ProductName }}</td>
                                         <td>{{ product.CategoryName }}</td>
                                         <td>{{ product.TotalSold }}</td>
-                                        <td>{{ "{:,.0f}".format(product.TotalRevenue|default(0)) }} đ</td>
+                                        <td>{{ product.TotalRevenue|default(0)|money }} đ</td>
                                         <td>
                                             <a href="{{ url_for('product.product_detail', product_id=product.ProductID) }}"
                                                 class="btn btn-sm btn-outline-primary">
@@ -217,7 +217,7 @@
                                         <td>{{ revenue.Year }}</td>
                                         <td>{{ revenue.Month }}</td>
                                         <td>{{ revenue.OrderCount }}</td>
-                                        <td>{{ "{:,.0f}".format(revenue.TotalRevenue) }} đ</td>
+                                        <td>{{ revenue.TotalRevenue|money }} đ</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -234,28 +234,9 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
-<script type="text/template" id="revenue-data">
-    [
-        {% for revenue in monthly_revenue[: 12]| reverse %}
-        {
-            "Month": {{ revenue.Month }},
-            "Year": {{ revenue.Year }},
-            "TotalRevenue": {{ revenue.TotalRevenue }}
-        }{{ "," if not loop.last }}
-        {% endfor %}
-    ]
-</script>
-<script type="text/template" id="category-data">
-    [
-        {% for category in category_revenue %}
-        {
-            "CategoryName": "{{ category.CategoryName }}",
-            "TotalRevenue": {{ category.TotalRevenue }}
-        }{{ "," if not loop.last }}
-        {% endfor %}
-    ]
-</script>
+<script src="{{ url_for('static', filename='vendor/chart/chart.umd.js') }}"></script>
+<script type="application/json" id="revenue-data">{{ monthly_chart|tojson }}</script>
+<script type="application/json" id="category-data">{{ category_chart|tojson }}</script>
 <script>
     // Data for revenue chart
     const revenueData = JSON.parse(document.getElementById('revenue-data').textContent);
