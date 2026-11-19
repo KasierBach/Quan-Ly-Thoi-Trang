@@ -57,3 +57,18 @@ Tieu_Luan_Ban_Day_Du.md
 extracted_text.txt
 update_docx.py
 thua-2.0.rar
+
+# Local audit and test artifacts
+.gitnexus/
+node_modules/
+.coverage*
+htmlcov/
+.pytest_cache/
+.ruff_cache/
+artifacts/
+instance/
+playwright-report/
+test-results/
+
+# Legacy uploaded blobs (runtime data, never tracked)
+app/static/uploads/
