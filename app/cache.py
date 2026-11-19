@@ -1,64 +1,83 @@
-"""
-Simple in-memory cache for Flask application.
-Provides caching for expensive database queries without external dependencies.
-"""
+import threading
 import time
+from collections import OrderedDict
 from functools import wraps
 
-class SimpleCache:
-    def __init__(self, default_timeout=300):
-        self._cache = {}
-        self.default_timeout = default_timeout
-    
-    def get(self, key):
-        if key in self._cache:
-            value, expiry = self._cache[key]
-            if expiry > time.time():
-                return value
-            else:
-                del self._cache[key]
-        return None
-    
-    def set(self, key, value, timeout=None):
-        if timeout is None:
-            timeout = self.default_timeout
-        self._cache[key] = (value, time.time() + timeout)
-    
-    def delete(self, key):
-        if key in self._cache:
-            del self._cache[key]
-    
-    def clear(self):
-        self._cache.clear()
+from flask import current_app, has_app_context
 
-# Global cache instance
-cache = SimpleCache(default_timeout=300)  # 5 minutes default
+
+class SimpleCache:
+    def __init__(self, default_timeout=300, max_entries=256):
+        self._cache = OrderedDict()
+        self.default_timeout = default_timeout
+        self.max_entries = max_entries
+        self._lock = threading.RLock()
+
+    def get(self, key):
+        with self._lock:
+            item = self._cache.get(key)
+            if item is None:
+                return None
+            value, expiry = item
+            if expiry <= time.monotonic():
+                del self._cache[key]
+                return None
+            self._cache.move_to_end(key)
+            return value
+
+    def set(self, key, value, timeout=None):
+        timeout = self.default_timeout if timeout is None else timeout
+        with self._lock:
+            self._cache[key] = (value, time.monotonic() + timeout)
+            self._cache.move_to_end(key)
+            while len(self._cache) > self.max_entries:
+                self._cache.popitem(last=False)
+
+    def delete(self, key):
+        with self._lock:
+            self._cache.pop(key, None)
+
+    def clear(self):
+        with self._lock:
+            self._cache.clear()
+
+    def invalidate(self, pattern):
+        with self._lock:
+            for key in list(self._cache):
+                if pattern in key:
+                    del self._cache[key]
+
+
+cache = SimpleCache()
+
+
+def app_cache():
+    if has_app_context():
+        return current_app.extensions.setdefault('query_cache', SimpleCache())
+    return cache
+
 
 def cached(timeout=300, key_prefix=''):
-    """Decorator to cache function results"""
-    def decorator(f):
-        @wraps(f)
-        def decorated_function(*args, **kwargs):
-            # Create cache key from function name and arguments
-            cache_key = f"{key_prefix}{f.__name__}:{str(args)}:{str(kwargs)}"
-            
-            # Try to get from cache
-            cached_value = cache.get(cache_key)
-            if cached_value is not None:
-                return cached_value
-            
-            # Execute function and cache result
-            result = f(*args, **kwargs)
-            cache.set(cache_key, result, timeout)
+    def decorator(func):
+        @wraps(func)
+        def decorated(*args, **kwargs):
+            store = app_cache()
+            key = f'{key_prefix}{func.__module__}.{func.__name__}:{args!r}:{sorted(kwargs.items())!r}'
+            result = store.get(key)
+            if result is not None:
+                return result
+            result = func(*args, **kwargs)
+            store.set(key, result, timeout)
             return result
-        return decorated_function
+
+        return decorated
+
     return decorator
 
+
 def invalidate_cache(pattern=''):
-    """Invalidate cache entries matching pattern"""
-    if not pattern:
-        cache.clear()
+    store = app_cache()
+    if pattern:
+        store.invalidate(pattern)
     else:
-        keys_to_delete = [k for k in cache._cache.keys() if pattern in k]
-        for key in keys_to_delete:
-            cache.delete(key)
+        store.clear()

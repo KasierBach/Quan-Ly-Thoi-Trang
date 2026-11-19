@@ -1,162 +1,218 @@
-from flask import Flask, session, render_template, request, jsonify, url_for
-from .config import Config
-from .database import db
-from flask_mail import Mail
-from .utils import DecimalEncoder, resolve_image
-from flask_socketio import SocketIO
-import os
-import json
-import flask.json
+import decimal
 
-# Monkey patch for flask-wtf/recaptcha compatibility
-flask.json.JSONEncoder = json.JSONEncoder
-
-# Initialize SocketIO
-socketio = SocketIO(cors_allowed_origins=os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5000,http://127.0.0.1:5000').split(','), async_mode='threading')
-
+from flask import Flask, abort, jsonify, render_template, request, session, url_for
+from flask.json.provider import DefaultJSONProvider
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from flask_mail import Mail
+from flask_socketio import SocketIO
+from flask_wtf.csrf import CSRFError, CSRFProtect
+from werkzeug.exceptions import HTTPException
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-limiter = Limiter(
-    key_func=get_remote_address,
-    default_limits=["200 per day", "50 per hour"],
-    storage_uri="memory://",
-)
+from .config import Config, database_urls, validate_config
+from .database import db, init_db_pool
+from .formatting import format_money
+from .utils import resolve_image
 
-def create_app(config_class=Config):
+
+socketio = SocketIO(async_mode='threading')
+limiter = Limiter(key_func=get_remote_address)
+mail = Mail()
+csrf = CSRFProtect()
+
+
+class CustomJSONProvider(DefaultJSONProvider):
+    def default(self, value):
+        if isinstance(value, decimal.Decimal):
+            return str(value)
+        return super().default(value)
+
+
+def create_app(config_class=None):
     app = Flask(__name__)
-    app.config.from_object(config_class)
-    
-    # Initialize Limiter with app
-    limiter.init_app(app)
-    app.limiter = limiter
-    
-    # Fix for running behind a proxy (like Render/Heroku)
-    from werkzeug.middleware.proxy_fix import ProxyFix
-    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
-    
-    # Initialize extensions
-    db.init_app(app)
-    
-    # Initialize DB Pool
-    from .database import init_db_pool
-    with app.app_context():
-        # Wrap in try-except in case of missing config/env during build
-        try:
-             init_db_pool(app)
-        except Exception as e:
-             print(f"Warning: Could not initialize DB Pool: {e}")
-
-    mail = Mail(app)
-    app.mail = mail # Store in app for access in routes
-    
-    # Initialize CSRF Protection
-    from flask_wtf.csrf import CSRFProtect
-    csrf = CSRFProtect(app)
-
-    # Initialize SocketIO with app
-    socketio.init_app(app)
-    app.socketio = socketio
-
-    
-    # Register JSON encoder
-    import decimal
-    from flask.json.provider import DefaultJSONProvider
-    
-    class CustomJSONProvider(DefaultJSONProvider):
-        def default(self, o):
-            if isinstance(o, decimal.Decimal):
-                return float(o)
-            return super().default(o)
-            
+    app.config.from_object(Config)
+    if config_class is None:
+        app.config.update(Config.from_environment())
+    elif isinstance(config_class, dict):
+        app.config.update(config_class)
+    else:
+        app.config.from_object(config_class)
+    if not app.config.get('DATABASE_URL'):
+        raw_url, orm_url = database_urls(app.config.get('SQLALCHEMY_DATABASE_URI'))
+        app.config['DATABASE_URL'] = raw_url
+        app.config['SQLALCHEMY_DATABASE_URI'] = orm_url
+    validate_config(app.config)
     app.json = CustomJSONProvider(app)
-    
-    # Register template filters
+
+    proxy_count = app.config.get('TRUSTED_PROXY_COUNT', 0)
+    if proxy_count:
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_count, x_proto=proxy_count, x_host=proxy_count)
+    db.init_app(app)
+    limiter.init_app(app)
+    mail.init_app(app)
+    csrf.init_app(app)
+    socket_options = {}
+    if app.config.get('ALLOWED_ORIGINS') is not None:
+        socket_options['cors_allowed_origins'] = app.config['ALLOWED_ORIGINS']
+    socketio.init_app(app, **socket_options)
+    init_db_pool(app)
+
     app.jinja_env.filters['resolve_image'] = resolve_image
-    
+    app.jinja_env.filters['money'] = format_money
+
     @app.template_filter('image_url')
     def image_url_filter(obj):
         path = resolve_image(obj)
-        if path and (path.startswith('http://') or path.startswith('https://')):
+        if path and path.startswith(('http://', 'https://')):
             return path
         return url_for('static', filename=path or 'images/default.jpg')
 
-    # Global Context Processors
     @app.context_processor
     def inject_user():
-        return dict(
-            user_name=session.get('user_name'),
-            is_admin=session.get('is_admin'),
-            role=session.get('role'),
-            dark_mode=session.get('dark_mode', False)
-        )
-    
+        return {
+            'user_name': session.get('user_name'),
+            'is_admin': session.get('role') == 'admin',
+            'role': session.get('role'),
+            'dark_mode': session.get('dark_mode', False),
+            'contact_details': {
+                'email': app.config.get('CONTACT_EMAIL'),
+                'phone': app.config.get('CONTACT_PHONE'),
+                'address': app.config.get('CONTACT_ADDRESS'),
+            },
+        }
+
     @app.context_processor
     def inject_cart_count():
-        count = 0
-        if 'cart' in session:
-            count = sum(item['quantity'] for item in session['cart'])
-        return dict(cart_count=count)
+        cart = session.get('cart', [])
+        return {'cart_count': sum(item.get('quantity', 0) for item in cart if isinstance(item, dict))}
 
-    # Inject Categories globally (Refactored to Service Layer)
-    from app.services.category_service import CategoryService
     @app.context_processor
     def inject_categories():
-        return dict(categories=CategoryService.get_all_categories())
+        if not app.config.get('DB_CONNECT_ENABLED', True):
+            return {'categories': []}
+        from app.services.category_service import CategoryService
 
-    # Global Before Request
+        return {'categories': CategoryService.get_all_categories()}
+
     @app.before_request
-    def before_request_logic():
-        # Place any global before_request logic here if needed
-        pass
+    def block_public_chat_uploads():
+        if request.endpoint == 'static':
+            filename = (request.view_args or {}).get('filename', '').replace('\\', '/')
+            if filename.startswith('uploads/chat/'):
+                abort(404)
+        return None
 
-    # Security Headers Middleware
+    @app.before_request
+    def revalidate_session():
+        if not session.get('user_id') or not app.config.get('SESSION_REVALIDATION_ENABLED', True):
+            return None
+        if request.endpoint in {'static', 'main.health_live'}:
+            return None
+        from app.services.auth_service import AuthService
+
+        state = AuthService.get_identity_state(session['user_id'])
+        if state is None or state.AuthVersion != session.get('auth_version'):
+            cart = session.get('cart', [])
+            session.clear()
+            session['cart'] = cart
+            return None
+        identity = {
+            'user_name': state.FullName,
+            'role': state.Role,
+            'is_admin': state.Role == 'admin',
+            'dark_mode': state.DarkModeEnabled,
+        }
+        for key, value in identity.items():
+            if session.get(key) != value:
+                session[key] = value
+        return None
+
+    @app.before_request
+    def initialize_page_chat():
+        page_endpoints = {
+            'main.home',
+            'main.contact',
+            'auth.login',
+            'auth.register',
+            'auth.my_account',
+            'auth.forgot_password',
+            'auth.reset_password',
+            'product.products',
+            'product.product_detail',
+            'product.view_wishlist',
+            'cart.view_cart',
+            'cart.checkout',
+            'cart.order_detail',
+            'cart.order_confirmation',
+            'chat.messages_page',
+        }
+        if request.method == 'GET' and request.endpoint in page_endpoints:
+            from app.services.conversation_service import issue_guest_credentials
+
+            issue_guest_credentials()
+        return None
+
     @app.after_request
     def add_security_headers(response):
-        # Prevent Clickjacking
         response.headers['X-Frame-Options'] = 'DENY'
-        # Prevent MIME Sniffing
         response.headers['X-Content-Type-Options'] = 'nosniff'
-        # Strict-Transport-Security (HSTS) - Only in production
-        if not app.debug:
+        response.headers.setdefault('Referrer-Policy', 'same-origin')
+        response.headers['Permissions-Policy'] = 'camera=(self), microphone=(self), display-capture=(self)'
+        if app.config.get('APP_ENV') == 'production':
             response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-        
-        # Content Security Policy (CSP)
-        # Allows self, Google Fonts, and FontAwesome
-        csp = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://code.jquery.com https://cdnjs.cloudflare.com; "
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
-            "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-            "img-src 'self' data: *; "
-            "connect-src 'self' ws: wss:; "
-            "frame-ancestors 'none';"
+        response.headers.setdefault(
+            'Content-Security-Policy',
+            (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "font-src 'self'; "
+                "img-src 'self' data: https:; media-src 'self' blob:; "
+                "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+            ),
         )
-        response.headers['Content-Security-Policy'] = csp
+        if request.endpoint != 'static' and (session.get('user_id') or request.path.startswith('/api/')):
+            response.headers['Cache-Control'] = 'no-store'
         return response
 
-    # Register Blueprints
+    from .routes.admin import admin_bp
     from .routes.auth import auth_bp
+    from .routes.cart import cart_bp
+    from .routes.chat import chat_bp
     from .routes.main import main_bp
     from .routes.product import product_bp
-    from .routes.cart import cart_bp
-    from .routes.admin import admin_bp
-    from .routes.chat import chat_bp
 
-    app.register_blueprint(auth_bp)
-    app.register_blueprint(main_bp)
-    app.register_blueprint(product_bp)
-    app.register_blueprint(cart_bp)
-    app.register_blueprint(admin_bp)
-    app.register_blueprint(chat_bp)
+    for blueprint in (auth_bp, main_bp, product_bp, cart_bp, admin_bp, chat_bp):
+        app.register_blueprint(blueprint)
 
-    # 404 Handler
+    @app.errorhandler(CSRFError)
+    def csrf_error(error):
+        from app.decorators import api_request
+
+        if api_request():
+            return jsonify(success=False, message='Phiên biểu mẫu đã hết hạn. Vui lòng tải lại trang.'), 400
+        return 'Phiên biểu mẫu đã hết hạn. Vui lòng tải lại trang.', 400
+
     @app.errorhandler(404)
-    def page_not_found(e):
+    def page_not_found(error):
+        if request.path.startswith('/api/'):
+            return jsonify(success=False, message='Không tìm thấy dữ liệu'), 404
         return render_template('404.html'), 404
 
-    # Register Socket Events
-    from .sockets import register_socket_events
-    register_socket_events(socketio)
+    @app.errorhandler(HTTPException)
+    def http_error(error):
+        from app.decorators import api_request
 
+        if api_request():
+            return jsonify(success=False, message=error.name), error.code
+        return error
+
+    @app.errorhandler(500)
+    def server_error(error):
+        return jsonify(success=False, message='Đã xảy ra lỗi hệ thống'), 500
+
+    from .sockets import register_socket_events
+
+    register_socket_events(socketio, app)
     return app
