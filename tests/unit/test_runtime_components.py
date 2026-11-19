@@ -1,7 +1,10 @@
 import json
 from decimal import Decimal
 from io import BytesIO
+from pathlib import Path
 from unittest.mock import MagicMock
+
+import app.config as app_config
 
 import psycopg2
 import pytest
@@ -208,7 +211,9 @@ def test_env_config_reads_only_explicit_worktree(monkeypatch):
     monkeypatch.setattr('app.config.load_dotenv', lambda path: calls.append(path))
     values = Config.from_environment()
     assert calls[0].name == '.env'
-    assert calls[0].parent.name == 'thua-2.0-main'
+    # The .env must come from this project's root (the folder containing the app
+    # package), never from an arbitrary parent directory of the checkout.
+    assert calls[0].parent == Path(app_config.__file__).resolve().parents[1]
     assert values['DATABASE_URL'].startswith('postgresql://')
     monkeypatch.setenv('APP_ENV', 'invalid')
     with pytest.raises(ValueError):
