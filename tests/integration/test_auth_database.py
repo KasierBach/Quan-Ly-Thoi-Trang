@@ -1,0 +1,113 @@
+import hashlib
+
+import pytest
+from bs4 import BeautifulSoup
+
+from app.services.auth_service import AuthService
+
+
+pytestmark = pytest.mark.integration
+
+
+def test_login_reads_actual_hashed_password_and_role(db_client):
+    response = db_client.post('/login', data={'email': ' CUSTOMER@EXAMPLE.TEST ', 'password': 'TestUser123!'})
+    assert response.status_code == 302
+    with db_client.session_transaction() as session:
+        assert session['user_id'] == 1
+        assert session['auth_version'] == 1
+        assert session['role'] == 'customer'
+        assert not session['is_admin']
+    assert db_client.get('/my_account').status_code == 200
+    assert db_client.get('/admin').status_code == 302
+
+
+def test_register_normalizes_duplicates_and_password_hash(db_app, db_connection):
+    with db_app.app_context():
+        result = AuthService.register_user('New Test', ' NEW@EXAMPLE.TEST ', 'NewPass123!', None, None)
+        assert result['success']
+        assert AuthService.login_user('new@example.test', 'NewPass123!') is not None
+        duplicate = AuthService.register_user('Duplicate', 'new@example.test', 'NewPass123!', None, None)
+        assert not duplicate['success']
+    with db_connection.cursor() as cursor:
+        cursor.execute('SELECT Password FROM Customers WHERE Email=%s', ('new@example.test',))
+        assert cursor.fetchone().Password != 'NewPass123!'
+
+
+def test_change_password_revokes_other_browser_session(db_app, db_client):
+    other = db_app.test_client()
+    credentials = {'email': 'customer@example.test', 'password': 'TestUser123!'}
+    assert db_client.post('/login', data=credentials).status_code == 302
+    assert other.post('/login', data=credentials).status_code == 302
+    result = db_client.post(
+        '/change_password',
+        data={'current_password': 'TestUser123!', 'new_password': 'NewPass123!', 'confirm_password': 'NewPass123!'},
+    )
+    assert result.status_code == 302
+    assert db_client.get('/my_account').status_code == 200
+    assert other.get('/my_account').status_code == 302
+    with other.session_transaction() as session:
+        assert 'user_id' not in session
+
+
+def test_password_reset_token_hashed_single_use_and_revokes(db_app, db_client, db_connection):
+    db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'})
+    with db_app.app_context():
+        issued = AuthService.create_password_reset_token('customer@example.test')
+    with db_connection.cursor() as cursor:
+        cursor.execute('SELECT Token FROM PasswordResetTokens WHERE CustomerID=1 AND IsUsed=FALSE')
+        assert cursor.fetchone().Token == hashlib.sha256(issued['token'].encode()).hexdigest()
+    with db_app.app_context():
+        assert AuthService.reset_password(issued['token'], 'ResetPass123!')['success']
+        assert not AuthService.reset_password(issued['token'], 'AgainPass123!')['success']
+        assert AuthService.login_user('customer@example.test', 'ResetPass123!')
+    assert db_client.get('/my_account').status_code == 302
+
+
+def test_expired_reset_rejected(db_app, db_connection):
+    with db_app.app_context():
+        issued = AuthService.create_password_reset_token('customer@example.test')
+    with db_connection.cursor() as cursor:
+        cursor.execute("UPDATE PasswordResetTokens SET ExpiryDate=CURRENT_TIMESTAMP - INTERVAL '1 second'")
+    db_connection.commit()
+    with db_app.app_context():
+        assert not AuthService.reset_password(issued['token'], 'ResetPass123!')['success']
+
+
+def test_admin_demotion_effective_next_request(db_client, db_connection):
+    db_client.post('/login', data={'email': 'admin@example.test', 'password': 'TestUser123!'})
+    with db_connection.cursor() as cursor:
+        cursor.execute("UPDATE Customers SET IsAdmin=FALSE,role='customer' WHERE CustomerID=2")
+    db_connection.commit()
+    assert db_client.get('/admin').status_code == 302
+    with db_client.session_transaction() as session:
+        assert session['role'] == 'customer'
+        assert not session['is_admin']
+
+
+def test_csrf_still_required_with_real_database(db_app, db_client):
+    db_app.config['WTF_CSRF_ENABLED'] = True
+    assert (
+        db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'}).status_code == 400
+    )
+    page = db_client.get('/login')
+    token = BeautifulSoup(page.data, 'html.parser').select_one('input[name=csrf_token]')['value']
+    assert (
+        db_client.post(
+            '/login', data={'email': 'customer@example.test', 'password': 'TestUser123!', 'csrf_token': token}
+        ).status_code
+        == 302
+    )
+    assert db_client.post('/logout').status_code == 400
+
+
+def test_profile_and_avatar_columns_are_canonical(db_app):
+    with db_app.app_context():
+        assert AuthService.update_profile(1, 'Updated Name', '0900000011', 'female', '2000-02-29')['success']
+        assert AuthService.update_address(1, 'Updated Address')['success']
+        assert AuthService.update_avatar(1, '/uploads/avatars/test.jpg')['success']
+        assert AuthService.toggle_dark_mode(1, True)['success']
+        profile = AuthService.get_customer_profile(1)
+        assert profile.FullName == 'Updated Name'
+        assert str(profile.DateOfBirth) == '2000-02-29'
+        assert profile.AvatarUrl == profile.avatar_url == '/uploads/avatars/test.jpg'
+        assert profile.DarkModeEnabled

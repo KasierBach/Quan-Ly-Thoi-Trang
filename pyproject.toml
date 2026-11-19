@@ -1,0 +1,28 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-ra --strict-markers --strict-config --import-mode=importlib"
+markers = [
+    "integration: requires the disposable PostgreSQL main-test database",
+    "e2e: runs real browser workflows against the disposable application",
+]
+filterwarnings = ["error::ResourceWarning"]
+timeout = 60
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true
+precision = 2
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "B"]
+
+[tool.ruff.format]
+quote-style = "single"

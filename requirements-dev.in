@@ -1,0 +1,12 @@
+-r requirements.in
+pytest>=9,<10
+pytest-cov>=7,<8
+pytest-timeout>=2.4,<3
+ruff>=0.14,<1
+pyright>=1.1.400,<2
+pip-audit>=2.9,<3
+bandit>=1.8,<2
+beautifulsoup4>=4.13,<5
+playwright>=1.57,<2
+pytest-playwright>=0.7,<1
+locust>=2.40,<3

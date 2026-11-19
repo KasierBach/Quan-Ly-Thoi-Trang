@@ -1,0 +1,21 @@
+{
+  "name": "thua2-main-checks",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint app/static/js tools/*.mjs",
+    "vendor": "node tools/vendor-assets.mjs",
+    "test:js": "node --test tests/js/*.test.mjs"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.1",
+    "eslint": "9.39.1",
+    "globals": "16.5.0",
+    "@fortawesome/fontawesome-free": "6.7.2",
+    "@fontsource/inter": "5.3.0",
+    "bootstrap": "5.3.9",
+    "chart.js": "4.6.1",
+    "jquery": "3.7.1",
+    "socket.io-client": "4.8.4"
+  }
+}
