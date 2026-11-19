@@ -1,78 +1,80 @@
-/**
- * Handles voice recording logic using MediaRecorder API.
- */
+/** Recorder media work is cancelled when the page or recording is closed. */
 export default class ChatRecorder {
     constructor(onStopCallback) {
+        this.onStopCallback = onStopCallback;
         this.mediaRecorder = null;
-        this.audioChunks = [];
         this.isRecording = false;
+        this.pending = false;
+        this.generation = 0;
         this.startTime = null;
-        this.timerInterval = null;
-        this.onStopCallback = onStopCallback; // Function to call with the audio Blob
     }
 
     async start() {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-            alert('Trình duyệt của bạn không hỗ trợ ghi âm.');
-            return false;
+        if (this.pending || this.isRecording) return false;
+        if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder !== 'function') {
+            throw new Error('Trình duyệt không hỗ trợ ghi âm');
         }
-
+        this.pending = true;
+        const generation = ++this.generation;
+        let stream;
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            this.mediaRecorder = new MediaRecorder(stream);
-            this.audioChunks = [];
-
-            this.mediaRecorder.ondataavailable = (event) => {
-                this.audioChunks.push(event.data);
+            stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            if (generation !== this.generation) {
+                stream.getTracks().forEach(track => track.stop());
+                return false;
+            }
+            const mime = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/webm']
+                .find(type => MediaRecorder.isTypeSupported(type));
+            if (!mime) throw new Error('Định dạng ghi âm của trình duyệt chưa được hỗ trợ');
+            const recorder = new MediaRecorder(stream, { mimeType: mime });
+            const chunks = [];
+            this.mediaRecorder = recorder;
+            recorder.ondataavailable = event => { if (event.data.size) chunks.push(event.data); };
+            recorder.onstop = () => {
+                stream.getTracks().forEach(track => track.stop());
+                if (this.mediaRecorder === recorder) this.mediaRecorder = null;
+                if (generation === this.generation && chunks.length) {
+                    Promise.resolve(this.onStopCallback?.(new Blob(chunks, { type: mime })))
+                        .catch(error => console.error('Không thể gửi bản ghi âm:', error.message));
+                }
             };
-
-            this.mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' }); // Chrome records as webm/opus
-                if (this.onStopCallback) this.onStopCallback(audioBlob);
-                this.cleanup();
-            };
-
-            this.mediaRecorder.start();
+            recorder.onerror = () => this.cancel();
+            recorder.start();
             this.isRecording = true;
             this.startTime = Date.now();
             return true;
-        } catch (err) {
-            console.error('Error accessing microphone:', err);
-            alert('Không thể truy cập microphone. Vui lòng kiểm tra quyền truy cập.');
-            return false;
+        } catch (error) {
+            stream?.getTracks().forEach(track => track.stop());
+            this.mediaRecorder = null;
+            throw error;
+        } finally {
+            if (generation === this.generation) this.pending = false;
         }
     }
 
     stop() {
-        if (this.mediaRecorder && this.isRecording) {
-            this.mediaRecorder.stop();
-            this.isRecording = false;
-        }
+        const recorder = this.mediaRecorder;
+        if (recorder && recorder.state !== 'inactive') recorder.stop();
+        this.isRecording = false;
     }
 
     cancel() {
-        if (this.mediaRecorder && this.isRecording) {
-            // Remove onstop callback to prevent sending
-            this.mediaRecorder.onstop = null;
-            this.mediaRecorder.stop();
-            this.isRecording = false;
-            this.cleanup();
+        ++this.generation;
+        this.pending = false;
+        this.isRecording = false;
+        const recorder = this.mediaRecorder;
+        this.mediaRecorder = null;
+        if (recorder) {
+            recorder.onstop = null;
+            recorder.ondataavailable = null;
+            if (recorder.state !== 'inactive') recorder.stop();
+            recorder.stream.getTracks().forEach(track => track.stop());
         }
     }
 
-    cleanup() {
-        if (this.mediaRecorder) {
-            this.mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            this.mediaRecorder = null;
-        }
-        this.audioChunks = [];
-    }
-
+    cleanup() { this.cancel(); }
     getDuration() {
-        if (!this.startTime) return "00:00";
-        const diff = Math.floor((Date.now() - this.startTime) / 1000);
-        const mins = Math.floor(diff / 60).toString().padStart(2, '0');
-        const secs = (diff % 60).toString().padStart(2, '0');
-        return `${mins}:${secs}`;
+        const elapsed = this.startTime ? Math.floor((Date.now() - this.startTime) / 1000) : 0;
+        return `${Math.floor(elapsed / 60).toString().padStart(2, '0')}:${(elapsed % 60).toString().padStart(2, '0')}`;
     }
 }

@@ -1,171 +1,163 @@
-/**
- * Chat API Service
- * Handles all backend communication.
- */
+/** Backend requests use credentials issued to this page, never a stored guest ID. */
 class ChatAPI {
-    constructor(csrfToken) {
+    constructor(csrfToken, { authenticated = false } = {}) {
         this.csrfToken = csrfToken;
+        this.authenticated = authenticated;
+        this.authToken = null;
+        this.credentialsPromise = null;
+        this.expiresAt = 0;
     }
 
-    async getConversations() {
-        const res = await fetch('/api/conversations');
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        return await res.json();
+    async ensureGuestSession() {
+        if (this.credentialsPromise && this.expiresAt && Date.now() >= this.expiresAt) {
+            this.credentialsPromise = null;
+            this.authToken = null;
+        }
+        if (!this.credentialsPromise) {
+            this.credentialsPromise = fetch('/api/chat/guest-session', {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store',
+                headers: { 'X-CSRFToken': this.csrfToken }
+            }).then(async res => {
+                const credentials = await this.readResponse(res);
+                if (typeof credentials.session_id !== 'string' ||
+                    !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(credentials.session_id) ||
+                    typeof credentials.auth_token !== 'string' || !credentials.auth_token ||
+                    credentials.auth_token.length > 2048 ||
+                    !Number.isFinite(credentials.expires_in) || credentials.expires_in <= 0) {
+                    throw new Error('Thông tin phiên chat không hợp lệ');
+                }
+                this.authToken = credentials.auth_token;
+                this.expiresAt = Date.now() + credentials.expires_in * 1000;
+                return credentials;
+            }).catch(error => {
+                this.credentialsPromise = null;
+                this.authToken = null;
+                this.expiresAt = 0;
+                throw error;
+            });
+        }
+        return this.credentialsPromise;
     }
 
-    async getConversation(id) {
-        const res = await fetch(`/api/conversations/${id}`);
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        return await res.json();
+    headers(json = false) {
+        return {
+            'X-CSRFToken': this.csrfToken, 'X-Chat-Token': this.authToken || '',
+            ...(json ? { 'Content-Type': 'application/json' } : {})
+        };
     }
 
-
-    async getHistory(sessionId, conversationId = null) {
-        let url = `/api/chat/history?session_id=${sessionId}`;
-        if (conversationId) url += `&conversation_id=${conversationId}`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`API Error: ${res.status}`);
-        return await res.json();
+    async readResponse(res) {
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data || data.success === false || data.error) {
+            const error = new Error(data?.error || data?.message || `Chat không khả dụng (${res.status})`);
+            error.status = res.status;
+            throw error;
+        }
+        return data;
     }
 
-    async getPinnedMessages(convId) {
-        if (!/^\d+$/.test(String(convId))) return { pinned: [] };
-        const res = await fetch(`/api/chat/conversations/${convId}/pinned`);
-        return res.ok ? await res.json() : { pinned: [] };
+    async request(url, { method = 'GET', body } = {}) {
+        await this.ensureGuestSession();
+        const json = body !== undefined && !(body instanceof FormData);
+        const res = await fetch(url, {
+            method, credentials: 'same-origin', cache: 'no-store', headers: this.headers(json),
+            ...(body !== undefined ? { body: json ? JSON.stringify(body) : body } : {})
+        });
+        return this.readResponse(res);
     }
 
-    async getParticipants(convId) {
-        if (!/^\d+$/.test(String(convId))) return { participants: [] };
-        const res = await fetch(`/api/conversations/${convId}/participants`);
-        return res.ok ? await res.json() : { participants: [] };
+    // Numeric conversations and support sessions are separate scopes on the server.
+    scope(sessionId, conversationId) {
+        if (conversationId != null && /^\d+$/.test(String(conversationId))) {
+            return { conversation_id: this.id(conversationId) };
+        }
+        const sid = conversationId || sessionId;
+        if (typeof sid !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(sid)) {
+            throw new Error('Cần khởi tạo phiên chat');
+        }
+        return { session_id: sid };
     }
+
+    id(value) {
+        const id = Number(value);
+        if (!/^\d+$/.test(String(value)) || !Number.isSafeInteger(id) || id < 1 || id > 2147483647) {
+            throw new Error('Mã chat không hợp lệ');
+        }
+        return id;
+    }
+
+    attachmentUrl(value) {
+        if (typeof value !== 'string' || !/^\/api\/chat\/attachments\/[1-9]\d*$/.test(value)) return null;
+        if (this.authenticated) return value;
+        // Never persist/publish token-bearing URLs or append a token to an external URL.
+        if (!this.authToken || Date.now() >= this.expiresAt) return null;
+        return `${value}?auth_token=${encodeURIComponent(this.authToken)}`;
+    }
+
+    getConversations() { return this.request('/api/conversations'); }
+    getConversation(id) { return this.request(`/api/conversations/${this.id(id)}`); }
+
+    async getHistory(sessionId, conversationId = null, beforeId = null) {
+        const credentials = await this.ensureGuestSession();
+        const query = new URLSearchParams(this.scope(sessionId || credentials.session_id, conversationId));
+        if (beforeId != null) query.set('before_id', this.id(beforeId));
+        return this.request(`/api/chat/history?${query}`);
+    }
+
+    async sendMessage(content, sessionId, conversationId = null, messageType = 'text', replyToId = null) {
+        const credentials = await this.ensureGuestSession();
+        return this.request('/api/chat/send', { method: 'POST', body: {
+            ...this.scope(sessionId || credentials.session_id, conversationId),
+            content, message_type: messageType,
+            ...(replyToId != null ? { reply_to_id: this.id(replyToId) } : {})
+        } });
+    }
+
+    getPinnedMessages(id) { return this.request(`/api/chat/conversations/${this.id(id)}/pinned`); }
+    getParticipants(id) { return this.request(`/api/conversations/${this.id(id)}/participants`); }
 
     async uploadFile(file, sessionId, conversationId) {
+        const credentials = await this.ensureGuestSession();
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('conversation_id', conversationId || '');
-        formData.append('session_id', sessionId);
+        for (const [key, value] of Object.entries(this.scope(sessionId || credentials.session_id, conversationId))) {
+            formData.append(key, value);
+        }
+        return this.request('/api/chat/upload', { method: 'POST', body: formData });
+    }
 
-        const res = await fetch('/api/chat/upload', {
-            method: 'POST',
-            headers: { 'X-CSRFToken': this.csrfToken },
-            body: formData
+    searchUsers(query) { return this.request(`/api/users/search?q=${encodeURIComponent(query)}`); }
+    getSuggestedUsers() { return this.request('/api/users/suggested'); }
+    startDirectChat(userId) {
+        return this.request('/api/conversations/direct', { method: 'POST', body: { user_id: this.id(userId) } });
+    }
+    leaveConversation(id) { return this.request(`/api/conversations/${this.id(id)}/leave`, { method: 'POST' }); }
+    markAsRead(id) { return this.request(`/api/conversations/${this.id(id)}/read`, { method: 'POST' }); }
+    createGroup(name, participantIds = []) {
+        return this.request('/api/conversations', { method: 'POST', body: {
+            name, type: 'group', participant_ids: participantIds.map(id => this.id(id))
+        } });
+    }
+    addGroupParticipant(id, userId) {
+        return this.request(`/api/conversations/${this.id(id)}/participants`, {
+            method: 'POST', body: { user_id: this.id(userId) }
         });
-        return await res.json();
     }
-
-    async searchUsers(query) {
-        const res = await fetch(`/api/users/search?q=${encodeURIComponent(query)}`);
-        return await res.json();
+    updateConversationSettings(id, settings) {
+        return this.request(`/api/conversations/${this.id(id)}/settings`, { method: 'PATCH', body: settings });
     }
-
-    async getSuggestedUsers() {
-        const res = await fetch('/api/users/suggested');
-        return await res.json();
+    updateMySettings(id, settings) {
+        return this.request(`/api/conversations/${this.id(id)}/participants/me`, { method: 'PATCH', body: settings });
     }
-
-    async startDirectChat(userId) {
-        const res = await fetch('/api/conversations/direct', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify({ user_id: userId })
+    updateParticipantSettings(id, userId, settings) {
+        return this.request(`/api/conversations/${this.id(id)}/participants/${this.id(userId)}`, {
+            method: 'PATCH', body: settings
         });
-        return await res.json();
     }
-
-    async leaveConversation(convId) {
-        const res = await fetch(`/api/conversations/${convId}/leave`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': this.csrfToken }
-        });
-        return await res.json();
-    }
-
-    async markAsRead(convId) {
-        const res = await fetch(`/api/conversations/${convId}/read`, {
-            method: 'POST',
-            headers: { 'X-CSRFToken': this.csrfToken }
-        });
-        return await res.json();
-    }
-
-    async createGroup(name) {
-        const res = await fetch('/api/conversations', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify({ name, type: 'group' })
-        });
-        return await res.json();
-    }
-
-    async addGroupParticipant(convId, userId) {
-        const res = await fetch(`/api/conversations/${convId}/participants`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify({ user_id: userId })
-        });
-        return await res.json();
-    }
-
-    async updateConversationSettings(convId, settings) {
-        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
-        const res = await fetch(`/api/conversations/${convId}/settings`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify(settings)
-        });
-        return await res.json();
-    }
-
-    async updateMySettings(convId, settings) {
-        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
-        const res = await fetch(`/api/conversations/${convId}/participants/me`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify(settings)
-        });
-        return await res.json();
-    }
-
-    async updateParticipantSettings(convId, userId, settings) {
-        if (!/^\d+$/.test(String(convId))) return { error: 'Unsupported' };
-        const res = await fetch(`/api/conversations/${convId}/participants/${userId}`, {
-            method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': this.csrfToken
-            },
-            body: JSON.stringify(settings)
-        });
-        return await res.json();
-    }
-
-    async getUserStatus(userId) {
-        const res = await fetch(`/api/users/${userId}/status`);
-        return res.ok ? await res.json() : { online: false, last_seen: null };
-    }
-
-    async getAttachments(convId, type = null) {
-        if (!/^\d+$/.test(String(convId))) return { attachments: [] };
-        let url = `/api/conversations/${convId}/attachments`;
-        if (type) url += `?type=${type}`;
-        const res = await fetch(url);
-        return await res.json();
+    getUserStatus(id) { return this.request(`/api/users/${this.id(id)}/status`); }
+    getAttachments(id, type = null) {
+        const query = type ? `?type=${encodeURIComponent(type)}` : '';
+        return this.request(`/api/conversations/${this.id(id)}/attachments${query}`);
     }
 }
 

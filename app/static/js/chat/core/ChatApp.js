@@ -1,1130 +1,563 @@
-import ChatAPI from '/static/js/chat/core/ChatAPI.js';
-import ChatUI from '/static/js/chat/ui/ChatUI.js';
-import ChatSocket from '/static/js/chat/core/ChatSocket.js';
-import ImageViewer from '/static/js/chat/call/StreamViewer.js';
-import ChatRecorder from '/static/js/chat/media/MediaRecorder.js';
-import { initEmojiPicker, renderStickers, renderGifs } from '/static/js/chat/utils/helpers.js';
-import { CallManager } from '/static/js/chat/call/CallManager.js';
+import ChatAPI from './ChatAPI.js';
+import ChatUI from '../ui/ChatUI.js';
+import ChatSocket from './ChatSocket.js';
+import ImageViewer from '../call/StreamViewer.js';
+import ChatRecorder from '../media/MediaRecorder.js';
+import { createNode, findMessage, initEmojiPicker, renderStickers, renderGifs, stickerUrl } from '../utils/helpers.js';
+import { CallManager } from '../call/CallManager.js';
 
-class ChatApp {
-    constructor() {
-        this.sessionId = window.chatSessionId || localStorage.getItem('chat_session_id');
-        if (!this.sessionId) {
-            this.sessionId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-            localStorage.setItem('chat_session_id', this.sessionId);
-        }
-        this.userId = window.chatUserId || this.sessionId;
-        this.userName = window.chatUserName || 'User';
-        this.isAdmin = window.isChatAdmin || false;
-        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-        this.api = new ChatAPI(this.csrfToken);
-        this.ui = new ChatUI(this);
-        this.socket = new ChatSocket(this.sessionId, this);
-        this.viewer = new ImageViewer();
-        this.recorder = new ChatRecorder(this.handleAudioRecorded.bind(this));
-        this.callManager = new CallManager(this);
-
-        // State
+/** Page state is initialized only after server-issued credentials are available. */
+export class ChatApp {
+    constructor(config = {}, dependencies = {}) {
+        this.userId = Number(config.userId) || null;
+        this.userName = String(config.userName || 'Khách');
+        this.isAdmin = config.isAdmin === true;
+        this.rtcIceServers = Array.isArray(config.rtcIceServers) ? config.rtcIceServers : undefined;
+        this.csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        this.sessionId = null;
         this.currentConversationId = null;
-        this.selectedGroupUsers = [];
+        this.selectionRevision = 0;
+        this.historyRevision = 0;
+        this.searchRevision = 0;
+        this.conversations = [];
+        this.participants = [];
+        this.messageRecords = new Map();
+        this.currentReplyTo = null;
+        this.currentPinnedMessageId = null;
         this.contextMenuMsgId = null;
         this.contextMenuConvId = null;
+        this.selectedGroupUsers = [];
+        this.currentPickerMode = 'sticker';
         this.isSending = false;
-        this.hoveredEmoji = null;
-        this.currentPinnedMessageId = null;
-        this.currentReplyTo = null;
-        this.currentPickerMode = 'sticker'; // 'sticker' or 'gif'
-        this.conversations = [];
-
-        this.init();
+        this.closed = false;
+        this.api = dependencies.api || new ChatAPI(this.csrfToken, { authenticated: !!this.userId });
+        this.ui = dependencies.ui || new ChatUI(this);
+        this.socketFactory = dependencies.socketFactory || ((credentials, app) => new ChatSocket(credentials, app));
+        this.viewer = dependencies.viewer || new ImageViewer();
+        this.recorder = dependencies.recorder || new ChatRecorder(blob => this.handleAudioRecorded(blob));
+        this.callManager = dependencies.callManager || new CallManager(this);
+        this.eventController = new AbortController();
+        this.ready = this.initialize();
     }
 
-    init() {
-        const onReady = () => {
+    async initialize() {
+        try {
+            const credentials = await this.api.ensureGuestSession();
+            if (this.closed) return false;
+            this.sessionId = credentials.session_id;
+            this.socket = this.socketFactory(credentials, this);
             this.callManager.initUI();
             this.initEventListeners();
-            this.loadConversations();
             initEmojiPicker();
-            // Default load stickers
-            renderStickers('stickerGrid');
-        };
-
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', onReady);
-        } else {
-            onReady();
+            await this.loadConversations();
+            await this.selectConversation(null, 'Hỗ trợ khách hàng');
+            this.socket.connect();
+            this.setSendBusy(false);
+            return true;
+        } catch (error) {
+            if (!this.closed) {
+                const list = document.getElementById('conversationList');
+                list?.replaceChildren(createNode('div', 'p-4 text-danger', 'Không thể khởi tạo chat. Hãy tải lại trang.'));
+                this.ui.showToast(error.message);
+            }
+            return false;
         }
+    }
 
-        console.log('ChatApp initialized, window.chatApp set');
-        // Diagnostics: try to clear loading spinner immediately
-        const list = document.getElementById('conversationList');
-        if (list) {
-            console.log('Conversation list found in DOM');
-        } else {
-            console.error('Conversation list NOT found in DOM!');
-        }
-
-        // Expose globally for inline event handlers in HTML
-        window.chatApp = this;
+    isNumericConversation(id = this.currentConversationId) {
+        return id !== null && /^\d+$/.test(String(id));
+    }
+    scope(id = this.currentConversationId) {
+        return this.api.scope(this.sessionId, id);
+    }
+    isCurrentScope(data) {
+        if (!data) return false;
+        if (this.isNumericConversation()) return String(data.conversation_id) === String(this.currentConversationId);
+        const sid = this.currentConversationId || this.sessionId;
+        return data.conversation_id == null && data.session_id === sid;
+    }
+    isOwnMessage(data) {
+        if (data.user_id != null) return this.userId !== null && String(data.user_id) === String(this.userId);
+        return !this.userId && data.sender_type === 'user' && data.session_id === this.sessionId;
     }
 
     async loadConversations() {
-        try {
-            const data = await this.api.getConversations();
-            this.conversations = data.conversations || [];
-            this.ui.renderConversationList(this.conversations, this.currentConversationId, this.selectConversation.bind(this));
+        if (this.closed) return;
+        const data = this.userId ? await this.api.getConversations() : { conversations: [] };
+        if (this.closed) return;
+        this.conversations = data.conversations || [];
+        this.ui.renderConversationList(this.conversations, this.currentConversationId,
+            (id, name, online) => this.run(() => this.selectConversation(id, name, online)));
+    }
 
-            // Auto-open a conversation so màn hình không trống
-            if (!this.currentConversationId) {
-                if (this.conversations.length > 0) {
-                    const first = this.conversations[0];
-                    this.selectConversation(first.id, first.name, first.is_online);
-                } else {
-                    // Không có cuộc trò chuyện nào -> mở ngay kênh hỗ trợ mặc định
-                    this.ui.switchChatUI('Hỗ trợ khách hàng', true, null);
-                    await this.loadHistory();
-                }
-            }
-        } catch (e) {
-            console.error("Error loading conversations:", e);
-            const list = document.getElementById('conversationList');
-            if (list) {
-                list.innerHTML = `<div class="text-center p-4 text-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Lỗi: ${e.message}<br>
-                    <small>Vui lòng thử lại sau.</small>
-                </div>`;
-            }
+    async selectConversation(id, name, online = false) {
+        if (this.closed) return;
+        const previous = this.currentConversationId;
+        if (previous !== id) {
+            this.updateTypingStatus(true);
+            if (this.socket?.connected) this.socket.emit('leave_conversation', this.scope(previous));
+        }
+        this.currentConversationId = id == null || id === '' ? null : id;
+        const revision = ++this.selectionRevision;
+        this.cancelReply();
+        this.currentConversationType = null;
+        this.currentConversationRole = null;
+        this.participants = [];
+        this.updateCallAvailability();
+        document.getElementById('typingIndicator')?.classList.remove('active');
+        document.getElementById('pinnedShelf')?.classList.remove('active');
+        this.ui.switchChatUI(name, online, this.currentConversationId);
+        this.ui.renderSettings({ default_emoji: '👍' });
+        await this.joinCurrentConversation();
+        await this.loadHistory();
+        if (revision !== this.selectionRevision || this.closed) return;
+        await this.loadSettings();
+        if (revision !== this.selectionRevision || this.closed) return;
+        await this.loadParticipants(this.currentConversationId);
+        if (revision !== this.selectionRevision || this.closed) return;
+        await this.loadPinnedMessages(this.currentConversationId);
+        if (revision === this.selectionRevision && !this.closed) {
+            this.ui.renderConversationList(this.conversations, this.currentConversationId,
+                (nextId, nextName, nextOnline) => this.run(() => this.selectConversation(nextId, nextName, nextOnline)));
         }
     }
 
-    async selectConversation(id, name, isOnline = false) {
-        this.currentConversationId = id;
-        this.ui.switchChatUI(name, isOnline, id);
-        this.loadHistory();
-        this.loadConversations(); // Update active class
-
-        if (id) {
-            this.socket.emit('join_conversation', { conversation_id: id });
-            this.loadParticipants(id);
-            this.loadPinnedMessages(id);
-            const gSection = document.getElementById('groupMembersSection');
-            if (gSection) gSection.style.display = 'block';
-            this.loadSettings();
-        } else {
-            const gSection = document.getElementById('groupMembersSection');
-            if (gSection) gSection.style.display = 'none';
-        }
+    async joinCurrentConversation() {
+        if (!this.socket?.connected || !this.sessionId) return;
+        const revision = this.selectionRevision;
+        await this.socket.request('join_conversation', this.scope());
+        if (this.closed || revision !== this.selectionRevision) return;
+        this.joinedRevision = revision;
+        this.updateCallAvailability();
+        await this.loadHistory();
     }
 
     async loadHistory() {
+        if (!this.sessionId || this.closed) return;
+        const selection = this.selectionRevision;
+        const request = ++this.historyRevision;
+        const area = document.getElementById('messagesArea');
+        if (area) area.setAttribute('aria-busy', 'true');
         try {
             const data = await this.api.getHistory(this.sessionId, this.currentConversationId);
-            const area = document.getElementById('messagesArea');
-            if (area) {
-                area.innerHTML = '';
-                if (data.messages && data.messages.length > 0) {
-                    data.messages.forEach(msg => {
-                        const isMyMsg = (msg.user_id && msg.user_id === this.userId) ||
-                            (!msg.user_id && msg.session_id === this.sessionId && msg.sender_type === 'user') ||
-                            (this.isAdmin && msg.sender_type === 'admin');
-
-                        this.ui.appendMessage({
-                            type: isMyMsg ? 'sent' : 'received',
-                            content: msg.content,
-                            time: this.ui.formatTime(msg.timestamp || msg.created_at),
-                            msgType: msg.message_type,
-                            id: msg.id,
-                            attachments: msg.attachments,
-                            reactions: msg.reactions,
-                            avatarText: (msg.sender_name ? msg.sender_name[0].toUpperCase() : (msg.sender_type === 'admin' ? 'A' : 'K')),
-                            senderName: msg.sender_name,
-                            reply_to_id: msg.reply_to_id,
-                            parent_content: msg.parent_content,
-                            parent_sender_type: msg.parent_sender_type,
-                            parent_sender_name: msg.parent_sender_name
-                        });
-                    });
-                } else {
-                    area.innerHTML = '<div class="p-3 text-center text-muted">Chưa có tin nhắn nào</div>';
-                }
-            }
-        } catch (e) {
-            console.error(e);
+            if (this.closed || selection !== this.selectionRevision || request !== this.historyRevision) return;
+            this.messageRecords.clear();
+            area?.replaceChildren();
+            for (const message of data.messages || []) this.renderMessage(message);
+            if (!data.messages?.length) area?.appendChild(createNode('div', 'chat-empty p-3 text-muted', 'Chưa có tin nhắn nào'));
+        } finally {
+            if (request === this.historyRevision) area?.setAttribute('aria-busy', 'false');
         }
     }
 
-    async loadPinnedMessages(convId) {
-        if (!convId) return;
-        try {
-            const data = await this.api.getPinnedMessages(convId);
-            if (data.pinned && data.pinned.length > 0) {
-                const first = data.pinned[0];
-                this.currentPinnedMessageId = first.id;
-                this.ui.showPinnedShelf(first.content);
-            } else {
-                this.currentPinnedMessageId = null;
-                document.getElementById('pinnedShelf')?.classList.remove('active');
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async loadParticipants(convId) {
-        if (!convId) return;
-        try {
-            const data = await this.api.getParticipants(convId);
-            const section = document.getElementById('groupMembersSection');
-            const list = document.getElementById('groupMembersList');
-            if (data.participants && data.participants.length > 2) {
-                if (section) section.style.display = 'block';
-                if (list) {
-                    list.innerHTML = data.participants.map(p => `
-                        <div class="info-item">
-                            <i class="fas fa-user-circle"></i>
-                            <span>${p.name || 'Thành viên'}</span>
-                        </div>
-                    `).join('');
-                }
-            } else {
-                if (section) section.style.display = 'none';
-            }
-        } catch (e) {
-            console.warn("Could not load participants:", e);
-        }
-    }
-
-    async loadSettings() {
-        if (!this.currentConversationId) return;
-        try {
-            const data = await this.api.getConversation(this.currentConversationId);
-            if (data) {
-                this.ui.renderSettings(data);
-                // Also update local state if needed
-            }
-        } catch (e) {
-            console.error("Error loading settings:", e);
-        }
-    }
-
-    sendMessage(content = null) {
-        if (this.isSending) return;
-        const input = document.getElementById('messageInput');
-        if (!content) content = input?.value.trim();
-
-        if (!content) return;
-
-        // Optimistic UI: hiển thị ngay tin nhắn ở phía client
-        const avatarEl = document.getElementById('currentChatAvatar');
-        const avatarText = avatarEl ? avatarEl.textContent : 'Bạn';
+    renderMessage(message) {
+        this.messageRecords.set(String(message.id), message);
         this.ui.appendMessage({
-            type: 'sent',
-            content,
-            time: this.ui.formatTime(new Date().toISOString()),
-            msgType: 'text',
-            id: `temp-${Date.now()}`,
-            avatarText,
-            senderName: this.userName
+            type: this.isOwnMessage(message) ? 'sent' : 'received', id: message.id,
+            content: message.content, time: this.ui.formatTime(message.timestamp || message.created_at),
+            msgType: message.message_type, attachments: message.attachments, reactions: message.reactions,
+            avatarText: String(message.sender_name || 'Khách')[0], senderName: message.sender_name,
+            reply_to_id: message.reply_to_id, parent_content: message.parent_content,
+            parent_sender_type: message.parent_sender_type, parent_sender_name: message.parent_sender_name,
         });
-
-        this.isSending = true;
-        const sendBtn = document.getElementById('sendBtn');
-        if (sendBtn) sendBtn.style.opacity = '0.5';
-
-        this.socket.emit('send_message', {
-            content,
-            session_id: this.sessionId,
-            conversation_id: this.currentConversationId,
-            reply_to_id: this.currentReplyTo
-        });
-
-        if (input) {
-            input.value = '';
-            input.style.height = 'auto';
-        }
-
-        this.cancelReply();
-        this.updateTypingStatus(true);
-
-        setTimeout(() => {
-            this.loadHistory();
-            this.isSending = false;
-            if (sendBtn) sendBtn.style.opacity = '1';
-        }, 500);
     }
 
     handleNewMessage(data) {
-        // ID-based deduplication: check if message already exists in UI
-        if (document.querySelector(`.message-bubble[data-msg-id="${data.id}"]`)) {
-            console.log('Duplicate message ignored:', data.id);
-            return;
+        if (this.closed) return;
+        if (this.isCurrentScope(data)) {
+            this.renderMessage(data);
+            if (document.activeElement === document.getElementById('messageInput')) this.markRead();
         }
-
-        const currentCid = String(this.currentConversationId);
-        const isCurrent = String(data.conversation_id) === currentCid ||
-            (data.session_id === currentCid) ||
-            (data.session_id === this.sessionId && !this.currentConversationId);
-
-        if (isCurrent) {
-            // Only skip appending if it's the SAME session that sent it
-            // AND we don't want to double-render.
-            // But since we have the ID check above, we can be more liberal here.
-
-            const avatarEl = document.getElementById('currentChatAvatar');
-            this.ui.appendMessage({
-                type: (data.sender === 'admin' && this.isAdmin) || (data.sender === 'user' && !this.isAdmin && data.session_id === this.sessionId) ? 'sent' : 'received',
-                content: data.content,
-                time: this.ui.formatTime(data.timestamp),
-                msgType: data.message_type,
-                attachments: data.attachments,
-                avatarText: avatarEl ? avatarEl.textContent : (data.sender === 'admin' ? 'A' : 'K'),
-                senderName: data.sender_name,
-                id: data.id,
-                reply_to_id: data.reply_to_id,
-                parent_content: data.parent_content,
-                parent_sender_type: data.parent_sender_type,
-                parent_sender_name: data.parent_sender_name
-            });
-
-            // If focus is here, mark as read
-            if (document.activeElement === document.getElementById('messageInput')) {
-                this.markRead();
-            }
-        }
-        this.loadConversations();
+        this.run(() => this.loadConversations());
     }
 
-    handleStreamStatus(data) {
-        // data: { conversation_id, user_id, is_streaming }
-        console.log('Stream status update:', data);
-
-        // Update local state
-        const conv = this.conversations.find(c => String(c.id) === String(data.conversation_id));
-        if (conv) {
-            conv.is_streaming = data.is_streaming;
-            conv.streamer_id = data.is_streaming ? data.user_id : null;
-        }
-
-        // Update UI
-        this.ui.setConversationStreaming(data.conversation_id, data.is_streaming, data.user_id);
-    }
-
-    handleReply(msgId, e) {
-        if (e) {
-            e.stopPropagation();
-            e.preventDefault();
-        }
-        this.currentReplyTo = msgId;
-        const msgBubble = document.querySelector(`.message-bubble[data-msg-id="${msgId}"]`);
-        if (msgBubble) {
-            const content = msgBubble.querySelector('.message-bubble-main')?.textContent.trim() || "Tin nhắn phương tiện";
-            const group = msgBubble.closest('.message-group');
-            const senderName = group?.dataset.senderName || "Người dùng";
-            this.ui.showReplyShelf(senderName, content);
-        }
-        document.getElementById('messageInput')?.focus();
-    }
-
-    cancelReply() {
-        this.currentReplyTo = null;
-        this.ui.hideReplyShelf();
-    }
-
-    scrollToMessage(id) {
-        const el = document.querySelector(`.message-bubble[data-msg-id="${id}"]`);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            el.classList.add('highlight-msg');
-            setTimeout(() => el.classList.remove('highlight-msg'), 2000);
+    setSendBusy(busy) {
+        for (const id of ['sendBtn', 'likeBtn', 'attachFileBtn', 'attachImageBtn']) {
+            const button = document.getElementById(id);
+            if (button) button.disabled = busy || !this.sessionId || this.closed;
         }
     }
 
-    updateTypingStatus(forceStop = false) {
-        const msgInput = document.getElementById('messageInput');
-        const hasContent = msgInput?.value.trim().length > 0;
-        const isFocused = document.activeElement === msgInput;
-        const shouldBeTyping = hasContent && isFocused && !forceStop;
-
-        if (shouldBeTyping && !this.isTyping) {
-            this.isTyping = true;
-            this.socket.emit('typing', {
-                conversation_id: this.currentConversationId,
-                session_id: this.sessionId
-            });
-            if (this.isAdmin) {
-                this.socket.emit('admin_typing', {
-                    conversation_id: this.currentConversationId,
-                    session_id: this.sessionId
-                });
+    async sendMessage(content = null, messageType = 'text') {
+        if (this.isSending || this.closed) return false;
+        const input = document.getElementById('messageInput');
+        content = content == null ? input?.value.trim() : content;
+        if (!content || content.length > 4000) return false;
+        this.isSending = true;
+        this.setSendBusy(true);
+        const selection = this.selectionRevision;
+        const target = this.currentConversationId;
+        const reply = this.currentReplyTo;
+        try {
+            if (!await this.ready || this.closed) return false;
+            const result = this.socket?.connected ? await this.socket.request('send_message', {
+                ...this.scope(target), content, message_type: messageType,
+                ...(reply ? { reply_to_id: Number(reply) } : {})
+            }) : await this.api.sendMessage(content, this.sessionId, target, messageType, reply);
+            if (this.closed) return false;
+            if (selection === this.selectionRevision) {
+                this.renderMessage(result);
+                if (input?.value.trim() === content && messageType === 'text') input.value = '';
+                this.cancelReply();
+                this.updateTypingStatus(true);
             }
-        } else if (!shouldBeTyping && this.isTyping) {
-            this.isTyping = false;
-            this.socket.emit('stop_typing', {
-                conversation_id: this.currentConversationId,
-                session_id: this.sessionId
-            });
-            if (this.isAdmin) {
-                this.socket.emit('admin_stop_typing', {
-                    conversation_id: this.currentConversationId,
-                    session_id: this.sessionId
-                });
-            }
+            await this.loadConversations();
+            return true;
+        } catch (error) {
+            if (!this.closed) this.ui.showToast(error.message);
+            return false;
+        } finally {
+            this.isSending = false;
+            this.setSendBusy(false);
         }
     }
-
-    initEventListeners() {
-        const app = this;
-
-        // Send Actions
-        document.getElementById('messagesArea')?.addEventListener('contextmenu', (e) => e.preventDefault());
-        document.getElementById('sendBtn')?.addEventListener('click', () => this.sendMessage());
-        document.getElementById('messageInput')?.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                if (window.getHoveredEmoji && window.getHoveredEmoji()) return;
-                e.preventDefault();
-                this.sendMessage();
-            }
-        });
-
-        // Typing Indicator Refinement
-        this.isTyping = false;
-        const msgInput = document.getElementById('messageInput');
-
-        msgInput?.addEventListener('input', function () {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 100) + 'px';
-            this.style.overflowY = this.scrollHeight > 100 ? 'auto' : 'hidden';
-            app.updateTypingStatus();
-        });
-
-        msgInput?.addEventListener('focus', () => this.updateTypingStatus());
-        msgInput?.addEventListener('blur', () => this.updateTypingStatus());
-
-        // Toggle Buttons
-        const setupClick = (id, fn) => {
-            const el = document.getElementById(id);
-            if (el) {
-                console.log(`Setting up click listener for: ${id}`);
-                el.addEventListener('click', (e) => {
-                    console.log(`Clicked element: ${id}`);
-                    fn(e);
-                });
-            } else {
-                console.warn(`Element not found for setupClick: ${id}`);
-            }
-        };
-
-        // Info Section Accordion
-        document.querySelectorAll('.info-section-title').forEach(title => {
-            title.addEventListener('click', () => {
-                title.parentElement.classList.toggle('open');
-                console.log('Toggled info section');
-            });
-        });
-
-        setupClick('emojiBtn', () => document.getElementById('emojiPicker')?.classList.toggle('active'));
-
-        setupClick('stickerBtn', () => {
-            const picker = document.getElementById('stickerPicker');
-            if (this.currentPickerMode === 'gif') {
-                renderStickers('stickerGrid');
-                this.currentPickerMode = 'sticker';
-                picker.classList.add('active');
-            } else {
-                picker.classList.toggle('active');
-            }
-        });
-
-        setupClick('gifBtn', () => {
-            const picker = document.getElementById('stickerPicker');
-            if (this.currentPickerMode === 'sticker') {
-                renderGifs('stickerGrid');
-                this.currentPickerMode = 'gif';
-                picker.classList.add('active');
-            } else {
-                picker.classList.toggle('active');
-            }
-        });
-
-        // Toggle info panel (dùng class .hidden trùng với CSS mới)
-        setupClick('toggleInfoBtn', () => {
-            const panel = document.getElementById('infoPanel');
-            if (panel) panel.classList.toggle('hidden');
-        });
-        setupClick('closePinnedBtn', () => this.handleUnpinCurrent());
-        setupClick('cancelReplyBtn', () => this.cancelReply());
-        setupClick('likeBtn', () => this.sendMessage('👍'));
-
-        // File Uploads
-        setupClick('attachFileBtn', () => document.getElementById('fileInput')?.click());
-        setupClick('attachImageBtn', () => document.getElementById('imageInput')?.click());
-
-        document.getElementById('fileInput')?.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
-        document.getElementById('imageInput')?.addEventListener('change', (e) => this.handleFileUpload(e.target.files[0]));
-
-        // Voice Recording
-        setupClick('micBtn', () => this.startRecording());
-        setupClick('cancelRecordBtn', () => this.cancelRecording());
-        setupClick('sendRecordBtn', () => this.stopRecording());
-
-        // Search
-        document.getElementById('sidebarSearchInput')?.addEventListener('input', (e) => this.handleSearch(e.target.value.trim()));
-        document.getElementById('sidebarSearchInput')?.addEventListener('focus', () => {
-            const val = document.getElementById('sidebarSearchInput')?.value?.trim();
-            if (!val) this.loadSuggestedUsers();
-        });
-
-        // Modals
-        setupClick('btnCreateGroup', () => {
-            const modal = document.getElementById('groupModal');
-            if (modal) modal.style.display = 'block';
-        });
-        setupClick('closeGroupModal', () => {
-            const modal = document.getElementById('groupModal');
-            if (modal) modal.style.display = 'none';
-            this.selectedGroupUsers = [];
-        });
-        setupClick('btnSubmitGroup', () => this.createGroup());
-
-        // Info Panel Actions
-        setupClick('btnInfoProfile', () => {
-            console.log('Profile action triggered');
-            if (!this.currentConversationId) return;
-            this.handleProfileClick();
-        });
-
-        setupClick('btnInfoMute', () => {
-            console.log('Mute action triggered');
-            this.handleMuteToggle();
-        });
-        setupClick('btnInfoSearch', () => {
-            console.log('Search action triggered');
-            document.getElementById('sidebarSearchInput')?.focus();
-        });
-
-        setupClick('btnInfoTheme', () => {
-            console.log('Theme modal open triggered');
-            const modal = document.getElementById('themeModal');
-            if (modal) modal.style.display = 'block';
-        });
-        setupClick('btnInfoEmoji', () => {
-            console.log('Emoji change triggered');
-            this.handleEmojiChangeRequest();
-        });
-        setupClick('btnInfoNickname', () => {
-            console.log('Nickname prompt triggered');
-            this.handleNicknamePrompt();
-        });
-
-        // Call Buttons
-        setupClick('btnCall', () => this.callManager.startCall(false));
-        setupClick('btnVideo', () => this.callManager.startCall(true));
-
-        setupClick('btnInfoMedia', () => {
-            console.log('Media browser triggered');
-            this.loadAttachments('image');
-        });
-        setupClick('btnInfoFiles', () => {
-            console.log('Files browser triggered');
-            this.loadAttachments('file');
-        });
-
-        // Theme Selection
-        document.querySelectorAll('.theme-option').forEach(opt => {
-            opt.onclick = () => {
-                console.log(`Theme selected: ${opt.dataset.color}`);
-                this.handleThemeChange(opt.dataset.color);
-            };
-        });
-
-        // Global Click-away
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.search-box')) document.getElementById('searchResults')?.classList.remove('active');
-            if (!e.target.closest('#emojiPicker') && !e.target.closest('#emojiBtn')) document.getElementById('emojiPicker')?.classList.remove('active');
-            if (!e.target.closest('#stickerBtn') && !e.target.closest('#stickerPicker')) document.getElementById('stickerPicker')?.classList.remove('active');
-            if (!e.target.closest('.message-bubble') && !e.target.closest('#msgContextMenu')) {
-                const menu = document.getElementById('msgContextMenu');
-                if (menu) menu.style.display = 'none';
-                document.querySelectorAll('.hover-reaction-bar').forEach(bar => bar.style.visibility = '');
-            }
-            const convMenu = document.getElementById('convContextMenu');
-            if (convMenu) convMenu.style.display = 'none';
-        });
-
-        // Context Menu
-        document.addEventListener('contextmenu', (e) => {
-            const item = e.target.closest('.conv-item');
-            if (item && document.getElementById('conversationList')?.contains(item)) {
-                e.preventDefault();
-                this.contextMenuConvId = item.dataset.conversationId;
-                const menu = document.getElementById('convContextMenu');
-                if (menu) {
-                    menu.style.display = 'block';
-                    menu.style.left = e.pageX + 'px';
-                    menu.style.top = e.pageY + 'px';
-                }
-            }
-        });
-
-        // Mark Read Triggers
-        document.addEventListener('click', () => this.markRead());
-        window.addEventListener('focus', () => this.markRead());
-        document.getElementById('messageInput')?.addEventListener('focus', () => this.markRead());
-    }
-
 
     async handleFileUpload(file) {
-        if (!file) return;
+        if (!file || this.isSending || this.closed) return false;
+        const selection = this.selectionRevision;
+        const target = this.currentConversationId;
+        this.isSending = true;
+        this.setSendBusy(true);
         try {
-            const data = await this.api.uploadFile(file, this.sessionId, this.currentConversationId);
-            if (data.status === 'success') {
-                // Hiển thị ngay file vừa upload trong chat
-                const url = data.file_url;
-                const avatarEl = document.getElementById('currentChatAvatar');
-                const avatarText = avatarEl ? avatarEl.textContent : 'Bạn';
-                this.ui.appendMessage({
-                    type: 'sent',
-                    content: url,
-                    time: this.ui.formatTime(new Date().toISOString()),
-                    msgType: data.file_type || 'image',
-                    attachments: url ? [{ file_url: url, file_name: file.name, file_type: data.file_type || 'image' }] : null,
-                    id: `temp-file-${Date.now()}`,
-                    avatarText,
-                    senderName: this.userName
-                });
+            if (!await this.ready || this.closed) return false;
+            const result = await this.api.uploadFile(file, this.sessionId, target);
+            if (!this.closed && selection === this.selectionRevision) this.renderMessage(result.message);
+            return true;
+        } catch (error) { this.ui.showToast(error.message); return false; }
+        finally { this.isSending = false; this.setSendBusy(false); }
+    }
 
-                this.ui.showToast('Tải lên thành công!', 'var(--online-green)');
-                this.loadHistory();
+    async loadPinnedMessages(id) {
+        if (!this.isNumericConversation(id)) return;
+        const selection = this.selectionRevision;
+        const data = await this.api.getPinnedMessages(id);
+        if (this.closed || selection !== this.selectionRevision) return;
+        this.currentPinnedMessageId = data.pinned?.[0]?.id || null;
+        if (this.currentPinnedMessageId) this.ui.showPinnedShelf(data.pinned[0].content);
+        else document.getElementById('pinnedShelf')?.classList.remove('active');
+    }
+
+    async loadParticipants(id) {
+        if (!this.isNumericConversation(id)) return;
+        const selection = this.selectionRevision;
+        const data = await this.api.getParticipants(id);
+        if (this.closed || selection !== this.selectionRevision) return;
+        this.participants = data.participants || [];
+        const list = document.getElementById('groupMembersList');
+        const section = document.getElementById('groupMembersSection');
+        list?.replaceChildren(...this.participants.map(person => {
+            const item = createNode('div', 'info-item');
+            item.append(createNode('i', 'fas fa-user-circle'), createNode('span', '', person.nickname || person.name));
+            return item;
+        }));
+        if (section) section.style.display = 'block';
+        this.updateCallAvailability();
+    }
+
+    async loadSettings() {
+        if (!this.isNumericConversation()) return;
+        const selection = this.selectionRevision;
+        const data = await this.api.getConversation(this.currentConversationId);
+        if (this.closed || selection !== this.selectionRevision) return;
+        this.currentConversationType = data.type;
+        this.currentConversationRole = this.conversations.find(conv => String(conv.id) === String(data.id))?.role;
+        this.ui.renderSettings(data);
+        this.updateCallAvailability();
+    }
+
+    updateCallAvailability() {
+        const canCall = !!this.userId && this.socket?.connected && this.isNumericConversation() &&
+            this.currentConversationType === 'private' && this.participants.length === 2;
+        for (const id of ['btnCall', 'btnVideo']) {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = !canCall;
+                button.setAttribute('aria-label', id === 'btnCall' ? 'Gọi thoại' : 'Gọi video');
+                button.title = canCall ? (id === 'btnCall' ? 'Gọi thoại' : 'Gọi video') : 'Chỉ gọi trong cuộc trò chuyện riêng tư một-một';
             }
-        } catch (e) { console.error(e); }
+        }
+    }
+
+    handleReply(id, event) {
+        event?.stopPropagation();
+        const message = this.messageRecords.get(String(id));
+        if (!message) return;
+        this.currentReplyTo = id;
+        this.ui.showReplyShelf(message.sender_name || 'Người dùng', message.content || 'Tệp đính kèm');
+        document.getElementById('messageInput')?.focus();
+    }
+    cancelReply() { this.currentReplyTo = null; this.ui.hideReplyShelf(); }
+    scrollToMessage(id) { findMessage(id)?.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+
+    updateTypingStatus(forceStop = false) {
+        const input = document.getElementById('messageInput');
+        const typing = !forceStop && !!input?.value.trim() && document.activeElement === input;
+        clearTimeout(this.typingTimer);
+        if (typing !== !!this.isTyping && this.socket?.connected) {
+            this.socket.emit(typing ? 'typing' : 'stop_typing', this.scope());
+            this.isTyping = typing;
+        }
+        if (typing) this.typingTimer = setTimeout(() => this.updateTypingStatus(true), 3000);
+    }
+    markRead() {
+        if (this.isNumericConversation() && this.userId && !document.hidden) this.socket?.emit('mark_read', this.scope());
+    }
+    handleMessagesRead(data) {
+        if (String(data.user_id) !== String(this.userId) && this.isCurrentScope(data)) this.ui.renderSeenStatus(data.user_id);
+    }
+
+    showMsgOptions(id, event) {
+        event?.preventDefault();
+        event?.stopPropagation();
+        if (!this.messageRecords.has(String(id))) return;
+        this.contextMenuMsgId = id;
+        const menu = document.getElementById('msgContextMenu');
+        if (!menu) return;
+        const canPin = this.isNumericConversation() && this.userId &&
+            (this.currentConversationRole === 'admin' || this.conversations.find(conv => String(conv.id) === String(this.currentConversationId))?.created_by === this.userId);
+        document.getElementById('ctxPinBtn').style.display = canPin ? 'block' : 'none';
+        document.getElementById('ctxUnpinBtn').style.display = canPin ? 'block' : 'none';
+        menu.style.display = 'block';
+        menu.style.left = `${Math.min(event?.clientX || 0, innerWidth - menu.offsetWidth)}px`;
+        menu.style.top = `${Math.min(event?.clientY || 0, innerHeight - menu.offsetHeight)}px`;
+    }
+    toggleReactionPopup(id, event) {
+        event?.stopPropagation();
+        if (!this.userId) { this.ui.showToast('Đăng nhập để thả cảm xúc'); return; }
+        document.getElementById(`reactionBar-${id}`)?.classList.toggle('active');
+    }
+    async messageAction(event, id, extra = {}) {
+        try {
+            await this.socket.request(event, { ...this.scope(), message_id: Number(id), ...extra });
+            await Promise.all([this.loadHistory(), this.loadPinnedMessages(this.currentConversationId)]);
+            return true;
+        } catch (error) { this.ui.showToast(error.message); return false; }
+        finally { document.getElementById('msgContextMenu').style.display = 'none'; }
+    }
+    toggleReaction(id, emoji) {
+        if (!this.userId) { this.ui.showToast('Đăng nhập để thả cảm xúc'); return; }
+        const own = this.messageRecords.get(String(id))?.reactions?.some(reaction =>
+            String(reaction.user_id) === String(this.userId) && reaction.emoji === emoji);
+        return this.messageAction(own ? 'remove_reaction' : 'add_reaction', id, { emoji });
+    }
+    reactMsg(emoji) { return this.toggleReaction(this.contextMenuMsgId, emoji); }
+    handleRecall() { return this.messageAction('recall_message', this.contextMenuMsgId); }
+    handlePin() { return this.messageAction('pin_message', this.contextMenuMsgId); }
+    handleUnpin(id = this.contextMenuMsgId) { return this.messageAction('unpin_message', id); }
+    handleUnpinCurrent() { return this.handleUnpin(this.currentPinnedMessageId); }
+    sendSticker(url) {
+        if (!stickerUrl(url)) return;
+        document.getElementById('stickerPicker')?.classList.remove('active');
+        return this.sendMessage(url, 'sticker');
     }
 
     async handleSearch(query) {
-        if (query.length < 2) {
-            if (query.length === 0) this.loadSuggestedUsers();
-            else document.getElementById('searchResults')?.classList.remove('active');
-            return;
-        }
-        const data = await this.api.searchUsers(query);
-        this.renderSearchResults(data.users || []);
+        clearTimeout(this.searchTimer);
+        const request = ++this.searchRevision;
+        if (!this.userId) return;
+        this.searchTimer = setTimeout(() => this.run(async () => {
+            const result = query.length < 2 ? await this.api.getSuggestedUsers() : await this.api.searchUsers(query);
+            if (!this.closed && request === this.searchRevision) this.renderSearchResults(result.users || []);
+        }), 250);
     }
-
     async loadSuggestedUsers() {
-        const data = await this.api.getSuggestedUsers();
-        this.renderSearchResults(data.users || [], 'Gợi ý người dùng');
+        if (!this.userId) return;
+        const result = await this.api.getSuggestedUsers();
+        if (!this.closed) this.renderSearchResults(result.users || [], 'Gợi ý người dùng');
     }
-
     renderSearchResults(users, title = '') {
-        const resultsDiv = document.getElementById('searchResults');
-        if (!resultsDiv) return;
-
-        let html = title ? `<div class="p-2 border-bottom text-muted small px-3">${title}</div>` : '';
-        if (users.length > 0) {
-            html += users.map(u => `
-                <div class="search-user-item" data-user-id="${u.id}" data-user-name="${u.name}">
-                    <div class="search-user-avatar">${u.name[0]}</div>
-                    <div>
-                        <div style="font-weight: 600;">${u.name}</div>
-                        <div style="font-size: 0.8rem; color: #65676b;">${u.email}</div>
-                    </div>
-                </div>
-            `).join('');
-            resultsDiv.innerHTML = html;
-            resultsDiv.querySelectorAll('.search-user-item').forEach(item => {
-                item.onclick = () => this.startDirectChat(item.dataset.userId, item.dataset.userName);
-            });
-            resultsDiv.classList.add('active');
-        } else {
-            resultsDiv.innerHTML = '<div class="p-3 text-center text-muted">Không tìm thấy người dùng</div>';
-            resultsDiv.classList.add('active');
+        const list = document.getElementById('searchResults');
+        if (!list) return;
+        list.replaceChildren();
+        if (title) list.appendChild(createNode('div', 'p-2 text-muted', title));
+        for (const person of users) {
+            const item = createNode('button', 'search-user-item');
+            item.type = 'button';
+            item.dataset.userId = person.id;
+            item.append(createNode('div', 'search-user-avatar', String(person.name || '?')[0]),
+                createNode('div', '', person.name || 'Người dùng'));
+            item.addEventListener('click', () => this.run(() => this.startDirectChat(person.id, person.name)));
+            list.appendChild(item);
         }
+        if (!users.length) list.appendChild(createNode('div', 'p-3 text-muted', 'Không tìm thấy người dùng'));
+        list.classList.add('active');
     }
-
-    async startDirectChat(userId, name) {
+    async startDirectChat(id, name) {
+        const result = await this.api.startDirectChat(id);
         document.getElementById('searchResults')?.classList.remove('active');
-        this.ui.showToast(`Đang kết nối với ${name}...`);
-        const data = await this.api.startDirectChat(userId);
-        if (data.conversation) {
-            this.selectConversation(data.conversation.id, name);
-        } else {
-            this.ui.showToast('Lỗi: ' + (data.error || 'Không thể kết nối'), '#e74c3c');
-        }
+        await this.loadConversations();
+        await this.selectConversation(result.conversation.id, name || 'Người dùng');
     }
-
-    showMsgOptions(msgId, e) {
-        if (e) e.preventDefault();
-        this.contextMenuMsgId = msgId;
-        const menu = document.getElementById('msgContextMenu');
-        if (!menu) return;
-
-        // Dynamic Pin/Unpin
-        const msgGroup = document.querySelector(`.message-group[data-message-id="${msgId}"]`);
-        const isPinned = msgGroup?.dataset.pinned === 'true';
-        const pinBtn = document.getElementById('ctxPinBtn');
-        const unpinBtn = document.getElementById('ctxUnpinBtn');
-        if (pinBtn) pinBtn.style.display = isPinned ? 'none' : 'block';
-        if (unpinBtn) unpinBtn.style.display = isPinned ? 'block' : 'none';
-
-        // Suppress hover bar while menu is open
-        const hoverBar = msgGroup?.querySelector('.hover-reaction-bar');
-        if (hoverBar) hoverBar.style.visibility = 'hidden';
-
-        menu.style.display = 'block';
-
-        // Calculate smart position
-        const clickX = e.clientX;
-        const clickY = e.clientY;
-        const menuRect = menu.getBoundingClientRect();
-        const winWidth = window.innerWidth;
-        const winHeight = window.innerHeight;
-
-        // X-axis: flip to left if too close to right edge
-        if (clickX + menuRect.width > winWidth) {
-            menu.style.left = (clickX - menuRect.width) + 'px';
-        } else {
-            menu.style.left = clickX + 'px';
-        }
-
-        // Y-axis: flip up if too close to bottom
-        if (clickY + menuRect.height > winHeight) {
-            menu.style.top = (clickY - menuRect.height) + 'px';
-            menu.classList.add('up');
-        } else {
-            menu.style.top = clickY + 'px';
-            menu.classList.remove('up');
-        }
-    }
-
-    toggleReactionPopup(msgId, e) {
-        if (e) e.stopPropagation();
-        const bar = document.getElementById(`reactionBar-${msgId}`);
-        if (!bar) return;
-
-        const wasActive = bar.classList.contains('active');
-        // Hide all others
-        document.querySelectorAll('.hover-reaction-bar.active').forEach(b => b.classList.remove('active'));
-
-        if (!wasActive) {
-            bar.classList.add('active');
-        }
-    }
-
-    // --- Message Actions ---
-    toggleReaction(msgId, emoji) {
-        if (!msgId || msgId === 'null') {
-            this.ui.showToast('Vui lòng đợi tin nhắn được gửi xong');
-            return;
-        }
-
-        // Toggle: check DOM to see if we already reacted with THIS SPECIFIC emoji
-        const msgGroup = document.querySelector(`.message-group[data-message-id="${msgId}"]`);
-        const ownBadges = msgGroup?.querySelectorAll(`.reaction-badge.own`) || [];
-        const hasReacted = Array.from(ownBadges).some(b => b.textContent.includes(emoji));
-
-        const event = hasReacted ? 'remove_reaction' : 'add_reaction';
-        this.socket.emit(event, {
-            message_id: parseInt(msgId),
-            emoji: emoji,
-            conversation_id: this.currentConversationId,
-            session_id: this.sessionId
-        });
-    }
-
-    reactMsg(emoji) {
-        if (!this.contextMenuMsgId) return;
-        this.toggleReaction(this.contextMenuMsgId, emoji);
-        document.getElementById('msgContextMenu').style.display = 'none';
-    }
-
-    handleRecall() {
-        if (!this.contextMenuMsgId) return;
-        this.socket.emit('recall_message', {
-            message_id: this.contextMenuMsgId,
-            conversation_id: this.currentConversationId,
-            session_id: this.sessionId
-        });
-        document.getElementById('msgContextMenu').style.display = 'none';
-        this.ui.showToast('Đang thu hồi tin nhắn...');
-    }
-
-    handlePin() {
-        if (!this.contextMenuMsgId || !this.currentConversationId) return;
-        this.socket.emit('pin_message', {
-            message_id: this.contextMenuMsgId,
-            conversation_id: this.currentConversationId
-        });
-        document.getElementById('msgContextMenu').style.display = 'none';
-        this.ui.showToast('Đã ghim tin nhắn');
-    }
-
-    handleUnpin(msgId = null) {
-        const targetId = msgId || this.contextMenuMsgId;
-        if (!targetId || !this.currentConversationId) return;
-        this.socket.emit('unpin_message', {
-            message_id: targetId,
-            conversation_id: this.currentConversationId
-        });
-        document.getElementById('msgContextMenu').style.display = 'none';
-        this.ui.showToast('Đã bỏ ghim tin nhắn');
-    }
-
-    handleUnpinCurrent() {
-        if (this.currentPinnedMessageId) {
-            this.handleUnpin(this.currentPinnedMessageId);
-        } else {
-            document.getElementById('pinnedShelf')?.classList.remove('active');
-        }
-    }
-
-    sendSticker(url) {
-        this.socket.emit('send_message', {
-            content: url,
-            message_type: 'sticker',
-            session_id: this.sessionId,
-            conversation_id: this.currentConversationId
-        });
-        document.getElementById('stickerPicker').classList.remove('active');
-    }
-
-    // --- Conversation Actions ---
-    async handleDeleteConv() {
-        if (!this.contextMenuConvId || !confirm('Bạn có chắc chắn muốn xóa cuộc hội thoại này?')) return;
-        try {
-            const data = await this.api.leaveConversation(this.contextMenuConvId);
-            if (data.status === 'success') {
-                this.ui.showToast('Đã xóa cuộc hội thoại');
-                if (this.currentConversationId == this.contextMenuConvId) location.reload();
-                else this.loadConversations();
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async handleMarkRead() {
-        if (!this.contextMenuConvId) return;
-        try {
-            const data = await this.api.markAsRead(this.contextMenuConvId);
-            if (data.status === 'success') {
-                this.ui.showToast('Đã đánh dấu đã đọc');
-                this.loadConversations();
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    // Handle emoji change modal
-    handleEmojiChangeRequest() {
-        const modal = document.getElementById('emojiDefaultModal');
-        if (!modal) return;
-        modal.style.display = 'flex';
-
-        // Setup emoji option click handlers
-        modal.querySelectorAll('.emoji-default-option').forEach(opt => {
-            opt.onclick = async () => {
-                const emoji = opt.dataset.emoji;
-                if (!this.currentConversationId) return;
-
-                try {
-                    const res = await fetch(`/api/conversations/${this.currentConversationId}/settings`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ default_emoji: emoji })
-                    });
-                    if (res.ok) {
-                        this.ui.showToast(`Đã đổi biểu tượng thành ${emoji}`);
-                        // Update like button
-                        const likeBtn = document.getElementById('likeBtn');
-                        if (likeBtn) likeBtn.innerHTML = emoji;
-                        modal.style.display = 'none';
-                    }
-                } catch (e) {
-                    console.error(e);
-                    this.ui.showToast('Lỗi khi cập nhật', '#e74c3c');
-                }
-            };
-        });
-    }
-
-    // Handle nickname prompt modal
-    async handleNicknamePrompt() {
-        const modal = document.getElementById('nicknameModal');
-        const body = document.getElementById('nicknameListBody');
-        if (!modal || !body || !this.currentConversationId) return;
-
-        try {
-            const convData = await this.api.getConversation(this.currentConversationId);
-            const participants = convData.participants || [];
-
-            body.innerHTML = participants.map(p => `
-                <div class="nickname-item" data-user-id="${p.id}">
-                    <div class="nickname-avatar">${(p.name || 'U')[0].toUpperCase()}</div>
-                    <input type="text" value="${p.nickname || p.name || ''}" placeholder="${p.name || 'Nickname'}" 
-                           onchange="window.chatApp.saveNickname(${p.id}, this.value)">
-                </div>
-            `).join('');
-
-            modal.style.display = 'flex';
-        } catch (e) {
-            console.error(e);
-            this.ui.showToast('Không thể tải danh sách', '#e74c3c');
-        }
-    }
-
-    async saveNickname(userId, nickname) {
-        if (!this.currentConversationId) return;
-        try {
-            const res = await fetch(`/api/conversations/${this.currentConversationId}/participants/${userId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nickname })
-            });
-            if (res.ok) {
-                this.ui.showToast('Đã cập nhật biệt danh');
-            }
-        } catch (e) {
-            console.error(e);
-        }
-    }
-
-    // Real-time Seen Status
-    markRead() {
-        if (this.currentConversationId && !document.hidden && this.socket) {
-            this.socket.emit('mark_read', { conversation_id: this.currentConversationId });
-        }
-    }
-
-    async handleMessagesRead(data) {
-
-        // data.user_id is the person who read the messages
-        if (data.user_id == this.userId) return; // Ignore own read receipts
-
-        // Need avatar URL. Check participants cache or fetch status
-        let avatarUrl = null;
-        if (this.currentConversationId) {
-            const convItem = document.querySelector(`.conv-item[data-conversation-id="${this.currentConversationId}"]`);
-            // This is a bit hacky, normally we'd have a user store.
-            // For now, let's use a generic fetch or cache if possible.
-            // Or, stick to the 'active chat' header avatar if it's 1-on-1?
-            // Since we don't have a robust user store in frontend, let's just use defaults for now 
-            // or fetch user info.
-            try {
-                const status = await this.api.getUserStatus(data.user_id);
-                // The status API currently only returns online/last_seen.
-                // We might need to rely on the side panel info if available.
-            } catch (e) { }
-
-            // Try to find avatar in message history if they sent a message
-            const theirMsg = document.querySelector(`.message-group[data-message-id] .message-avatar`);
-            // This is imprecise.
-            // Better strategy: Use a default avatar or update API to return avatar.
-        }
-
-        // For 1-on-1, use the chat header avatar if available?
-        // Let's assume the other person is the one we are chatting with.
-        // If it's a group, this is harder.
-        // For now, use a generic "check" icon or small avatar.
-        // Actually, let's use the standard "blue dot" or small version of conv avatar.
-
-        // Let's try to get it from the chat header if it's 1-on-1
-        // const headerAvatar = document.querySelector('.msg-chat-header .header-avatar');
-        // avatarUrl = headerAvatar ? getComputedStyle(headerAvatar).backgroundImage.slice(5, -2) : null;
-
-        // BETTER: Create a simple helper or use a default image for now.
-        this.ui.renderSeenStatus(data.user_id, 'https://cdn-icons-png.flaticon.com/512/1177/1177568.png'); // Using a generic user icon for now
-    }
-
     async createGroup() {
-        const nameInput = document.getElementById('groupName');
-        const name = nameInput.value.trim() || "Nhóm mới";
-        try {
-            const data = await this.api.createGroup(name);
-            if (data.id) {
-                const convId = data.id;
-                for (let user of this.selectedGroupUsers) {
-                    await this.api.addGroupParticipant(convId, user.id);
-                }
-                document.getElementById('groupModal').style.display = 'none';
-                nameInput.value = '';
-                this.selectedGroupUsers = [];
-                this.selectConversation(convId, name);
-            }
-        } catch (e) { console.error(e); }
+        const input = document.getElementById('groupName');
+        if (!this.userId || !input.value.trim()) return;
+        const result = await this.api.createGroup(input.value.trim(), this.selectedGroupUsers.map(person => person.id));
+        document.getElementById('groupModal').style.display = 'none';
+        input.value = '';
+        this.selectedGroupUsers = [];
+        await this.loadConversations();
+        await this.selectConversation(result.id, result.name);
+    }
+    async handleDeleteConv() {
+        if (!this.isNumericConversation(this.contextMenuConvId) || !confirm('Rời cuộc trò chuyện này?')) return;
+        await this.api.leaveConversation(this.contextMenuConvId);
+        if (String(this.currentConversationId) === String(this.contextMenuConvId)) await this.selectConversation(null, 'Hỗ trợ khách hàng');
+        await this.loadConversations();
+    }
+    async handleMarkRead() {
+        if (this.isNumericConversation(this.contextMenuConvId)) await this.api.markAsRead(this.contextMenuConvId);
+    }
+    handleEmojiChangeRequest() {
+        if (!this.isNumericConversation()) return;
+        document.getElementById('emojiDefaultModal').style.display = 'block';
+    }
+    async handleDefaultEmojiChange(emoji) {
+        await this.socket.request('update_conversation_settings', { ...this.scope(), settings: { default_emoji: emoji } });
+        document.getElementById('emojiDefaultModal').style.display = 'none';
+        await this.loadSettings();
+    }
+    async handleThemeChange(color) {
+        if (!this.isNumericConversation()) return;
+        await this.socket.request('update_conversation_settings', { ...this.scope(), settings: { theme_color: color } });
+        this.ui.applyTheme(color);
+        document.getElementById('themeModal').style.display = 'none';
+    }
+    async handleNicknamePrompt() {
+        if (!this.isNumericConversation()) return;
+        const data = await this.api.getParticipants(this.currentConversationId);
+        const body = document.getElementById('nicknameListBody');
+        body.replaceChildren(...data.participants.map(person => {
+            const row = createNode('div', 'nickname-item');
+            const input = createNode('input', 'nickname-input');
+            input.value = person.nickname || person.name;
+            input.maxLength = 100;
+            input.setAttribute('aria-label', `Biệt danh ${person.name}`);
+            const button = createNode('button', 'btn-primary', 'Lưu');
+            button.addEventListener('click', () => this.run(() => this.saveNickname(person.id, input.value)));
+            row.append(createNode('span', 'nickname-avatar', String(person.name)[0]), input, button);
+            return row;
+        }));
+        document.getElementById('nicknameModal').style.display = 'block';
+    }
+    async saveNickname(id, nickname) {
+        await this.socket.request('update_participant_settings', { ...this.scope(), user_id: Number(id), settings: { nickname } });
+        await this.loadConversations();
+        await this.loadParticipants(this.currentConversationId);
+    }
+    async handleMuteToggle() {
+        if (!this.isNumericConversation()) return;
+        const own = this.participants.find(person => String(person.id) === String(this.userId));
+        await this.api.updateMySettings(this.currentConversationId, { is_muted: !own?.is_muted });
+        await this.loadParticipants(this.currentConversationId);
+        const text = document.getElementById('muteText');
+        if (text) text.textContent = own?.is_muted ? 'Tắt thông báo' : 'Bật thông báo';
+    }
+    handleProfileClick() { this.ui.showToast('Ứng dụng chưa có trang hồ sơ công khai'); }
+    async loadAttachments(type) {
+        if (!this.isNumericConversation()) return;
+        const data = await this.api.getAttachments(this.currentConversationId, type);
+        this.ui.openMediaBrowser(type, data.attachments || []);
     }
 
-    // --- Recording Methods ---
     async startRecording() {
-        const started = await this.recorder.start();
-        if (started) {
-            document.getElementById('recordingUI').style.display = 'flex';
-            document.getElementById('messageInput').style.visibility = 'hidden';
-            this.recorder.timerInterval = setInterval(() => {
-                document.getElementById('recordingTimer').textContent = this.recorder.getDuration();
-            }, 1000);
+        if (!await this.recorder.start()) return;
+        document.getElementById('recordingUI').style.display = 'flex';
+        this.recordTimer = setInterval(() => { document.getElementById('recordingTimer').textContent = this.recorder.getDuration(); }, 1000);
+    }
+    resetRecordingUI() {
+        clearInterval(this.recordTimer);
+        document.getElementById('recordingUI').style.display = 'none';
+        document.getElementById('recordingTimer').textContent = '00:00';
+    }
+    cancelRecording() { this.recorder.cancel(); this.resetRecordingUI(); }
+    stopRecording() { this.recorder.stop(); this.resetRecordingUI(); }
+    handleAudioRecorded(blob) {
+        if (!blob?.size || this.closed) return;
+        const extension = blob.type.startsWith('audio/ogg') ? 'ogg' : 'webm';
+        return this.handleFileUpload(new File([blob], `voice-message.${extension}`, { type: blob.type }));
+    }
+
+    run(operation) {
+        try {
+            return Promise.resolve(operation()).catch(error => { if (!this.closed) this.ui.showToast(error.message); });
+        } catch (error) {
+            if (!this.closed) this.ui.showToast(error.message);
+            return Promise.resolve();
         }
     }
-
-    cancelRecording() {
+    initEventListeners() {
+        const on = (id, event, action) => document.getElementById(id)?.addEventListener(event,
+            data => this.run(() => action(data)), { signal: this.eventController.signal });
+        on('sendBtn', 'click', () => this.sendMessage());
+        on('messageInput', 'keydown', event => {
+            if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); return this.sendMessage(); }
+        });
+        on('messageInput', 'input', () => this.updateTypingStatus());
+        on('messageInput', 'focus', () => { this.updateTypingStatus(); this.markRead(); });
+        on('messageInput', 'blur', () => this.updateTypingStatus(true));
+        on('likeBtn', 'click', () => this.sendMessage(document.getElementById('likeBtn').dataset.emoji || '👍'));
+        on('emojiBtn', 'click', () => document.getElementById('emojiPicker').classList.toggle('active'));
+        for (const [id, type] of [['stickerBtn', 'sticker'], ['gifBtn', 'gif']]) on(id, 'click', () => {
+            const picker = document.getElementById('stickerPicker');
+            if (this.currentPickerMode !== type || !picker.classList.contains('active')) {
+                (type === 'gif' ? renderGifs : renderStickers)('stickerGrid');
+                picker.classList.add('active');
+            } else picker.classList.remove('active');
+            this.currentPickerMode = type;
+        });
+        on('attachFileBtn', 'click', () => document.getElementById('fileInput').click());
+        on('attachImageBtn', 'click', () => document.getElementById('imageInput').click());
+        for (const id of ['fileInput', 'imageInput']) on(id, 'change', event => this.handleFileUpload(event.target.files[0]));
+        on('cancelReplyBtn', 'click', () => this.cancelReply());
+        on('closePinnedBtn', 'click', () => document.getElementById('pinnedShelf').classList.remove('active'));
+        on('sidebarSearchInput', 'input', event => this.handleSearch(event.target.value.trim()));
+        on('sidebarSearchInput', 'focus', () => this.loadSuggestedUsers());
+        on('btnCreateGroup', 'click', () => { if (this.userId) document.getElementById('groupModal').style.display = 'block'; });
+        document.querySelectorAll('[data-close-group]').forEach(button => button.addEventListener('click', () => {
+            document.getElementById('groupModal').style.display = 'none';
+        }, { signal: this.eventController.signal }));
+        on('btnSubmitGroup', 'click', () => this.createGroup());
+        on('toggleInfoBtn', 'click', () => document.getElementById('infoPanel').classList.toggle('hidden'));
+        on('btnInfoProfile', 'click', () => this.handleProfileClick());
+        on('btnInfoMute', 'click', () => this.handleMuteToggle());
+        on('btnInfoSearch', 'click', () => document.getElementById('sidebarSearchInput').focus());
+        on('btnInfoTheme', 'click', () => { if (this.isNumericConversation()) document.getElementById('themeModal').style.display = 'block'; });
+        on('btnInfoEmoji', 'click', () => this.handleEmojiChangeRequest());
+        on('btnInfoNickname', 'click', () => this.handleNicknamePrompt());
+        on('btnInfoMedia', 'click', () => this.loadAttachments('image'));
+        on('btnInfoFiles', 'click', () => this.loadAttachments('file'));
+        on('btnCall', 'click', () => this.callManager.startCall(false));
+        on('btnVideo', 'click', () => this.callManager.startCall(true));
+        on('micBtn', 'click', () => this.startRecording());
+        on('cancelRecordBtn', 'click', () => this.cancelRecording());
+        on('sendRecordBtn', 'click', () => this.stopRecording());
+        document.querySelectorAll('.theme-option').forEach(choice => choice.addEventListener('click', () => this.run(() => this.handleThemeChange(choice.dataset.color))));
+        document.querySelectorAll('.emoji-default-option').forEach(choice => choice.addEventListener('click', () => this.run(() => this.handleDefaultEmojiChange(choice.dataset.emoji))));
+        document.addEventListener('click', event => {
+            if (!event.target.closest('.search-box')) document.getElementById('searchResults')?.classList.remove('active');
+            if (!event.target.closest('#msgContextMenu') && !event.target.closest('.message-bubble')) document.getElementById('msgContextMenu').style.display = 'none';
+            if (!event.target.closest('#emojiBtn') && !event.target.closest('#emojiPicker')) document.getElementById('emojiPicker').classList.remove('active');
+        }, { signal: this.eventController.signal });
+        window.addEventListener('pagehide', () => this.dispose(), { once: true });
+    }
+    dispose() {
+        if (this.closed) return;
+        this.updateTypingStatus(true);
+        this.closed = true;
+        this.eventController.abort();
+        clearTimeout(this.searchTimer);
+        clearTimeout(this.typingTimer);
+        clearInterval(this.recordTimer);
         this.recorder.cancel();
-        this.resetRecordingUI();
-    }
-
-    stopRecording() {
-        this.recorder.stop(); // Triggers onStopCallback -> handleAudioRecorded
-        this.resetRecordingUI();
-    }
-
-    resetRecordingUI() {
-        clearInterval(this.recorder.timerInterval);
-        document.getElementById('recordingUI').style.display = 'none';
-        document.getElementById('messageInput').style.visibility = 'visible';
-        document.getElementById('recordingTimer').textContent = "00:00";
-    }
-
-    async handleAudioRecorded(audioBlob) {
-        if (!audioBlob || audioBlob.size === 0) return;
-
-        const file = new File([audioBlob], "voice_message.webm", { type: "audio/webm" });
-        await this.handleFileUpload(file);
-    }
-
-    // --- New Info Panel Handlers ---
-
-    async handleProfileClick() {
-        // Find other participant for direct chat
-        if (!this.currentConversationId) return;
-        try {
-            const data = await this.api.getParticipants(this.currentConversationId);
-            const participants = data.participants || [];
-            const other = participants.find(p => p.id !== this.userId);
-            if (other) {
-                window.location.href = `/profile/${other.id}`; // Adjust route as per your app
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async handleMuteToggle() {
-        if (!this.currentConversationId) return;
-        const muteText = document.getElementById('muteText');
-        const isCurrentlyMuted = muteText.textContent.includes('Bật');
-        const newMute = !isCurrentlyMuted;
-
-        try {
-            const res = await this.api.updateMySettings(this.currentConversationId, { is_muted: newMute });
-            if (res.status === 'success') {
-                muteText.textContent = newMute ? 'Bật thông báo' : 'Tắt thông báo';
-                this.ui.showToast(newMute ? 'Đã tắt thông báo' : 'Đã bật thông báo');
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async handleEmojiChangeRequest() {
-        // Temporarily use the emoji picker for this selection
-        const picker = document.getElementById('emojiPicker');
-        picker.classList.add('active');
-        // We'll need a way to distinguish if we are picking for chat or for setting
-        this.pickingForSetting = 'emoji';
-    }
-
-    async handleThemeChange(color) {
-        if (!this.currentConversationId) return;
-        try {
-            const res = await this.api.updateConversationSettings(this.currentConversationId, { theme_color: color });
-            if (res.status === 'success') {
-                this.ui.applyTheme(color);
-                document.getElementById('themeModal').style.display = 'none';
-                this.ui.showToast('Đã đổi chủ đề');
-                // Emit socket event so others see it
-                this.socket.emit('update_conversation_settings', { conversation_id: this.currentConversationId, settings: { theme_color: color } });
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async handleNicknamePrompt() {
-        if (!this.currentConversationId) return;
-        const body = document.getElementById('nicknameListBody');
-        try {
-            const data = await this.api.getParticipants(this.currentConversationId);
-            const participants = data.participants || [];
-            body.innerHTML = participants.map(p => `
-                <div style="margin-bottom: 10px; display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #ccc; display: flex; align-items: center; justify-content: center;">${p.name[0]}</div>
-                    <div style="flex: 1;">
-                        <input type="text" class="nickname-input" data-user-id="${p.id}" value="${p.nickname || p.name}" 
-                               style="width: 100%; padding: 5px; border: 1px solid #ddd; border-radius: 4px;">
-                    </div>
-                    <button onclick="window.chatApp.saveNickname(${p.id}, this.previousElementSibling.querySelector('input').value)" 
-                            style="padding: 5px 10px; background: var(--messenger-blue); color: white; border: none; border-radius: 4px; cursor: pointer;">Lưu</button>
-                </div>
-            `).join('');
-            document.getElementById('nicknameModal').style.display = 'block';
-        } catch (e) { console.error(e); }
-    }
-
-    async saveNickname(targetUserId, nickname) {
-        if (!this.currentConversationId) return;
-        try {
-            let res;
-            if (targetUserId == this.userId) {
-                res = await this.api.updateMySettings(this.currentConversationId, { nickname });
-            } else {
-                res = await this.api.updateParticipantSettings(this.currentConversationId, targetUserId, { nickname });
-            }
-
-            if (res.status === 'success') {
-                this.ui.showToast('Đã cập nhật biệt danh');
-                this.loadConversations();
-
-                // Immediate UI update for header if it's the partner
-                if (targetUserId != this.userId) {
-                    const nameEl = document.getElementById('currentChatName');
-                    const infoNameEl = document.getElementById('infoPanelName');
-                    if (nameEl && !nameEl.closest('.conversation-item')) nameEl.textContent = nickname;
-                    if (infoNameEl) infoNameEl.textContent = nickname;
-                }
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async handleDefaultEmojiChange(emoji) {
-        if (!this.currentConversationId) return;
-        try {
-            const res = await this.api.updateConversationSettings(this.currentConversationId, { default_emoji: emoji });
-            if (res.status === 'success') {
-                this.loadSettings();
-                this.ui.showToast('Đã đổi biểu tượng cảm xúc');
-                this.socket.emit('update_conversation_settings', { conversation_id: this.currentConversationId, settings: { default_emoji: emoji } });
-            }
-        } catch (e) { console.error(e); }
-    }
-
-    async loadAttachments(type) {
-        if (!this.currentConversationId) return;
-        try {
-            const data = await this.api.getAttachments(this.currentConversationId, type);
-            this.ui.openMediaBrowser(type, data.attachments || []);
-        } catch (e) { console.error(e); }
+        this.callManager.dispose();
+        this.socket?.close();
     }
 }
 
-// Global instance
-window.chatApp = new ChatApp();
-window.reactMsg = (emoji) => window.chatApp.reactMsg(emoji);
-window.handleRecall = () => window.chatApp.handleRecall();
-window.handlePin = () => window.chatApp.handlePin();
-window.handleUnpin = () => window.chatApp.handleUnpin();
-window.handleDeleteConv = () => window.chatApp.handleDeleteConv();
-window.handleMarkRead = () => window.chatApp.handleMarkRead();
-window.saveNickname = (uid, nik) => window.chatApp.saveNickname(uid, nik);
-window.endCall = () => {
-    document.getElementById('callModal')?.classList.remove('active');
-    window.chatApp.ui.showToast('Cuộc gọi đã kết thúc');
-};
-window.toggleSection = (el) => {
-    const section = el.parentElement;
-    section.classList.toggle('open');
-    const icon = el.querySelector('.fa-chevron-down, .fa-chevron-up');
-    if (icon) {
-        icon.classList.toggle('fa-chevron-down');
-        icon.classList.toggle('fa-chevron-up');
+if (document.getElementById('conversationList')) {
+    window.chatApp = new ChatApp(window.chatConfig || {});
+    for (const method of ['reactMsg', 'handleRecall', 'handlePin', 'handleUnpin', 'handleDeleteConv', 'handleMarkRead', 'saveNickname']) {
+        window[method] = (...args) => window.chatApp.run(() => window.chatApp[method](...args));
     }
-};
+    window.endCall = () => window.chatApp.callManager.endCall();
+}

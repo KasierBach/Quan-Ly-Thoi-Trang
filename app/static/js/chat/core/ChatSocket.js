@@ -1,191 +1,130 @@
-/**
- * Chat Socket Handler
- * Manages Socket.IO events.
- */
+import { findMessage } from '../utils/helpers.js';
+
+/** Authenticated Socket.IO connection. Disconnected mutations are never buffered. */
 class ChatSocket {
-    constructor(sessionId, app) {
-        this.sessionId = sessionId;
+    constructor(credentials, app, socketFactory = typeof io === 'function' ? io : null) {
         this.app = app;
-        this.socket = this.initSocket();
+        this.pendingRequests = new Set();
+        this.socket = socketFactory ? socketFactory({
+            auth: { csrf_token: app.csrfToken, auth_token: credentials.auth_token },
+            autoConnect: false
+        }) : null;
         this.registerEvents();
     }
 
-    initSocket() {
-        if (typeof io === 'undefined') return null;
-        return io({
-            query: { session_id: this.sessionId },
-            transports: ['websocket']
-        });
-    }
+    connect() { this.socket?.connect(); }
+    get connected() { return this.socket?.connected === true; }
 
     registerEvents() {
         if (!this.socket) return;
-
-        this.socket.on('new_message', (data) => {
-            this.app.handleNewMessage(data);
+        const on = (event, handler) => this.socket.on(event, data => {
+            Promise.resolve().then(() => handler(data)).catch(error => this.app.ui.showToast(error.message));
         });
-
-        this.socket.on('reaction_update', (data) => {
-            // data contains: message_id, emoji, user_id, action
-            this.app.api.getHistory(this.app.sessionId, this.app.currentConversationId).then(res => {
-                const msg = res.messages.find(m => String(m.id) === String(data.message_id));
-                if (msg) {
-                    this.app.ui.updateMessageReactions(data.message_id, msg.reactions);
+        on('connect', async () => {
+            this.app.callManager?.handleSocketConnected();
+            await this.app.joinCurrentConversation();
+        });
+        on('disconnect', () => {
+            for (const cancel of this.pendingRequests) cancel(new Error('Kết nối chat đã đóng'));
+            this.app.callManager?.handleSocketDisconnected();
+        });
+        on('connect_error', () => this.app.ui.showToast('Không thể kết nối chat. Hãy tải lại trang để khởi tạo phiên mới.'));
+        on('error', data => {
+            if (data.call_id) this.app.callManager?.handleSignalError(data);
+            else this.app.ui.showToast(data.message || 'Thao tác chat không thành công');
+        });
+        on('new_message', data => this.app.handleNewMessage(data));
+        on('reaction_update', async data => {
+            if (!this.app.isCurrentScope(data)) return;
+            const revision = this.app.selectionRevision;
+            const res = await this.app.api.getHistory(this.app.sessionId, this.app.currentConversationId);
+            if (revision !== this.app.selectionRevision) return;
+            const message = res.messages?.find(msg => String(msg.id) === String(data.message_id));
+            if (message) this.app.ui.updateMessageReactions(data.message_id, message.reactions);
+        });
+        on('message_recalled', data => {
+            if (this.app.isCurrentScope(data)) return this.app.loadHistory();
+        });
+        for (const [event, pinned] of [['message_pinned', true], ['message_unpinned', false]]) {
+            on(event, data => {
+                if (!this.app.isCurrentScope(data)) return;
+                this.app.loadPinnedMessages(this.app.currentConversationId);
+                const group = findMessage(data.message_id);
+                if (group) {
+                    group.classList.toggle('pinned', pinned);
+                    group.dataset.pinned = String(pinned);
                 }
             });
+        }
+        on('typing', data => {
+            if (this.app.isOwnMessage(data) || !this.app.isCurrentScope(data)) return;
+            const name = document.getElementById('typingName');
+            if (name) name.textContent = `${data.user_name || 'Ai đó'} đang soạn tin...`;
+            document.getElementById('typingIndicator')?.classList.add('active');
         });
-
-        this.socket.on('message_recalled', (data) => {
-            if (this.app.currentConversationId) this.app.loadHistory();
+        on('stop_typing', data => {
+            if (this.app.isCurrentScope(data)) document.getElementById('typingIndicator')?.classList.remove('active');
         });
-
-        this.socket.on('message_pinned', (data) => {
-            if (data.conversation_id === this.app.currentConversationId) {
-                this.app.loadPinnedMessages(data.conversation_id);
-                const msgGroup = document.querySelector(`.message-group[data-message-id="${data.message_id}"]`);
-                if (msgGroup) {
-                    msgGroup.classList.add('pinned');
-                    msgGroup.dataset.pinned = 'true';
-                }
+        on('messages_read', data => {
+            if (this.app.isCurrentScope(data)) this.app.handleMessagesRead(data);
+        });
+        on('conversation_settings_updated', data => {
+            if (!this.app.isCurrentScope(data)) return;
+            this.app.ui.renderSettings(data.settings);
+        });
+        on('participant_settings_updated', data => {
+            if (!this.app.isCurrentScope(data)) return;
+            this.app.loadParticipants(this.app.currentConversationId);
+            if (String(data.user_id) === String(this.app.userId) && data.settings.is_muted !== undefined) {
+                const text = document.getElementById('muteText');
+                if (text) text.textContent = data.settings.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
             }
         });
+        for (const [event, method] of Object.entries({
+            incoming_call: 'handleIncomingCall', call_answered: 'handleCallAnswered',
+            call_rejected: 'handleCallRejected', call_ended: 'handleCallEnded',
+            remote_ice_candidate: 'handleIceCandidate', call_resume: 'handleCallResume',
+            stream_status: 'handleStreamStatus', call_chat_message: 'handleCallChatMessage',
+            media_status: 'handleMediaStatus'
+        })) on(event, data => this.app.callManager?.[method](data));
+    }
 
-        this.socket.on('message_unpinned', (data) => {
-            if (data.conversation_id === this.app.currentConversationId) {
-                this.app.loadPinnedMessages(data.conversation_id);
-                const msgGroup = document.querySelector(`.message-group[data-message-id="${data.message_id}"]`);
-                if (msgGroup) {
-                    msgGroup.classList.remove('pinned');
-                    msgGroup.dataset.pinned = 'false';
-                }
-            }
-        });
+    emit(event, data) {
+        if (!this.connected) return false;
+        this.socket.emit(event, data);
+        return true;
+    }
 
-        this.socket.on('typing', (data) => {
-            // isMe check: 
-            // - For logged in users: matches user_id
-            // - For guests: matches session_id AND is NOT from admin
-            const isMe = (data.user_id && data.user_id === this.app.userId) ||
-                (data.session_id === this.app.sessionId && !data.is_admin);
-            if (isMe) return;
-
-            const currentCid = String(this.app.currentConversationId);
-            const incomingCid = String(data.conversation_id);
-            const isRelevant = (data.conversation_id && incomingCid === currentCid) ||
-                (data.session_id === this.app.sessionId) ||
-                (this.app.isAdmin && data.session_id === currentCid);
-
-            if (isRelevant) {
-                const typingIndicator = document.getElementById('typingIndicator');
-                const typingName = document.getElementById('typingName');
-                if (typingIndicator && typingName) {
-                    typingName.textContent = `${data.user_name || 'Ai đó'} đang soạn tin...`;
-                    typingIndicator.classList.add('active');
-                    this.app.ui.scrollToBottom();
-                }
-            }
-        });
-
-        this.socket.on('stop_typing', (data) => {
-            const currentCid = String(this.app.currentConversationId);
-            const incomingCid = String(data.conversation_id);
-            const isRelevant = (data.conversation_id && incomingCid === currentCid) ||
-                (data.session_id === this.app.sessionId) ||
-                (this.app.isAdmin && data.session_id === currentCid);
-
-            if (isRelevant) {
-                document.getElementById('typingIndicator')?.classList.remove('active');
-            }
-        });
-
-        this.socket.on('messages_read', (data) => {
-            if (data.conversation_id === this.app.currentConversationId) {
-                // data: {conversation_id, user_id}
-                this.app.handleMessagesRead(data);
-            }
-        });
-
-        // Settings updates
-        this.socket.on('conversation_settings_updated', (data) => {
-            if (data.conversation_id === this.app.currentConversationId) {
-                this.app.ui.renderSettings(data.settings);
-                this.app.ui.showToast('Thông tin cuộc trò chuyện đã được cập nhật');
-            }
-        });
-
-        this.socket.on('participant_settings_updated', (data) => {
-            if (data.conversation_id === this.app.currentConversationId) {
-                this.app.loadParticipants(this.app.currentConversationId);
-                if (data.user_id === this.app.userId && data.settings.is_muted !== undefined) {
-                    const muteText = document.getElementById('muteText');
-                    if (muteText) muteText.textContent = data.settings.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
-                }
-            }
-        });
-
-        // WebRTC Events
-        this.socket.on('incoming_call', (data) => this.app.callManager?.handleIncomingCall(data));
-        this.socket.on('call_answered', (data) => this.app.callManager?.handleCallAnswered(data));
-        this.socket.on('call_rejected', (data) => this.app.callManager?.handleCallRejected(data));
-        this.socket.on('call_ended', (data) => this.app.callManager?.handleCallEnded(data));
-        this.socket.on('remote_ice_candidate', (data) => this.app.callManager?.handleIceCandidate(data));
-        this.socket.on('call_resume', (data) => this.app.callManager?.handleCallResume(data));
-
-        this.socket.on('stream_status', (data) => {
-            // data: { conversation_id, user_id, is_streaming }
-            this.app.handleStreamStatus(data);
-        });
-
-        this.socket.on('stream_request', (data) => {
-            // data: { conversation_id, target_user_id, viewer_id, viewer_name }
-            this.app.callManager?.handleStreamRequest(data);
-        });
-
-        // Media status (mic/camera) sync between call participants
-        this.socket.on('media_status', (data) => {
-            // Don't update our own status
-            if (data.user_id == this.app.userId) return;
-
-            // Update remote participant indicator
-            const remoteParticipant = document.getElementById('remoteParticipant');
-            if (remoteParticipant) {
-                let statusEl = remoteParticipant.querySelector('.participant-status');
-
-                // Create status element if not exists
-                if (!statusEl) {
-                    statusEl = document.createElement('div');
-                    statusEl.className = 'participant-status';
-                    statusEl.innerHTML = '<i class="fas fa-microphone"></i>';
-                    remoteParticipant.appendChild(statusEl);
-                }
-
-                if (data.type === 'mic') {
-                    statusEl.classList.toggle('muted', !data.enabled);
-                    const icon = statusEl.querySelector('i');
-                    if (icon) {
-                        icon.className = data.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
-                    }
-                } else if (data.type === 'cam') {
-                    const video = remoteParticipant.querySelector('video');
-                    const placeholder = remoteParticipant.querySelector('.participant-placeholder');
-
-                    if (data.enabled) {
-                        if (video) video.style.display = 'block';
-                        if (placeholder) placeholder.style.display = 'none';
-                    } else {
-                        if (video) video.style.display = 'none';
-                        if (placeholder) placeholder.style.display = 'flex';
-                    }
-                }
-            }
+    request(event, data, timeoutMs = 10000) {
+        if (!this.connected) return Promise.reject(new Error('Chưa kết nối chat'));
+        return new Promise((resolve, reject) => {
+            let settled = false;
+            const finish = (error, result) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timer);
+                this.pendingRequests.delete(cancel);
+                if (error) reject(error);
+                else resolve(result);
+            };
+            const cancel = error => finish(error);
+            const timer = setTimeout(() => finish(new Error('Máy chủ chat chưa xác nhận thao tác')), timeoutMs);
+            this.pendingRequests.add(cancel);
+            try {
+                this.socket.emit(event, data, result => {
+                    if (!result || result.success !== true) {
+                        const error = new Error(result?.message || 'Thao tác chat không thành công');
+                        error.status = result?.status;
+                        finish(error);
+                    } else finish(null, result);
+                });
+            } catch (error) { finish(error); }
         });
     }
 
-
-    emit(event, data) {
-        if (this.socket) {
-            this.socket.emit(event, data);
-        }
+    close() {
+        for (const cancel of this.pendingRequests) cancel(new Error('Trang chat đã đóng'));
+        this.socket?.disconnect();
     }
 }
 

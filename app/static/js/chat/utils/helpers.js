@@ -3,6 +3,29 @@
  * Handles emojis, stickers, and helper functions.
  */
 
+export function createNode(tag, className = '', text = null) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    return node;
+}
+
+export function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    })[char]);
+}
+
+export function stickerUrl(value) {
+    if (typeof value !== 'string') return null;
+    return /^https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/twemoji\/14\.0\.2\/72x72\/[0-9a-f-]+\.png$/.test(value) ||
+        /^https:\/\/media\.giphy\.com\/media\/[A-Za-z0-9]+\/giphy\.gif$/.test(value) ? value : null;
+}
+
+export function findMessage(id) {
+    return Array.from(document.querySelectorAll('.message-group')).find(node => node.dataset.messageId === String(id)) || null;
+}
+
 export function initEmojiPicker() {
     const emojiList = [
         '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇',
@@ -92,7 +115,17 @@ export function renderStickers(gridId) {
     ];
     const grid = document.getElementById(gridId);
     if (grid) {
-        grid.innerHTML = stickers.map(s => `<div class="sticker-item" onclick="window.chatApp.sendSticker('${s}')"><img src="${s}" style="width: 100%; height: auto; min-height: 50px;"></div>`).join('');
+        grid.replaceChildren(...stickers.map(url => {
+            const item = createNode('div', 'sticker-item');
+            const image = createNode('img');
+            image.src = url;
+            image.alt = 'Sticker';
+            image.referrerPolicy = 'no-referrer';
+            image.style.cssText = 'width:100%; height:auto; min-height:50px;';
+            item.addEventListener('click', () => window.chatApp?.sendSticker(url));
+            item.appendChild(image);
+            return item;
+        }));
     }
 }
 
@@ -107,6 +140,16 @@ export function renderGifs(gridId) {
     ];
     const grid = document.getElementById(gridId);
     if (grid) {
-        grid.innerHTML = gifs.map(g => `<div class="sticker-item" onclick="window.chatApp.sendSticker('${g}')"><img src="${g}" style="width: 100%; height: auto; border-radius: 4px; min-height: 50px;"></div>`).join('');
+        grid.replaceChildren(...gifs.map(url => {
+            const item = createNode('div', 'sticker-item');
+            const image = createNode('img');
+            image.src = url;
+            image.alt = 'GIF';
+            image.referrerPolicy = 'no-referrer';
+            image.style.cssText = 'width:100%; height:auto; border-radius:4px; min-height:50px;';
+            item.addEventListener('click', () => window.chatApp?.sendSticker(url));
+            item.appendChild(image);
+            return item;
+        }));
     }
 }

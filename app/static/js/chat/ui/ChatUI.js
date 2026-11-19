@@ -1,13 +1,9 @@
-/**
- * Chat UI Service
- * Handles all DOM manipulation and rendering.
- */
-class ChatUI {
-    constructor(app) {
-        this.app = app;
-    }
+import { createNode, escapeHtml, findMessage, stickerUrl } from '../utils/helpers.js';
 
-    // Lazy getters for DOM elements to avoid null refs during early initialization
+/** Colorful chat UI; persisted content is always text or validated DOM properties. */
+class ChatUI {
+    constructor(app) { this.app = app; }
+
     get messagesArea() { return document.getElementById('messagesArea'); }
     get conversationList() { return document.getElementById('conversationList'); }
     get activeChatContainer() { return document.getElementById('activeChatContainer'); }
@@ -18,400 +14,283 @@ class ChatUI {
 
     renderConversationList(conversations, currentId, onSelect) {
         if (!this.conversationList) return;
-        this.conversationList.innerHTML = '';
-
-        // Support Chat always at top
-        const supportItem = this.createConversationItem({
-            id: null,
-            name: 'Hỗ trợ khách hàng',
-            last_message: 'Chat với đội ngũ hỗ trợ',
-            is_support: true,
-            active: currentId === null
-        }, onSelect);
-        this.conversationList.appendChild(supportItem);
-
-        if (conversations.length === 0) {
-            this.renderEmptyConversations();
+        this.conversationList.replaceChildren(this.createConversationItem({
+            id: null, name: 'Hỗ trợ khách hàng', last_message: 'Chat với đội ngũ hỗ trợ',
+            is_support: true, active: currentId === null
+        }, onSelect));
+        if (!conversations.length) this.renderEmptyConversations();
+        for (const conv of conversations) {
+            this.conversationList.appendChild(this.createConversationItem({
+                ...conv, active: String(currentId) === String(conv.id)
+            }, onSelect));
         }
-
-        conversations.forEach(conv => {
-            const item = this.createConversationItem({
-                ...conv,
-                active: currentId == conv.id
-            }, onSelect);
-            this.conversationList.appendChild(item);
-        });
     }
 
     createConversationItem(conv, onSelect) {
-        const item = document.createElement('div');
-        item.className = 'conv-item' + (conv.active ? ' active' : '');
-        item.dataset.conversationId = conv.id;
-
-        const avatarChar = conv.name ? conv.name[0].toUpperCase() : '?';
-        const time = conv.last_message_at ? this.formatTime(conv.last_message_at) : '';
-        const onlineDot = conv.is_online ? '<div class="online-dot"></div>' : '';
-
-        const liveBadge = conv.is_streaming ? `<div class="live-badge" onclick="event.stopPropagation(); window.chatApp.callManager.watchStream('${conv.streamer_id}', '${conv.id}')">LIVE</div>` : '';
-
-        if (conv.is_support) {
-            item.innerHTML = `
-                <div class="conv-avatar support-avatar"><i class="fas fa-headset"></i>${liveBadge}</div>
-                <div class="conv-info">
-                    <div class="conv-name">${conv.name}</div>
-                    <div class="conv-preview">${conv.last_message}</div>
-                </div>
-            `;
-        } else {
-            item.innerHTML = `
-                <div class="conv-avatar">${avatarChar}${onlineDot}${liveBadge}</div>
-                <div class="conv-info">
-                    <div class="conv-name">${conv.name || 'Người dùng'}</div>
-                    <div class="conv-preview">${conv.last_message || 'Chưa có tin nhắn'}</div>
-                </div>
-                <div class="conv-time">${time}</div>
-            `;
-        }
-
-        item.onclick = () => onSelect(conv.id, conv.name, conv.is_online);
+        const item = createNode('div', `conv-item${conv.active ? ' active' : ''}`);
+        item.dataset.conversationId = conv.id ?? '';
+        const name = String(conv.name || 'Người dùng');
+        const avatar = createNode('div', `conv-avatar${conv.is_support ? ' support-avatar' : ''}`);
+        if (conv.is_support) avatar.appendChild(createNode('i', 'fas fa-headset'));
+        else avatar.textContent = name[0].toUpperCase();
+        if (conv.is_online) avatar.appendChild(createNode('div', 'online-dot'));
+        const info = createNode('div', 'conv-info');
+        info.append(createNode('div', 'conv-name', name), createNode('div', 'conv-preview', conv.last_message || 'Chưa có tin nhắn'));
+        item.append(avatar, info);
+        if (!conv.is_support) item.appendChild(createNode('div', 'conv-time', this.formatTime(conv.last_message_at)));
+        item.addEventListener('click', () => onSelect(conv.id, name, conv.is_online));
         return item;
     }
 
     renderEmptyConversations() {
-        const hint = document.createElement('div');
-        hint.style = 'padding: 20px; text-align: center; color: var(--text-secondary); font-size: 0.9rem;';
-        hint.innerHTML = `
-            <div class="mb-2"><i class="fas fa-user-plus" style="font-size: 2rem; opacity: 0.3;"></i></div>
-            <div>Chưa có cuộc trò chuyện nào khác.</div>
-            <div style="font-size: 0.8rem; margin-top: 5px;">Sử dụng thanh tìm kiếm để tìm bạn bè!</div>
-        `;
-        this.conversationList.appendChild(hint);
+        const hint = createNode('div', '', this.app.userId ?
+            'Chưa có cuộc trò chuyện nào khác. Tìm bạn bè ở thanh tìm kiếm.' :
+            'Đăng nhập để trò chuyện với bạn bè. Bạn vẫn có thể nhắn hỗ trợ.');
+        hint.style.cssText = 'padding:20px; text-align:center; color:var(--text-secondary); font-size:0.9rem;';
+        this.conversationList?.appendChild(hint);
     }
 
     switchChatUI(name, isOnline, id) {
         if (this.welcomeScreen) this.welcomeScreen.style.display = 'none';
-        if (this.activeChatContainer) this.activeChatContainer.classList.add('active');
-
-        const chatName = name || 'Hỗ trợ khách hàng';
-        const avatarChar = name ? name[0].toUpperCase() : 'H';
-
-        const nameEl = document.getElementById('currentChatName');
-        const avatarEl = document.getElementById('currentChatAvatar');
-        const infoNameEl = document.getElementById('infoPanelName');
-        const infoAvatarEl = document.getElementById('infoPanelAvatar');
-
-        if (nameEl) nameEl.textContent = chatName;
-        if (avatarEl) avatarEl.textContent = avatarChar;
-        if (infoNameEl) infoNameEl.textContent = chatName;
-        if (infoAvatarEl) infoAvatarEl.textContent = avatarChar;
-
+        this.activeChatContainer?.classList.add('active');
+        const chatName = String(name || 'Hỗ trợ khách hàng');
+        for (const key of ['currentChatName', 'infoPanelName']) {
+            const el = document.getElementById(key);
+            if (el) el.textContent = chatName;
+        }
+        for (const key of ['currentChatAvatar', 'infoPanelAvatar']) {
+            const el = document.getElementById(key);
+            if (el) el.textContent = chatName[0].toUpperCase();
+        }
         this.updateStatus(id, isOnline);
     }
 
     updateStatus(id, isOnline) {
-        const statusEl = document.getElementById('currentChatStatus') || document.getElementById('headerStatus');
-        const infoStatusEl = document.getElementById('infoPanelStatus') || document.getElementById('infoStatus');
-        const activeHtml = '<i class="fas fa-circle" style="font-size: 8px;"></i> Đang hoạt động';
-
-        if (!id || isOnline) {
-            [statusEl, infoStatusEl].forEach(el => {
-                if (el) {
-                    el.innerHTML = activeHtml;
-                    el.style.color = 'var(--online-green)';
-                }
-            });
-        } else {
-            [statusEl, infoStatusEl].forEach(el => {
-                if (el) {
-                    el.textContent = 'Không hoạt động';
-                    el.style.color = 'var(--text-secondary)';
-                }
-            });
+        const elements = [document.getElementById('currentChatStatus') || document.getElementById('headerStatus'),
+            document.getElementById('infoPanelStatus') || document.getElementById('infoStatus')];
+        for (const el of elements) {
+            if (!el) continue;
+            // Support availability is not evidence that a particular operator is online.
+            el.textContent = !id || !/^\d+$/.test(String(id)) ? 'Kênh hỗ trợ' : isOnline ? 'Đang hoạt động' : 'Không hoạt động';
+            el.style.color = isOnline ? 'var(--online-green)' : 'var(--text-secondary)';
         }
     }
 
-    setConversationStreaming(id, isStreaming, streamerId = null) {
-        const item = document.querySelector(`.conv-item[data-conversation-id="${id}"]`);
-        if (!item) return;
+    mediaPlaceholder(type, text = 'File không khả dụng') {
+        const placeholder = createNode('div', 'img-error-placeholder');
+        const icon = { image: 'image', video: 'video', audio: 'music' }[type] || 'file';
+        placeholder.append(createNode('i', `fas fa-${icon}`), createNode('span', '', text));
+        return placeholder;
+    }
 
-        const avatar = item.querySelector('.conv-avatar');
-        if (!avatar) return;
-
-        let badge = avatar.querySelector('.live-badge');
-        if (isStreaming && !badge) {
-            badge = document.createElement('div');
-            badge.className = 'live-badge';
-            badge.textContent = 'LIVE';
-            badge.onclick = (e) => {
-                e.stopPropagation();
-                window.chatApp.callManager.watchStream(streamerId, id);
-            };
-            avatar.appendChild(badge);
-        } else if (!isStreaming && badge) {
-            badge.remove();
-        } else if (isStreaming && badge && streamerId) {
-            // Update streamer ID if it changed
-            badge.onclick = (e) => {
-                e.stopPropagation();
-                window.chatApp.callManager.watchStream(streamerId, id);
-            };
+    renderAttachment(att) {
+        const url = this.app.api.attachmentUrl(att?.file_url);
+        if (!url) return this.mediaPlaceholder(att?.file_type);
+        const name = String(att.file_name || 'Tệp đính kèm');
+        if (['image', 'video', 'audio'].includes(att.file_type)) {
+            const wrapper = createNode('div', `message-${att.file_type}`);
+            const media = createNode(att.file_type === 'image' ? 'img' : att.file_type);
+            media.src = url;
+            media.referrerPolicy = 'no-referrer';
+            if (att.file_type === 'image') {
+                media.alt = name;
+                wrapper.addEventListener('click', () => this.app.viewer?.open(url));
+            } else {
+                media.controls = true;
+                media.preload = 'metadata';
+            }
+            media.addEventListener('error', () => wrapper.replaceChildren(this.mediaPlaceholder(att.file_type)), { once: true });
+            wrapper.appendChild(media);
+            return wrapper;
         }
+        const link = createNode('a', 'file-attachment');
+        link.href = url;
+        link.download = name;
+        link.rel = 'noopener noreferrer';
+        link.referrerPolicy = 'no-referrer';
+        link.append(createNode('i', 'fas fa-file'), createNode('span', '', name));
+        return link;
     }
 
     appendMessage(data) {
-        if (!this.messagesArea) return;
-
-        const { type, content, time, msgType = 'text', id = null, attachments = null, reactions = null, avatarText, senderName } = data;
-
-        const div = document.createElement('div');
-        div.className = `message-group ${type}` + (data.is_pinned ? ' pinned' : '');
-        div.dataset.messageId = id;
-        div.dataset.pinned = data.is_pinned ? 'true' : 'false';
-        div.dataset.senderName = senderName || (type === 'sent' ? 'Bạn' : (avatarText || 'Người dùng'));
-
-        let bubbleContent = this.escapeHtml(content);
-        if (msgType === 'sticker') {
-            bubbleContent = `<div class="message-sticker"><img src="${content}" class="sticker-img" alt="Sticker" onerror="this.onerror=null; this.src='/static/images/sticker-error.png'; this.classList.add('img-error');"></div>`;
-        } else if (attachments && attachments[0] && attachments[0].file_type === 'image') {
-            // Only render as image if we have a valid attachment
-            const url = attachments[0].file_url;
-            bubbleContent = `<div class="message-image" onclick="window.chatApp.viewer.open('${url}')"><img src="${url}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'img-error-placeholder\\'><i class=\\'fas fa-image\\'></i><span>Ảnh không khả dụng</span></div>';"></div>`;
-        } else if (attachments && attachments[0] && attachments[0].file_type === 'video') {
-            const url = attachments[0].file_url;
-            bubbleContent = `<div class="message-video"><video controls src="${url}" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'img-error-placeholder\\'><i class=\\'fas fa-video\\'></i><span>Video không khả dụng</span></div>';"></video></div>`;
-        } else if (attachments && attachments[0]) {
-            const att = attachments[0];
-            bubbleContent = `<a href="${att.file_url}" download class="file-attachment"><i class="fas fa-file"></i> ${att.file_name}</a>`;
-        } else if (msgType === 'image' || msgType === 'video' || msgType === 'audio') {
-            // Media message but attachment file is missing - show placeholder
-            bubbleContent = `<div class="img-error-placeholder"><i class="fas fa-${msgType === 'image' ? 'image' : msgType === 'video' ? 'video' : 'music'}"></i><span>File đã bị xóa</span></div>`;
-        }
-
-        // Detect single emoji for "Big Emoji" effect (Messenger style)
-        const isBigEmoji = msgType === 'text' && /^(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])$/.test(content.trim());
-        const bubbleClass = `message-bubble ${isBigEmoji ? 'big-emoji' : ''} ${data.parent_content ? 'has-reply' : ''}`.trim().replace(/\s+/g, ' ');
-
-        const avatarHtml = type === 'received' ? `<div class="message-avatar">${avatarText}</div>` : '';
-        const reactionsHtml = this.renderReactions(reactions, id);
-
-        const quickEmojis = ['❤️', '😂', '😮', '😢', '😡', '👍'];
-
-        let quoteHtml = '';
+        const area = this.messagesArea;
+        if (!area || data.id == null || findMessage(data.id)) return;
+        area.querySelector('.chat-empty')?.remove();
+        const type = data.type === 'sent' ? 'sent' : 'received';
+        const id = String(data.id);
+        const content = String(data.content ?? '');
+        const group = createNode('div', `message-group ${type}${data.is_pinned ? ' pinned' : ''}`);
+        group.dataset.messageId = id;
+        group.dataset.pinned = data.is_pinned ? 'true' : 'false';
+        group.dataset.senderName = String(data.senderName || (type === 'sent' ? 'Bạn' : 'Người dùng'));
+        const row = createNode('div', 'message-row');
+        if (type === 'received') row.appendChild(createNode('div', 'message-avatar', data.avatarText || '?'));
+        const bigEmoji = (data.msgType || 'text') === 'text' && /^\p{Extended_Pictographic}\uFE0F?$/u.test(content.trim());
+        const bubble = createNode('div', `message-bubble${bigEmoji ? ' big-emoji' : ''}${data.parent_content ? ' has-reply' : ''}`);
+        bubble.dataset.msgId = id;
+        bubble.addEventListener('contextmenu', event => this.app.showMsgOptions(id, event));
         if (data.parent_content) {
-            const pName = data.parent_sender_name || (data.parent_sender_type === 'admin' ? 'Admin' : 'Khách');
-            quoteHtml = `
-                <div class="message-reply-quote" onclick="window.chatApp.scrollToMessage('${data.reply_to_id}')">
-                    <span class="quote-user">${this.escapeHtml(pName)}</span>
-                    <span class="quote-text">${this.escapeHtml(data.parent_content)}</span>
-                </div>
-            `;
+            const quote = createNode('div', 'message-reply-quote');
+            quote.append(createNode('span', 'quote-user', data.parent_sender_name || 'Người dùng'),
+                createNode('span', 'quote-text', data.parent_content));
+            quote.addEventListener('click', () => this.app.scrollToMessage(data.reply_to_id));
+            bubble.appendChild(quote);
         }
-
-        const html = `
-            <div class="message-row">
-                ${avatarHtml}
-                <div class="${bubbleClass}" oncontextmenu="window.chatApp.showMsgOptions('${id}', event)" data-msg-id="${id}">
-                    ${quoteHtml}
-                    <div class="message-bubble-main">
-                        ${bubbleContent}
-                    </div>
-                    <div class="message-actions">
-                        <button class="msg-action-btn" title="Thêm cảm xúc">
-                            <i class="far fa-smile"></i>
-                        </button>
-                        <button class="msg-action-btn" title="Trả lời" onclick="window.chatApp.handleReply('${id}', event)">
-                            <i class="fas fa-reply"></i>
-                        </button>
-                        <button class="msg-action-btn" title="Xem thêm" onclick="window.chatApp.showMsgOptions('${id}', event)">
-                            <i class="fas fa-ellipsis-h"></i>
-                        </button>
-                        <div class="hover-reaction-bar" id="reactionBar-${id}">
-                            ${quickEmojis.map(emoji => `<span class="hover-emoji" onclick="window.chatApp.toggleReaction('${id}', '${emoji}')">${emoji}</span>`).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="message-footer">
-                ${reactionsHtml}
-                <div class="message-time">${time}</div>
-            </div>
-        `;
-        div.innerHTML = html;
-        this.messagesArea.appendChild(div);
+        const main = createNode('div', 'message-bubble-main');
+        if (data.attachments?.[0]) main.appendChild(this.renderAttachment(data.attachments[0]));
+        else if (data.msgType === 'sticker' && stickerUrl(content)) {
+            const wrapper = createNode('div', 'message-sticker');
+            const image = createNode('img', 'sticker-img');
+            image.src = stickerUrl(content);
+            image.alt = 'Sticker';
+            image.referrerPolicy = 'no-referrer';
+            image.addEventListener('error', () => wrapper.replaceChildren(this.mediaPlaceholder('image')), { once: true });
+            wrapper.appendChild(image);
+            main.appendChild(wrapper);
+        } else if (['image', 'video', 'audio', 'file'].includes(data.msgType)) {
+            main.appendChild(this.mediaPlaceholder(data.msgType));
+        } else main.textContent = content;
+        bubble.appendChild(main);
+        const actions = createNode('div', 'message-actions');
+        const action = (icon, title, handler) => {
+            const button = createNode('button', 'msg-action-btn');
+            button.type = 'button';
+            button.title = title;
+            button.appendChild(createNode('i', icon));
+            button.addEventListener('click', handler);
+            return button;
+        };
+        actions.append(action('far fa-smile', 'Thêm cảm xúc', event => this.app.toggleReactionPopup(id, event)),
+            action('fas fa-reply', 'Trả lời', event => this.app.handleReply(id, event)),
+            action('fas fa-ellipsis-h', 'Xem thêm', event => this.app.showMsgOptions(id, event)));
+        const quick = createNode('div', 'hover-reaction-bar');
+        quick.id = `reactionBar-${id}`;
+        for (const emoji of ['❤️', '😂', '😮', '😢', '😡', '👍']) {
+            const choice = createNode('span', 'hover-emoji', emoji);
+            choice.addEventListener('click', () => this.app.toggleReaction(id, emoji));
+            quick.appendChild(choice);
+        }
+        actions.appendChild(quick);
+        bubble.appendChild(actions);
+        row.appendChild(bubble);
+        const footer = createNode('div', 'message-footer');
+        const reactions = this.renderReactions(data.reactions, id);
+        if (reactions) footer.appendChild(reactions);
+        footer.appendChild(createNode('div', 'message-time', data.time));
+        group.append(row, footer);
+        area.appendChild(group);
         this.scrollToBottom();
     }
 
     renderReactions(reactions, messageId) {
-        if (!reactions || reactions.length === 0) return '';
-        const counts = {};
-        const userReactions = new Set();
-
-        reactions.forEach(r => {
-            counts[r.emoji] = (counts[r.emoji] || 0) + 1;
-            if (r.user_id === this.app.userId) {
-                userReactions.add(r.emoji);
-            }
-        });
-
-        let html = `<div class="message-reactions">`;
-        for (let emoji in counts) {
-            const isOwn = userReactions.has(emoji);
-            html += `
-                <div class="reaction-badge ${isOwn ? 'own' : ''}"
-                     onclick="window.chatApp.toggleReaction('${messageId}', '${emoji}')"
-                     title="${counts[emoji]} người đã thả cảm xúc">
-                    ${emoji} <span>${counts[emoji] > 1 ? counts[emoji] : ''}</span>
-                </div>`;
+        if (!Array.isArray(reactions) || !reactions.length) return null;
+        const counts = new Map();
+        const own = new Set();
+        for (const reaction of reactions) {
+            const emoji = String(reaction.emoji ?? '');
+            counts.set(emoji, (counts.get(emoji) || 0) + 1);
+            if (this.app.userId && String(reaction.user_id) === String(this.app.userId)) own.add(emoji);
         }
-        html += `</div>`;
-        return html;
+        const area = createNode('div', 'message-reactions');
+        for (const [emoji, count] of counts) {
+            const badge = createNode('div', `reaction-badge${own.has(emoji) ? ' own' : ''}`, emoji);
+            badge.dataset.emoji = emoji;
+            badge.title = `${count} người đã thả cảm xúc`;
+            badge.appendChild(createNode('span', '', count > 1 ? count : ''));
+            badge.addEventListener('click', () => this.app.toggleReaction(messageId, emoji));
+            area.appendChild(badge);
+        }
+        return area;
     }
 
-    updateMessageReactions(msgId, reactions) {
-        const msgGroup = document.querySelector(`.message-group[data-message-id="${msgId}"]`);
-        if (!msgGroup) return;
-
-        const footer = msgGroup.querySelector('.message-footer');
-        let reactionArea = footer.querySelector('.message-reactions');
-
-        if (reactions && reactions.length > 0) {
-            const newHtml = this.renderReactions(reactions, msgId);
-            if (reactionArea) {
-                reactionArea.outerHTML = newHtml;
-            } else {
-                const timeEl = footer.querySelector('.message-time');
-                const temp = document.createElement('div');
-                temp.innerHTML = newHtml;
-                footer.insertBefore(temp.firstChild, timeEl);
-            }
-        } else if (reactionArea) {
-            reactionArea.remove();
-        }
+    updateMessageReactions(id, reactions) {
+        const footer = findMessage(id)?.querySelector('.message-footer');
+        if (!footer) return;
+        footer.querySelector('.message-reactions')?.remove();
+        const area = this.renderReactions(reactions, id);
+        if (area) footer.insertBefore(area, footer.querySelector('.message-time'));
     }
 
-    showReplyShelf(userName, content) {
+    showReplyShelf(name, content) {
         const shelf = document.getElementById('replyShelf');
-        const userEl = document.getElementById('replyUserName');
-        const msgEl = document.getElementById('replyMsgPreview');
-        if (shelf && userEl && msgEl) {
-            userEl.textContent = `Đang trả lời ${userName}`;
-            msgEl.textContent = content;
-            shelf.classList.add('active');
-            document.querySelector('.chat-input-area').classList.add('with-reply');
-        }
+        const user = document.getElementById('replyUserName');
+        const text = document.getElementById('replyMsgPreview');
+        if (!shelf || !user || !text) return;
+        user.textContent = `Đang trả lời ${name}`;
+        text.textContent = content;
+        shelf.classList.add('active');
+        document.querySelector('.chat-input-area')?.classList.add('with-reply');
     }
-
     hideReplyShelf() {
-        const shelf = document.getElementById('replyShelf');
-        if (shelf) {
-            shelf.classList.remove('active');
-            document.querySelector('.chat-input-area').classList.remove('with-reply');
-        }
+        document.getElementById('replyShelf')?.classList.remove('active');
+        document.querySelector('.chat-input-area')?.classList.remove('with-reply');
     }
-
     scrollToBottom() {
-        if (this.messagesArea) {
-            this.messagesArea.scrollTop = this.messagesArea.scrollHeight;
-        }
+        if (this.messagesArea) this.messagesArea.scrollTop = this.messagesArea.scrollHeight;
     }
-
     showPinnedShelf(content) {
-        if (this.pinnedShelf && this.pinnedContent) {
-            this.pinnedContent.textContent = content;
-            this.pinnedShelf.classList.add('active');
-        }
+        if (!this.pinnedShelf || !this.pinnedContent) return;
+        this.pinnedContent.textContent = content;
+        this.pinnedShelf.classList.add('active');
     }
-
-    showToast(msg, bg = '#333') {
-        const toast = document.createElement('div');
-        toast.style = `position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:${bg}; color:white; padding:10px 20px; border-radius:30px; z-index:9999; font-size:14px;`;
-        toast.textContent = msg;
+    showToast(message, background = '#333') {
+        const toast = createNode('div', '', message);
+        toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); color:white; padding:10px 20px; border-radius:30px; z-index:9999; font-size:14px;';
+        toast.style.background = background;
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     }
-
-    renderSeenStatus(userId, avatarUrl) {
-        // Remove old status
-        const existing = this.messagesArea.querySelectorAll(`.seen-status-${userId}`);
-        existing.forEach(el => el.remove());
-
-        // Find last message sent by ME
-        const sentMessages = this.messagesArea.querySelectorAll('.message-group.sent');
-        if (sentMessages.length === 0) return;
-        const lastMsg = sentMessages[sentMessages.length - 1];
-
-        // Create status
-        const statusDiv = document.createElement('div');
-        statusDiv.className = `message-seen-status seen-status-${userId}`;
-        statusDiv.innerHTML = `<img src="${avatarUrl || '/static/images/default-avatar.png'}" title="Đã xem">`;
-
-        // Insert after the message bubble or time
-        const footer = lastMsg.querySelector('.message-footer');
-        if (footer) {
-            footer.appendChild(statusDiv);
+    renderSeenStatus(userId) {
+        if (!this.messagesArea) return;
+        for (const el of this.messagesArea.querySelectorAll('.message-seen-status')) {
+            if (el.dataset.userId === String(userId)) el.remove();
         }
-        this.scrollToBottom();
+        const sent = this.messagesArea.querySelectorAll('.message-group.sent');
+        const footer = sent[sent.length - 1]?.querySelector('.message-footer');
+        if (!footer) return;
+        const status = createNode('div', 'message-seen-status', 'Đã xem');
+        status.dataset.userId = String(userId);
+        status.title = 'Đã xem';
+        footer.appendChild(status);
     }
-
-    formatTime(str) {
-        if (!str) return '';
-        const d = new Date(str);
-        return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    formatTime(value) {
+        if (!value) return '';
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? '' : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     }
-
-    escapeHtml(text) {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-
+    escapeHtml(value) { return escapeHtml(value); }
     applyTheme(color) {
-        if (!color) return;
+        if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) return;
         document.documentElement.style.setProperty('--messenger-blue', color);
         document.documentElement.style.setProperty('--messenger-primary', color);
     }
-
     renderSettings(data) {
         if (data.theme_color) this.applyTheme(data.theme_color);
-        if (data.default_emoji) {
-            const likeBtn = document.getElementById('likeBtn');
-            if (likeBtn) {
-                let iconClass = 'fas fa-thumbs-up';
-                if (data.default_emoji === '❤️') iconClass = 'fas fa-heart';
-                else if (data.default_emoji === '😆') iconClass = 'fas fa-laugh';
-                else if (data.default_emoji === '😮') iconClass = 'fas fa-surprise';
-
-                if (['👍', '❤️', '😆', '😮'].includes(data.default_emoji)) {
-                    likeBtn.innerHTML = `<i class="${iconClass}"></i>`;
-                } else {
-                    likeBtn.innerHTML = `<span>${data.default_emoji}</span>`;
-                }
-            }
-        }
+        const like = document.getElementById('likeBtn');
+        if (!like || !data.default_emoji) return;
+        const icons = { '👍': 'fas fa-thumbs-up', '❤️': 'fas fa-heart', '😆': 'fas fa-laugh', '😮': 'fas fa-surprise' };
+        like.replaceChildren(icons[data.default_emoji] ? createNode('i', icons[data.default_emoji]) :
+            createNode('span', '', data.default_emoji));
+        like.dataset.emoji = String(data.default_emoji);
     }
-
     openMediaBrowser(type, attachments) {
         const modal = document.getElementById('mediaBrowserModal');
-        const title = document.getElementById('mediaBrowserTitle');
         const grid = document.getElementById('mediaGridBody');
+        const title = document.getElementById('mediaBrowserTitle');
         if (!modal || !grid) return;
-
-        title.textContent = type === 'image' ? 'File phương tiện' : 'File';
-        grid.innerHTML = attachments.length > 0
-            ? attachments.map(a => `
-                <div class="media-item" onclick="window.chatApp.viewer.open('${a.file_url}')">
-                    ${a.file_type === 'image'
-                    ? `<img src="${a.file_url}" class="media-thumb">`
-                    : `<div class="media-thumb file"><i class="fas fa-file-alt fa-2x"></i></div>`
-                }
-                    <div class="media-caption" title="${a.file_name}">${a.file_name}</div>
-                </div>
-            `).join('')
-            : '<div style="grid-column: 1/-1; text-align: center; padding: 20px;">Không có file nào</div>';
-
+        if (title) title.textContent = type === 'image' ? 'File phương tiện' : 'File';
+        grid.replaceChildren();
+        for (const att of attachments) {
+            const item = createNode('div', 'media-item');
+            item.appendChild(this.renderAttachment(att));
+            const caption = createNode('div', 'media-caption', att.file_name);
+            caption.title = String(att.file_name || '');
+            item.appendChild(caption);
+            grid.appendChild(item);
+        }
+        if (!attachments.length) grid.appendChild(createNode('div', '', 'Không có file nào'));
         modal.style.display = 'block';
     }
 }
-
 
 export default ChatUI;

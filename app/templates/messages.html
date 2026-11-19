@@ -3,7 +3,7 @@
 {% block title %}Tin nhắn{% endblock %}
 
 {% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}?v={{ range(1, 10000) | random }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
 {% endblock %}
 
 
@@ -130,7 +130,7 @@
                             </div>
                         </div>
                     </div>
-                    <button class="send-btn" id="sendBtn"><i class="fas fa-paper-plane"></i></button>
+                    <button class="send-btn" id="sendBtn" aria-label="Gửi tin nhắn" disabled><i class="fas fa-paper-plane"></i></button>
                 </div>
 
                 <!-- Sticker Picker -->
@@ -252,14 +252,14 @@
     <div class="modal-content">
         <div class="modal-header">
             <h3>Tạo nhóm mới</h3>
-            <span class="close" id="closeGroupModal" style="cursor:pointer; font-size:24px;">&times;</span>
+            <span class="close" data-close-group style="cursor:pointer; font-size:24px;">&times;</span>
         </div>
         <div class="modal-body">
             <input type="text" id="groupName" placeholder="Tên nhóm...">
             <!-- Future: Member selection list -->
         </div>
         <div class="modal-footer">
-            <button class="btn-secondary" id="closeGroupModal">Hủy</button>
+            <button class="btn-secondary" data-close-group>Hủy</button>
             <button class="btn-primary" id="btnSubmitGroup">Tạo nhóm</button>
         </div>
     </div>
@@ -387,8 +387,8 @@
                 <span id="callerInfo">User is streaming</span>
             </div>
             <div class="header-right">
-                <span class="quality-badge" id="qualityBadge">720p 30FPS</span>
-                <span class="live-indicator" id="liveIndicator">LIVE</span>
+                <span class="quality-badge" id="qualityBadge">Cuộc gọi một-một</span>
+                <span class="live-indicator" id="liveIndicator">Cuộc gọi</span>
                 <button class="header-icon-btn" id="btnToggleChat" title="Toggle Chat"><i
                         class="fas fa-comment-alt"></i></button>
                 <button class="header-icon-btn" id="btnFullscreen" title="Fullscreen"><i
@@ -490,14 +490,17 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+<script src="{{ url_for('static', filename='vendor/socketio/socket.io.min.js') }}"></script>
 <script>
-    (function () {
-        window.chatUserId = Number('{{ session.get("user_id", 0) }}') || 0;
-        window.chatUserName = '{{ session.get("user_name", "User") }}';
-        window.chatSessionId = localStorage.getItem('chat_session_id');
-        window.isChatAdmin = '{{ session.get("is_admin", False) }}'.toLowerCase() === 'true';
-    })();
+    window.chatConfig = {{ {
+        'userId': session.get('user_id'),
+        'userName': session.get('user_name', 'User'),
+        'isAdmin': session.get('is_admin', False),
+        'rtcIceServers': config.get('RTC_ICE_SERVERS', [{'urls': 'stun:stun.l.google.com:19302'}])
+    } | tojson }};
+    window.chatUserId = window.chatConfig.userId;
+    window.chatUserName = window.chatConfig.userName;
+    window.isChatAdmin = window.chatConfig.isAdmin;
 </script>
 <script type="module" src="{{ url_for('static', filename='js/chat/core/ChatApp.js') }}"></script>
 {% endblock %}
