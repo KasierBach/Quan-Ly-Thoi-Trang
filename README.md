@@ -1,153 +1,100 @@
-# 👕 HỆ THỐNG QUẢN LÝ CỬA HÀNG THỜI TRANG (FASHION STORE)
+# Fashion Store — dự án web cá nhân
 
-[![Flask](https://img.shields.io/badge/Flask-2.3.3-blue.svg)](https://flask.palletsprojects.com/)
-[![Docker](https://img.shields.io/badge/Docker-Enabled-blue.svg)](https://www.docker.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
-[![Socket.io](https://img.shields.io/badge/Socket.io-Realtime-orange.svg)](https://socket.io/)
-[![Python](https://img.shields.io/badge/Python-3.11-green.svg)](https://www.python.org/)
+Ứng dụng Flask mô phỏng quy trình xem sản phẩm, đặt đơn và quản trị cửa hàng thời trang. Đây là project học tập/portfolio, không phải một cửa hàng có doanh thu hoặc người dùng thực đã được xác nhận.
 
-Hệ thống Quản lý Cửa hàng Thời trang là một ứng dụng web toàn diện được thiết kế để tối ưu hóa quy trình kinh doanh và trải nghiệm khách hàng. Dự án này được xây dựng theo mô hình **MVC (Model-View-Controller)** và tuân thủ các nguyên lý thiết kế phần mềm hiện đại như **SOLID**, đảm bảo tính mở rộng và dễ bảo trì.
+## Phạm vi hiện có
 
----
+- Catalog: tìm kiếm, gợi ý tìm kiếm, lọc/sắp xếp/phân trang, biến thể size–màu và tồn kho.
+- Giỏ hàng phiên, wishlist tài khoản, đặt đơn COD, thông tin người nhận, lịch sử và trạng thái đơn.
+- Admin: quản lý sản phẩm/biến thể, cập nhật đơn, xem khách hàng, phản hồi/ẩn bình luận, biểu đồ và CSV.
+- Chat: tin nhắn lưu DB, chat hỗ trợ với credential do server ký, cuộc trò chuyện tài khoản, file đính kèm riêng tư.
+- WebRTC một-một là phần thử nghiệm; không có group conferencing, livestream nhiều người hay bảo đảm kết nối trên mọi mạng.
 
-## 📂 Cấu Trúc Thư Mục Dự Án (Project Structure)
+**Chưa tích hợp:** thanh toán online, mã giảm giá thực, hãng vận chuyển/tracking trực tiếp, gửi newsletter tự động, mobile app, AI recommendations. Biểu đồ “doanh thu đã giao” tính giá trị đơn `Delivered`, theo ngày đặt; không phải sổ kế toán hoặc bằng chứng thanh toán.
+
+## Stack và tổ chức
+
+Python 3.11, Flask, psycopg2/PostgreSQL, Jinja2, Bootstrap 5, JavaScript, Flask-SocketIO, Chart.js, Docker. App Factory đăng ký Blueprints; service classes chứa thao tác DB. Các luồng chính dùng SQL có tham số và SQL functions/triggers, không phải một hệ ORM hoàn chỉnh.
 
 ```text
-thua-2.0/
-├── app/                        # Thư mục chính của ứng dụng
-│   ├── routes/                 # Quản lý điều hướng (Blueprints)
-│   │   ├── admin/              # Module quản trị (Sản phẩm, Đơn hàng, Thống kê)
-│   │   ├── auth.py             # Xác thực người dùng (Login, Register, Password Reset)
-│   │   ├── cart.py             # Quản lý giỏ hàng & Thanh toán
-│   │   ├── chat.py             # API cho hệ thống trò chuyện
-│   │   ├── main.py             # Trang chủ & Logic chung
-│   │   └── product.py          # Hiển thị & tìm kiếm sản phẩm
-│   ├── services/               # Lớp xử lý logic nghiệp vụ (Business Logic)
-│   │   ├── auth_service.py     # Xử lý xác thực & phân quyền
-│   │   ├── product_service.py  # Xử lý dữ liệu sản phẩm & kho
-│   │   └── chat_service.py     # Logic tin nhắn & thời gian thực
-│   ├── static/                 # Tài nguyên tĩnh (CSS, JS, Images)
-│   ├── templates/              # Giao diện Jinja2 (HTML)
-│   ├── __init__.py             # Khởi tạo App Factory & Extensions
-│   ├── config.py               # Cấu hình hệ thống (Environment variables)
-│   ├── database.py             # Cấu hình kết nối PostgreSQL (Pooled Connection)
-│   ├── sockets.py              # Xử lý sự kiện WebSocket (Socket.IO)
-│   └── utils.py                # Các hàm tiện ích (Email, Slugify, Image Resolver)
-├── .data/                      # Script SQL khởi tạo (Schema & Data)
-├── .scripts/                   # Công cụ hỗ trợ (Import DB, Generate Data, Locust Test)
-├── Dockerfile                  # Cấu hình Docker image
-├── docker-compose.yml          # Cấu hình App & Database containers
-├── requirements.txt            # Danh sách thư viện Python
-└── run.py                      # Điểm khởi chạy ứng dụng (Entry point)
+app/             routes, services, templates, CSS/JS, application factory
+app/static/vendor/  browser libraries/fonts có version được khóa
+db/              bootstrap.sql, seed_test.sql, nguồn gốc schema và giới hạn
+ tests/          unit, contract, integration, e2e, js
+ tools/          seed/test-server và asset tooling
+ requirements*.in / requirements*.txt   dependency inputs + hash locks
 ```
 
----
+## Chạy local an toàn
 
-## 🏗️ Kiến Trúc & Công Nghệ (Technical Stack)
+Không dùng credentials hoặc dữ liệu khách hàng thật để thử nghiệm. File `.env` không được track; App Factory chỉ đọc `.env` trong đúng thư mục project khi không truyền test config.
 
-### Backend
-- **Flask Framework**: Sử dụng `Blueprint` để module hóa các chức năng.
-- **PostgreSQL**: Cơ sở dữ liệu quan hệ mạnh mẽ.
-- **Psycopg2 with ThreadedConnectionPool**: Tối ưu hóa hiệu suất truy vấn, hỗ trợ đa luồng.
-- **SQLAlchemy (Core/ORM)**: Hỗ trợ quản lý session và cấu trúc bảng.
-- **Flask-SocketIO**: Hỗ trợ giao tiếp song công (Full-duplex) cho tính năng chat.
-
-### Frontend
-- **Jinja2**: Server-side rendering cho tính tương thích SEO cao.
-- **Vanilla CSS & JavaScript (AJAX)**: Đảm bảo trải nghiệm người dùng mượt mà mà không làm nặng trang.
-- **FontAwesome & Google Fonts**: Giao diện hiện đại, chuyên nghiệp.
-
----
-
-## ⚙️ Hướng Dẫn Cài Đặt (Installation)
-
-### 🐳 Cách 1: Sử dụng Docker (Khuyên dùng)
-Dự án đã được đóng gói hoàn chỉnh, giúp chạy ngay lập tức mà không cần cài đặt môi trường máy local:
-
-1. **Cấu hình biến môi trường:**
-   Đảm bảo bạn đã có file `.env` chứa chuỗi kết nối Cloud Database (ví dụ: Supabase).
-   `DATABASE_URL=postgresql://user:password@aws-host.supabase.com:6543/postgres`
-
-2. **Khởi động dịch vụ Web bằng Docker:**
-   ```powershell
-   # Di chuyển vào thư mục dự án
-   cd thua-2.0
-   
-   # Build và khởi động container
-   docker-compose up --build -d
+1. Tạo môi trường Python 3.11 và cài runtime:
+   ```bash
+   uv venv --python 3.11 .venv
+   uv pip sync --python .venv/Scripts/python.exe requirements.txt
    ```
+   Linux/macOS dùng `.venv/bin/python` thay cho `.venv/Scripts/python.exe`.
+2. Tạo `.env` từ `.env.example`; tự sinh `SECRET_KEY` ít nhất 32 ký tự, điền PostgreSQL **local** đã chuẩn bị.
+3. Khởi tạo một DB trống bằng `db/bootstrap.sql`. Đọc `db/README.md` trước khi áp dụng; script replay không xóa dữ liệu nhưng thay definitions, không tự động dùng cho production.
+4. Chạy `python run.py`. Mặc định bind `127.0.0.1:4000`, debug tắt. Dev server không thay thế production server.
 
-3. **Khởi tạo Database (Chỉ áp dụng lần đầu):**
-   Nếu cơ sở dữ liệu Supabase của bạn trống, hãy chạy lệnh sau để tự tạo bảng và nạp dữ liệu mẫu:
-   ```powershell
-   docker-compose exec web python .scripts/import_db.py
-   ```
-   *Truy cập tại: `http://localhost:4000`* (Cổng mặc định theo file cấu hình)
+### Docker Compose
 
-### 💻 Cách 2: Cài đặt Thủ công (Local)
-Nếu bạn muốn chạy trực tiếp trên máy tính:
+Compose tạo PostgreSQL local, chạy bootstrap khi volume còn trống và expose web ở `127.0.0.1:4010`. Không cấu hình tên container cố định để tránh đè container dự án khác.
 
-1. **Yêu cầu:** Đã cài đặt Python 3.10+
-2. **Khởi tạo môi trường ảo:**
-   ```powershell
-   python -m venv .venv
-   .venv\Scripts\activate
-   ```
-3. **Cài đặt thư viện:**
-   ```powershell
-   pip install -r requirements.txt
-   ```
-4. **Cấu hình biến môi trường (`.env`):**
-   Tạo file `.env` từ `.env.example` và điền thông tin `DATABASE_URL` của Supabase hoặc PostgreSQL.
-5. **Khởi tạo Database:**
-   ```powershell
-   python .scripts/import_db.py
-   ```
-6. **Chạy ứng dụng:**
-   ```powershell
-   python run.py
-   ```
+```bash
+# Tự đặt SECRET_KEY độc lập và POSTGRES_PASSWORD trong shell/.env.
+docker compose -p thua2-main-local up -d --build --wait
+```
 
----
+Chuỗi mật khẩu dùng trong URI cần URL-encode nếu có ký tự đặc biệt. DB không publish ra mạng. Image chạy non-root, Gunicorn `gthread` một worker và có health check `/health/live`; `/health/ready` kiểm DB. Multi-worker Socket.IO cần shared message queue/session configuration riêng, chưa được tự động triển khai ở đây.
 
-## 📊 Kiến Trúc Dữ Liệu (Database Schema)
+## Bộ kiểm chứng
 
-Hệ thống sử dụng các stored procedures (SP) để xử lý logic phức tạp ở tầng DB, giúp tăng tốc độ và bảo mật:
+Dev dependencies tách khỏi runtime. Các tests cần DB chỉ chấp nhận `TEST_DATABASE_URL` loopback có tên chính xác `thua2_main_test`, không query/fragment override. DB test dùng tmpfs, dữ liệu tổng hợp và reset fixture. **Không chạy hai suite reset chung DB cùng lúc.**
 
-- **Bảng chính:**
-    - `Customers`: Thông tin tài khoản, vai trò (admin/customer), địa chỉ.
-    - `Products`: Thông tin chung về sản phẩm.
-    - `ProductVariants`: Quản lý tồn kho theo Màu sắc & Kích thước.
-    - `Orders` & `OrderDetails`: Lưu trữ lịch sử giao dịch.
-    - `Messages`: Lưu trữ lịch sử chat.
-- **Stored Procedures tiêu biểu:**
-    - `sp_AddProduct`: Tự tạo sản phẩm mới và gán thuộc tính.
-    - `sp_CreateOrder`: Xử lý transaction đặt hàng và trừ tồn kho.
-    - `sp_SearchProducts`: Tìm kiếm nâng cao với nhiều bộ lọc.
+```bash
+uv pip sync --python .venv/Scripts/python.exe requirements-dev.txt
+npm ci --ignore-scripts
+npm run vendor
+python -m playwright install chromium
 
----
+docker compose -p thua2-main-tests -f docker-compose.test.yml up -d --wait
+export TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:55434/thua2_main_test'
 
-## 🛡️ Bảo Mật (Security Implementation)
+python -m ruff check app run.py tests tools
+python -m ruff format --check app run.py tests tools
+python -m pyright --project pyrightconfig.json
+npm run lint
+npm run test:js
+python -m pip_audit -r requirements.txt --disable-pip
+python -m pip_audit -r requirements-dev.txt --disable-pip
+python -m pytest -m 'not e2e' --cov=app --cov-config=pyproject.toml --cov-branch --cov-report=html:artifacts/htmlcov
+python -m pytest -m e2e --timeout=90
 
-Dự án ưu tiên tính an toàn dữ liệu với các biện pháp:
-1.  **Chống SQL Injection**: Sử dụng *Parameterized Queries* thông qua thư viện psycopg2.
-2.  **Xác thực mật khẩu**: Sử dụng `PBKDF2` (Werkzeug hashing) để lưu trữ mật khẩu an toàn.
-3.  **CSRF Protection**: Tích hợp `Flask-WTF` bảo vệ toàn bộ các form nhập liệu.
-4.  **Phân quyền (RBAC)**: Hệ thống Decorator (`@admin_required`) kiểm soát chặt chẽ quyền truy cập.
-5.  **Bảo mật Session**: Cấu hình Secure Cookies để ngăn chặn các cuộc tấn công đánh cắp phiên.
+docker compose -p thua2-main-tests -f docker-compose.test.yml down -v
+```
 
----
+Chạy lệnh từ thư mục project; chạy coverage từ repo/worktree khác có thể đo nhầm source. Không import `run.py` trong tests vì nó tạo app theo environment.
 
-## 📱 Tính Năng Real-time Chat
+### Preview dữ liệu kiểm thử
 
-Hệ thống hỗ trợ khách hàng tích hợp sẵn cho phép:
-- Khách vãng lai chat trực tiếp với Admin thông qua ID phiên (Session ID).
-- Người dùng đã đăng nhập có thể xem lại lịch sử trò chuyện.
-- Thông báo trạng thái Online/Offline và Đang nhập liệu (Typing indicator).
+```bash
+python tools/seed_test.py --yes-test-seed
+python tools/serve_test.py --port 4010
+```
 
----
+Seed additive chỉ chấp nhận DB test; tài khoản `customer@example.test`, `admin@example.test`, `other@example.test`, mật khẩu thử nghiệm `TestUser123!`. Không phải credentials triển khai. Test server suppress mail/không dùng payment thật. Sau khi test reset DB, phải chuẩn bị lại state nếu muốn preview.
 
-## 🚀 Lộ Trình Phát Triển (Future Roadmap)
-- [ ] Tích hợp cổng thanh toán trực tuyến (VNPay/Momo).
-- [ ] Xây dựng hệ thống gợi ý sản phẩm dựa trên AI (Collaborative Filtering).
-- [ ] Phát triển phiên bản Mobile App sử dụng React Native.
+## Giới hạn bảo mật/triển khai
+
+- Không có secret/API key fallback; production yêu cầu Secure cookies, trusted hosts, public HTTPS URL và shared rate-limit storage.
+- Proxy headers chỉ tin khi bật rõ `TRUSTED_PROXY_COUNT`.
+- Password hash, reset token digest/expiry/one-use, `auth_version` thu hồi phiên khi đổi/reset mật khẩu; quyền được đọc lại từ DB.
+- Chat kiểm participant/scope ở HTTP, service và Socket.IO; admin không mặc nhiên đọc private chat. Upload decode/type/size check, đường dẫn tạo ngẫu nhiên, download qua ACL; đường dẫn chat public cũ bị chặn trong ứng dụng. Trên deployment dùng static reverse proxy, không phục vụ `app/static/uploads/chat/` trực tiếp. Đây không phải antivirus/content scanning.
+- CSP hiện vẫn cho inline script/style do HTML main có inline handlers. Không nhận đây là CSP nonce-based hoàn thiện. Thư viện/font chính được phục vụ local.
+- Cookie-based cart không được quảng cáo là giỏ multi-tab/server-side đồng bộ. Background reads không được ghi lại cookie cũ; sửa race có regression và E2E.
+- Render/Vercel config chỉ là cấu hình chưa deploy. Vercel serverless không đảm bảo Socket.IO long-lived; cần môi trường phù hợp trước khi nhận triển khai real-time.
+
+Kết quả audit, commands, số test/coverage và giới hạn E2E cập nhật trong `docs/MAIN_REMEDIATION.md`; không suy ra production readiness chỉ từ test xanh.

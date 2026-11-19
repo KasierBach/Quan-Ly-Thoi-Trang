@@ -1,18 +1,6 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "app.py",
-      "use": "@vercel/python"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "app.py"
-    }
-  ],
-  "env": {
-    "FLASK_APP": "app.py"
-  }
+  "builds": [{"src": "run.py", "use": "@vercel/python"}],
+  "routes": [{"src": "/(.*)", "dest": "run.py"}],
+  "env": {"APP_ENV": "production", "DISABLE_DOTENV": "1"}
 }

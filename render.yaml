@@ -3,24 +3,27 @@ services:
     name: quan-ly-thoi-trang
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn -k gevent --worker-connections 1000 --timeout 120 run:app
+    buildCommand: pip install --require-hashes -r requirements.txt
+    startCommand: gunicorn -k gthread --workers 1 --threads 16 --timeout 60 run:app
+    healthCheckPath: /health/ready
     envVars:
+      - key: APP_ENV
+        value: production
+      - key: DISABLE_DOTENV
+        value: "1"
       - key: DATABASE_URL
         sync: false
       - key: SECRET_KEY
         sync: false
-      - key: MAIL_SERVER
-        value: smtp.gmail.com
-      - key: MAIL_PORT
-        value: "465"
-      - key: MAIL_USE_TLS
-        value: "False"
-      - key: MAIL_USE_SSL
-        value: "True"
-      - key: MAIL_USERNAME
+      - key: TRUSTED_HOSTS
         sync: false
-      - key: MAIL_PASSWORD
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
+      - key: PUBLIC_BASE_URL
         sync: false
+      - key: RATELIMIT_STORAGE_URI
+        sync: false
+      - key: MAIL_SUPPRESS_SEND
+        value: "true"
       - key: PYTHON_VERSION
-        value: "3.11.0"
+        value: "3.11.15"

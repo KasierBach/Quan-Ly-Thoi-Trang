@@ -14,7 +14,16 @@ docker-compose.yml
 .dockerignore
 
 # Git
-.git/
+.git
+.gitnexus/
+node_modules/
+artifacts/
+.coverage*
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+instance/
+tests/
 .gitignore
 
 # IDEs

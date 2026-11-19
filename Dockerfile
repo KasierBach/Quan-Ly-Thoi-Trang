@@ -1,39 +1,16 @@
-# Sử dụng Python slim image để giảm kích thước
 FROM python:3.11-slim
 
-# Ngăn Python tạo ra tệp .pyc và bật log không đệm
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DISABLE_DOTENV=1
 
-# Cài đặt các gói hệ thống cần thiết cho PostgreSQL và build dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libpq-dev \
-    gcc \
-    python3-dev \
-    && rm -rf /var/lib/apt/lists/*
-
-# Tạo thư mục làm việc
 WORKDIR /app
-
-# Tạo người dùng không phải root để bảo mật
 RUN adduser --disabled-password --gecos "" appuser
-
-# Copy requirements.txt trước để tận dụng layer caching
 COPY requirements.txt .
-
-# Cài đặt dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy toàn bộ mã nguồn
-COPY . .
-
-# Thay đổi quyền sở hữu cho appuser
-RUN chown -R appuser:appuser /app
+RUN pip install --no-cache-dir --require-hashes -r requirements.txt
+COPY --chown=appuser:appuser . .
+RUN mkdir -p /app/instance/uploads && chown -R appuser:appuser /app/instance
 USER appuser
-
-# Mở cổng 4000 (mặc định của run.py)
 EXPOSE 4000
-
-# Chạy ứng dụng bằng Gunicorn với gevent worker để hỗ trợ Socket.IO
-CMD ["gunicorn", "--worker-class", "gevent", "--workers", "1", "--bind", "0.0.0.0:4000", "run:app"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live', timeout=3)"
+CMD ["gunicorn", "--worker-class", "gthread", "--workers", "1", "--threads", "16", "--bind", "0.0.0.0:4000", "--timeout", "60", "run:app"]
