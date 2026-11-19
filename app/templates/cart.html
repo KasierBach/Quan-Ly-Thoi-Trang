@@ -10,7 +10,7 @@
         <div class="col-lg-8">
             <div class="card mb-4">
                 <div class="card-header bg-dark text-white">
-                    <h5 class="mb-0">Sản phẩm ({{ cart|length }})</h5>
+                    <h5 class="mb-0">Sản phẩm (<span id="cart-item-count">{{ cart|length }}</span>)</h5>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -40,26 +40,28 @@
                                             </div>
                                         </div>
                                     </td>
-                                    <td>{{ "{:,.0f}".format(item.price) }} đ</td>
+                                    <td id="price-{{ item.variant_id }}">{{ item.price|money }} đ</td>
                                     <td>
                                         <div class="input-group" style="width: 120px;">
                                             <button class="btn btn-sm btn-outline-secondary update-qty-btn"
                                                 type="button" data-variant-id="{{ item.variant_id }}"
-                                                data-change="-1">-</button>
+                                                data-change="-1" aria-label="Giảm số lượng">-</button>
                                             <input type="number"
                                                 class="form-control form-control-sm text-center qty-input"
-                                                value="{{ item.quantity }}" min="1" id="quantity-{{ item.variant_id }}"
-                                                data-variant-id="{{ item.variant_id }}">
+                                                value="{{ item.quantity }}" min="1" step="1" id="quantity-{{ item.variant_id }}"
+                                                data-variant-id="{{ item.variant_id }}" data-quantity="{{ item.quantity }}"
+                                                aria-label="Số lượng {{ item.product_name }}">
                                             <button class="btn btn-sm btn-outline-secondary update-qty-btn"
                                                 type="button" data-variant-id="{{ item.variant_id }}"
-                                                data-change="1">+</button>
+                                                data-change="1" aria-label="Tăng số lượng">+</button>
                                         </div>
+                                        <small class="text-muted d-block">Còn {{ item.stock }} sản phẩm trong kho</small>
+                                        <span class="text-danger small d-block" id="stock-warning-{{ item.variant_id }}" {% if item.quantity <= item.stock %}hidden{% endif %}>Vượt tồn kho, vui lòng giảm số lượng trước khi thanh toán.</span>
                                     </td>
-                                    <td id="subtotal-{{ item.variant_id }}">{{ "{:,.0f}".format(item.price *
-                                        item.quantity) }} đ</td>
+                                    <td id="subtotal-{{ item.variant_id }}">{{ (item.price * item.quantity)|money }} đ</td>
                                     <td>
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn"
-                                            data-variant-id="{{ item.variant_id }}">
+                                            data-variant-id="{{ item.variant_id }}" aria-label="Xóa {{ item.product_name }}">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </td>
@@ -85,7 +87,7 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between mb-3">
                         <span>Tạm tính:</span>
-                        <span id="subtotal">{{ "{:,.0f}".format(total) }} đ</span>
+                        <span id="subtotal">{{ total|money }} đ</span>
                     </div>
                     <div class="d-flex justify-content-between mb-3">
                         <span>Phí vận chuyển:</span>
@@ -94,7 +96,7 @@
                     <hr>
                     <div class="d-flex justify-content-between mb-3 fw-bold">
                         <span>Tổng cộng:</span>
-                        <span id="total" class="text-danger">{{ "{:,.0f}".format(total) }} đ</span>
+                        <span id="total" class="text-danger">{{ total|money }} đ</span>
                     </div>
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('cart.checkout') }}" class="btn btn-primary">
@@ -119,131 +121,95 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="text/template" id="cart-config">
-    {
-        "updateUrl": "{{ url_for('cart.update_cart') }}",
-        "removeUrl": "{{ url_for('cart.remove_from_cart') }}"
-    }
+<script type="application/json" id="cart-config">
+    {{ {'updateUrl': url_for('cart.update_cart'), 'removeUrl': url_for('cart.remove_from_cart')}|tojson }}
 </script>
 <script>
-    const cartConfig = JSON.parse(document.getElementById('cart-config').textContent);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+    (() => {
+        const cartConfig = JSON.parse(document.getElementById('cart-config').textContent);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        let busy = false;
+        const formatCurrency = amount => new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(Number(amount)) + ' đ';
 
-    // Cập nhật số lượng sản phẩm trong giỏ hàng
-    function updateQuantity(variantId, change) {
-        const quantityInput = document.getElementById(`quantity-${variantId}`);
-        const previousQuantity = parseInt(quantityInput.value);
-        let quantity = previousQuantity;
-
-        if (change !== 0) {
-            quantity += change;
-            quantityInput.value = quantity;
-        } else {
-            quantity = parseInt(quantityInput.value);
-        }
-
-        if (quantity < 1) {
-            quantity = 1;
-            quantityInput.value = 1;
-        }
-
-        // Gửi yêu cầu AJAX để cập nhật giỏ hàng
-        fetch(cartConfig.updateUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken
-            },
-            body: `variant_id=${variantId}&quantity=${quantity}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update subtotal for this item
-                    const baseQty = change === 0 ? previousQuantity : (quantity - change);
-                    const price = parseFloat(document.getElementById(`subtotal-${variantId}`).textContent.replace(/[^\d]/g, '')) / Math.max(baseQty, 1);
-                    document.getElementById(`subtotal-${variantId}`).textContent = formatCurrency(price * quantity);
-
-                    // Update total
-                    document.getElementById('subtotal').textContent = formatCurrency(data.total);
-                    document.getElementById('total').textContent = formatCurrency(data.total);
-                } else {
-                    alert(data.message);
-                    // Reset quantity
-                    quantityInput.value = previousQuantity;
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
+        function setBusy(value) {
+            busy = value;
+            document.querySelectorAll('.qty-input, .update-qty-btn, .remove-item-btn').forEach(control => {
+                control.disabled = value;
             });
-    }
-
-    // Xóa sản phẩm khỏi giỏ hàng
-    function removeItem(variantId) {
-        if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?')) {
-            // Send AJAX request to remove item
-            fetch(cartConfig.removeUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: `variant_id=${variantId}`
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remove item from DOM
-                        document.getElementById(`cart-item-${variantId}`).remove();
-
-                        // Update total
-                        document.getElementById('subtotal').textContent = formatCurrency(data.total);
-                        document.getElementById('total').textContent = formatCurrency(data.total);
-
-                        // If cart is empty, reload page
-                        if (data.total === 0) {
-                            window.location.reload();
-                        }
-                    } else {
-                        alert(data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
         }
-    }
 
-    // Định dạng tiền tệ
-    function formatCurrency(amount) {
-        return new Intl.NumberFormat('vi-VN', { style: 'decimal' }).format(amount) + ' đ';
-    }
+        function applySummary(data) {
+            document.getElementById('subtotal').textContent = formatCurrency(data.total);
+            document.getElementById('total').textContent = formatCurrency(data.total);
+            document.getElementById('cart-item-count').textContent = data.item_count;
+            if (Array.isArray(data.items)) {
+                data.items.forEach(item => {
+                    const input = document.getElementById(`quantity-${item.variant_id}`);
+                    if (!input) return;
+                    input.value = item.quantity;
+                    input.dataset.quantity = item.quantity;
+                    document.getElementById(`price-${item.variant_id}`).textContent = formatCurrency(item.price);
+                    document.getElementById(`subtotal-${item.variant_id}`).textContent = formatCurrency(item.subtotal);
+                    document.getElementById(`stock-warning-${item.variant_id}`).hidden = item.quantity <= item.stock;
+                });
+            }
+            if (data.item_count === 0) window.location.reload();
+        }
 
-    document.addEventListener('DOMContentLoaded', function () {
-        // Event delegation for cart actions
-        document.body.addEventListener('click', function (e) {
-            const updateBtn = e.target.closest('.update-qty-btn');
-            if (updateBtn) {
-                const variantId = updateBtn.getAttribute('data-variant-id');
-                const change = parseInt(updateBtn.getAttribute('data-change'));
-                updateQuantity(variantId, change);
+        async function post(url, fields) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: new URLSearchParams(fields)
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) throw new Error(data.message || 'Không thể cập nhật giỏ hàng.');
+            return data;
+        }
+
+        async function updateQuantity(variantId, change) {
+            if (busy) return;
+            const input = document.getElementById(`quantity-${variantId}`);
+            const previous = Number(input.dataset.quantity);
+            const quantity = change ? previous + change : Number(input.value);
+            if (!Number.isSafeInteger(quantity) || quantity < 1) {
+                input.value = previous;
                 return;
             }
-
-            const removeBtn = e.target.closest('.remove-item-btn');
-            if (removeBtn) {
-                const variantId = removeBtn.getAttribute('data-variant-id');
-                removeItem(variantId);
-                return;
+            setBusy(true);
+            try {
+                applySummary(await post(cartConfig.updateUrl, { variant_id: variantId, quantity }));
+            } catch (error) {
+                input.value = previous;
+                alert(error.message);
+            } finally {
+                setBusy(false);
             }
-        });
+        }
 
-        document.body.addEventListener('change', function (e) {
-            if (e.target.classList.contains('qty-input')) {
-                const variantId = e.target.getAttribute('data-variant-id');
-                updateQuantity(variantId, 0);
+        async function removeItem(variantId) {
+            if (busy || !confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi giỏ hàng?')) return;
+            setBusy(true);
+            try {
+                const data = await post(cartConfig.removeUrl, { variant_id: variantId });
+                document.getElementById(`cart-item-${variantId}`).remove();
+                applySummary(data);
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                setBusy(false);
             }
+        }
+
+        document.addEventListener('click', event => {
+            const update = event.target.closest('.update-qty-btn');
+            if (update) updateQuantity(update.dataset.variantId, Number(update.dataset.change));
+            const remove = event.target.closest('.remove-item-btn');
+            if (remove) removeItem(remove.dataset.variantId);
         });
-    });
+        document.addEventListener('change', event => {
+            if (event.target.matches('.qty-input')) updateQuantity(event.target.dataset.variantId, 0);
+        });
+    })();
 </script>
 {% endblock %}

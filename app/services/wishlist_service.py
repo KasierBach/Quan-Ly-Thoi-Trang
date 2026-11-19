@@ -1,69 +1,91 @@
+from typing import Any
+
 from app.services.base_service import BaseService
+from app.validation import positive_int
+
 
 class WishlistService(BaseService):
     @staticmethod
     def get_wishlist_by_user(user_id):
-        """Get all wishlist items for a user, including product details and a representative color."""
+        user_id = positive_int(user_id, 'Khách hàng', 2_147_483_647)
         conn = BaseService.get_connection()
-        cursor = conn.cursor()
         try:
-            # Optimized query using LATERAL JOIN (if supported) or just keeping the subselect but optimized index usage
-            # For simplicity and standard SQL compatibility, we'll stick to the subquery but ensure it's efficient.
-            cursor.execute('''
-                SELECT w.WishlistID, p.ProductID, p.ProductName, p.Price, c.CategoryName,
-                  (SELECT ColorName FROM Colors cl 
-                   JOIN ProductVariants pv ON cl.ColorID = pv.ColorID 
-                   WHERE pv.ProductID = p.ProductID 
-                   ORDER BY pv.VariantID ASC
-                   LIMIT 1) AS FirstColor,
-                  p.ImageURL, w.AddedDate
-                FROM Wishlist w
-                JOIN Products p ON w.ProductID = p.ProductID
-                JOIN Categories c ON p.CategoryID = c.CategoryID
-                WHERE w.CustomerID = %s
-                ORDER BY w.AddedDate DESC
-            ''', (user_id,))
-            return cursor.fetchall()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT w.WishlistID, p.ProductID, p.ProductName, p.Price, p.OriginalPrice, c.CategoryName,
+                        (SELECT cl.ColorName FROM Colors cl
+                         JOIN ProductVariants pv ON cl.ColorID = pv.ColorID
+                         WHERE pv.ProductID = p.ProductID ORDER BY pv.VariantID LIMIT 1) AS FirstColor,
+                        p.ImageURL, w.AddedDate
+                    FROM Wishlist w
+                    JOIN Products p ON w.ProductID = p.ProductID
+                    JOIN Categories c ON p.CategoryID = c.CategoryID
+                    WHERE w.CustomerID = %s
+                    ORDER BY w.AddedDate DESC, w.WishlistID DESC
+                """,
+                    (user_id,),
+                )
+                return cursor.fetchall()
         finally:
-            cursor.close()
             conn.close()
 
     @staticmethod
-    def add_to_wishlist(user_id, product_id):
-        """Add a product to the user's wishlist if not already present."""
+    def add_to_wishlist(user_id, product_id) -> dict[str, Any]:
+        user_id = positive_int(user_id, 'Khách hàng', 2_147_483_647)
+        product_id = positive_int(product_id, 'Sản phẩm', 2_147_483_647)
         conn = BaseService.get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute('SELECT WishlistID FROM Wishlist WHERE CustomerID = %s AND ProductID = %s', (user_id, product_id))
-            if cursor.fetchone():
-                return False, "Sản phẩm đã có trong danh sách yêu thích"
-            
-            cursor.execute('INSERT INTO Wishlist (CustomerID, ProductID, AddedDate) VALUES (%s, %s, CURRENT_TIMESTAMP)', (user_id, product_id))
-            conn.commit()
-            return True, "Đã thêm vào danh sách yêu thích"
-        except Exception as e:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT ProductID FROM Products WHERE ProductID = %s FOR KEY SHARE', (product_id,))
+                if not cursor.fetchone():
+                    return {'success': False, 'message': 'Sản phẩm không tồn tại', 'status_code': 404}
+                cursor.execute(
+                    """
+                    INSERT INTO Wishlist (CustomerID, ProductID, AddedDate)
+                    VALUES (%s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (CustomerID, ProductID) DO NOTHING RETURNING WishlistID
+                """,
+                    (user_id, product_id),
+                )
+                added = cursor.fetchone()
+                conn.commit()
+                if not added:
+                    return {
+                        'success': False,
+                        'message': 'Sản phẩm đã có trong danh sách yêu thích',
+                        'status_code': 409,
+                    }
+                return {'success': True, 'message': 'Đã thêm vào danh sách yêu thích'}
+        except Exception as exc:
             conn.rollback()
-            return False, str(e)
+            result = BaseService.handle_error(exc, 'Không thể thêm vào danh sách yêu thích. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
         finally:
-            cursor.close()
             conn.close()
 
     @staticmethod
-    def remove_from_wishlist(user_id, wishlist_id):
-        """Remove an item from the wishlist."""
+    def remove_from_wishlist(user_id, wishlist_id) -> dict[str, Any]:
+        user_id = positive_int(user_id, 'Khách hàng', 2_147_483_647)
+        wishlist_id = positive_int(wishlist_id, 'Danh sách yêu thích', 2_147_483_647)
         conn = BaseService.get_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute('SELECT WishlistID FROM Wishlist WHERE WishlistID = %s AND CustomerID = %s', (wishlist_id, user_id))
-            if not cursor.fetchone():
-                return False, "Không có quyền thực hiện"
-            
-            cursor.execute('DELETE FROM Wishlist WHERE WishlistID = %s', (wishlist_id,))
-            conn.commit()
-            return True, "Đã xóa khỏi danh sách yêu thích"
-        except Exception as e:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    DELETE FROM Wishlist WHERE WishlistID = %s AND CustomerID = %s RETURNING WishlistID
+                """,
+                    (wishlist_id, user_id),
+                )
+                if not cursor.fetchone():
+                    return {'success': False, 'message': 'Mục yêu thích không tồn tại', 'status_code': 404}
+                conn.commit()
+                return {'success': True, 'message': 'Đã xóa khỏi danh sách yêu thích'}
+        except Exception as exc:
             conn.rollback()
-            return False, str(e)
+            result = BaseService.handle_error(exc, 'Không thể xóa khỏi danh sách yêu thích. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
         finally:
-            cursor.close()
             conn.close()

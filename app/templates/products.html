@@ -34,7 +34,9 @@
                     </h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('product.products') }}" method="get" id="filterForm">
+                                    <form action="{{ url_for('product.products') }}" method="get" id="filterForm">
+                                        <input type="hidden" name="sort" value="{{ sort }}">
+                                        <input type="hidden" name="per_page" value="{{ paging.per_page }}">
                         {% if search_term %}
                         <input type="hidden" name="search" value="{{ search_term }}">
                         {% endif %}
@@ -63,14 +65,14 @@
                             <div class="row g-2">
                                 <div class="col-6">
                                     <input type="number" class="form-control" name="min_price" placeholder="Từ" min="0"
-                                        value="{{ min_price if min_price is not none }}">
+                                        value="{{ min_price if min_price is not none }}" step="0.01">
                                 </div>
                                 <div class="col-6">
                                     <input type="number" class="form-control" name="max_price" placeholder="Đến" min="0"
-                                        value="{{ max_price if max_price is not none }}">
+                                        value="{{ max_price if max_price is not none }}" step="0.01">
                                 </div>
                             </div>
-                            <small class="text-muted">Giá từ 50,000đ - 2,000,000đ</small>
+                            <small class="text-muted">Nhập khoảng giá cần tìm</small>
                         </div>
 
                         <!-- Color Filter -->
@@ -163,7 +165,7 @@
                         {% endif %}
                     </h4>
                     <p class="text-muted mb-0">
-                        <span class="badge bg-primary">{{ products|length }}</span>
+                        <span class="badge bg-primary">{{ paging.total_records }}</span>
                         sản phẩm được tìm thấy
                     </p>
                 </div>
@@ -207,7 +209,9 @@
 
                         <!-- Quick Actions -->
                         <div class="position-absolute top-0 end-0 m-2">
-                            <button class="btn btn-gradient-pink btn-icon btn-sm" title="Thêm vào yêu thích">
+                            <button type="button" class="btn btn-gradient-pink btn-icon btn-sm wishlist-add-btn"
+                                title="Thêm vào yêu thích" data-product-id="{{ product.ProductID }}"
+                                aria-label="Thêm {{ product.ProductName }} vào yêu thích" aria-pressed="false">
                                 <i class="fas fa-heart"></i>
                             </button>
                         </div>
@@ -240,11 +244,9 @@
                         <div class="d-flex justify-content-between align-items-center">
                             <div>
                                 {% if product.Price is not none %}
-                                <span class="h6 text-primary fw-bold mb-0 price">{{ "{:,.0f}".format(product.Price)
-                                    }}đ</span>
+                                <span class="h6 text-primary fw-bold mb-0 price">{{ product.Price|money }}đ</span>
                                 {% if (product.OriginalPrice or 0) > product.Price %}
-                                <small class="text-muted price-old"><del>{{ "{:,.0f}".format(product.OriginalPrice)
-                                        }}đ</del></small>
+                                <small class="text-muted price-old"><del>{{ product.OriginalPrice|money }}đ</del></small>
                                 <br>
                                 {% endif %}
                                 {% else %}
@@ -268,7 +270,7 @@
             <ul class="pagination justify-content-center">
                 <li class="page-item {% if paging.current_page == 1 %}disabled{% endif %}">
                     <a class="page-link"
-                        href="{{ url_for('product.products', page=paging.current_page-1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top"
+                        href="{{ url_for('product.products', page=paging.current_page-1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort, per_page=paging.per_page) }}#product-list-top"
                         aria-label="Previous">
                         <span aria-hidden="true">&laquo; Trang trước</span>
                     </a>
@@ -281,14 +283,14 @@
                 {% for p in range(start_page, end_page + 1) %}
                 <li class="page-item {% if p == paging.current_page %}active{% endif %}">
                     <a class="page-link"
-                        href="{{ url_for('product.products', page=p, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top">{{
+                        href="{{ url_for('product.products', page=p, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort, per_page=paging.per_page) }}#product-list-top">{{
                         p }}</a>
                 </li>
                 {% endfor %}
 
                 <li class="page-item {% if paging.current_page == paging.total_pages %}disabled{% endif %}">
                     <a class="page-link"
-                        href="{{ url_for('product.products', page=paging.current_page+1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort) }}#product-list-top"
+                        href="{{ url_for('product.products', page=paging.current_page+1, category=current_category, search=search_term, min_price=min_price, max_price=max_price, color=color_id, size=size_id, in_stock=in_stock_only, sort=sort, per_page=paging.per_page) }}#product-list-top"
                         aria-label="Next">
                         <span aria-hidden="true">Trang sau &raquo;</span>
                     </a>
@@ -314,10 +316,9 @@
                 <a href="{{ url_for('product.products') }}" class="btn btn-gradient-blue btn-pulse">
                     <i class="fas fa-undo me-2"></i>Xem tất cả sản phẩm
                 </a>
-                <button class="btn btn-gradient-purple"
-                    onclick="document.getElementById('filterForm').reset(); document.getElementById('filterForm').submit();">
+                <a class="btn btn-gradient-purple" href="{{ url_for('product.products') }}">
                     <i class="fas fa-filter me-2"></i>Xóa bộ lọc
-                </button>
+                </a>
             </div>
         </div>
         {% endif %}
@@ -329,43 +330,42 @@
 
 {% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        // Wishlist functionality
-        document.querySelectorAll('[title="Thêm vào yêu thích"]').forEach(btn => {
-            btn.addEventListener('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                const icon = this.querySelector('i');
-                if (icon.classList.contains('fas')) {
-                    icon.classList.remove('fas');
-                    icon.classList.add('far');
-                    this.classList.remove('btn-danger');
-                    this.classList.add('btn-light');
-                } else {
-                    icon.classList.remove('far');
-                    icon.classList.add('fas');
-                    this.classList.remove('btn-light');
-                    this.classList.add('btn-danger');
-                }
-            });
-        });
-
-        // Filter form enhancements
-        const filterInputs = document.querySelectorAll('#filterForm input, #filterForm select');
-        filterInputs.forEach(input => {
-            if (input.type !== 'submit' && input.name !== 'category') {
-                input.addEventListener('change', function () {
-                    // Auto-submit form when filters change (except category which already has onchange)
-                    if (this.name !== 'category') {
-                        setTimeout(() => {
-                            document.getElementById('filterForm').submit();
-                        }, 300);
-                    }
+    (() => {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        document.addEventListener('click', async event => {
+            const button = event.target.closest('.wishlist-add-btn');
+            if (!button || button.disabled) return;
+            button.disabled = true;
+            try {
+                const response = await fetch({{ url_for('product.add_to_wishlist')|tojson }}, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new URLSearchParams({ product_id: button.dataset.productId })
                 });
+                const data = await response.json();
+                if (response.status === 401) {
+                    window.location.href = {{ url_for('auth.login', next=request.full_path.rstrip('?'))|tojson }};
+                    return;
+                }
+                if (!response.ok && response.status !== 409) throw new Error(data.message || 'Không thể thêm vào yêu thích.');
+                if (data.success || response.status === 409) {
+                    button.setAttribute('aria-pressed', 'true');
+                    button.title = 'Đã có trong danh sách yêu thích';
+                    button.classList.add('btn-danger');
+                } else {
+                    throw new Error(data.message || 'Không thể thêm vào yêu thích.');
+                }
+            } catch (error) {
+                alert(error.message);
+            } finally {
+                button.disabled = button.getAttribute('aria-pressed') === 'true';
             }
         });
-    });
 
+        const filterForm = document.getElementById('filterForm');
+        filterForm.querySelectorAll('select:not([name="category"]), input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', () => filterForm.requestSubmit());
+        });
+    })();
 </script>
 {% endblock %}

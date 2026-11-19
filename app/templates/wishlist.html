@@ -27,19 +27,19 @@
                     <div class="d-flex justify-content-between align-items-center">
                         <div class="d-flex flex-column mb-2">
                             {% if (item.OriginalPrice or 0) > item.Price %}
-                            <del class="text-muted small">{{ "{:,.0f}".format(item.OriginalPrice) }} đ</del>
+                            <del class="text-muted small">{{ item.OriginalPrice|money }} đ</del>
                             {% endif %}
-                            <span class="text-danger fw-bold h5 mb-0">{{ "{:,.0f}".format(item.Price) }} đ</span>
+                            <span class="text-danger fw-bold h5 mb-0">{{ item.Price|money }} đ</span>
                         </div>
                         <div>
                             <a href="{{ url_for('product.product_detail', product_id=item.ProductID) }}"
-                                class="btn btn-sm btn-outline-primary">
+                                class="btn btn-sm btn-outline-primary" aria-label="Xem {{ item.ProductName }}">
                                 <i class="fas fa-eye"></i>
                             </a>
-                            <button type="button" class="btn btn-sm btn-primary add-to-cart-btn"
-                                data-product-id="{{ item.ProductID }}">
-                                <i class="fas fa-shopping-cart"></i>
-                            </button>
+                            <a href="{{ url_for('product.product_detail', product_id=item.ProductID) }}"
+                                class="btn btn-sm btn-primary" aria-label="Chọn màu và kích thước {{ item.ProductName }}">
+                                <i class="fas fa-shopping-cart"></i> Chọn phân loại
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -61,73 +61,32 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="text/template" id="wishlist-config">
-    {
-        "removeUrl": "{{ url_for('product.remove_from_wishlist') }}",
-        "addToCartUrl": "{{ url_for('cart.add_to_cart') }}"
-    }
+<script type="application/json" id="wishlist-config">
+    {{ {'removeUrl': url_for('product.remove_from_wishlist')}|tojson }}
 </script>
 <script>
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    document.addEventListener('DOMContentLoaded', function () {
-        // Event delegation for buttons
-        document.body.addEventListener('click', function (e) {
-            const removeBtn = e.target.closest('.remove-wishlist-btn');
-            if (removeBtn) {
-                const wishlistId = removeBtn.getAttribute('data-wishlist-id');
-                removeFromWishlist(wishlistId);
-                return;
-            }
-
-            const addBtn = e.target.closest('.add-to-cart-btn');
-            if (addBtn) {
-                const productId = addBtn.getAttribute('data-product-id');
-                addToCartFromWishlist(productId);
-                return;
+    (() => {
+        const config = JSON.parse(document.getElementById('wishlist-config').textContent);
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        document.addEventListener('click', async event => {
+            const button = event.target.closest('.remove-wishlist-btn');
+            if (!button || button.disabled || !confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?')) return;
+            button.disabled = true;
+            try {
+                const response = await fetch(config.removeUrl, {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrfToken, 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: new URLSearchParams({ wishlist_id: button.dataset.wishlistId })
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) throw new Error(data.message || 'Không thể xóa sản phẩm.');
+                document.getElementById(`wishlist-item-${button.dataset.wishlistId}`).remove();
+                if (!document.querySelector('.remove-wishlist-btn')) window.location.reload();
+            } catch (error) {
+                alert(error.message);
+                button.disabled = false;
             }
         });
-    });
-
-    const wishlistConfig = JSON.parse(document.getElementById('wishlist-config').textContent);
-
-    // Remove from wishlist
-    function removeFromWishlist(wishlistId) {
-        if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này khỏi danh sách yêu thích?')) {
-            fetch(wishlistConfig.removeUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: `wishlist_id=${wishlistId}`
-            })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Remove item from DOM
-                        document.getElementById(`wishlist-item-${wishlistId}`).remove();
-
-                        // Show message
-                        alert(data.message);
-
-                        // If wishlist is empty, reload page
-                        if (document.querySelectorAll('.product-card').length === 0) {
-                            window.location.reload();
-                        }
-                    } else {
-                        alert(data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
-        }
-    }
-
-    // Add to cart from wishlist
-    function addToCartFromWishlist(productId) {
-        // Redirect to product detail page
-        window.location.href = `/product/${productId}`;
-    }
+    })();
 </script>
 {% endblock %}

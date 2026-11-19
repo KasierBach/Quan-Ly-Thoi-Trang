@@ -11,7 +11,8 @@
                     <h3 class="mb-0">Đăng nhập</h3>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="post">
+                    <form action="{{ url_for('auth.login') }}" method="post">
+                        <input type="hidden" name="next" value="{{ next_page or '' }}">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="mb-3">
                             <label for="email" class="form-label">Email</label>
@@ -21,10 +22,7 @@
                             <label for="password" class="form-label">Mật khẩu</label>
                             <input type="password" class="form-control" id="password" name="password" required>
                         </div>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                            <label class="form-check-label" for="remember">Ghi nhớ đăng nhập</label>
-                        </div>
+                        <div class="small text-muted mb-3">Phiên đăng nhập có thời hạn 12 giờ.</div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary">
                                 <i class="fas fa-sign-in-alt me-2"></i>Đăng nhập

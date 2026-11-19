@@ -9,12 +9,11 @@
     <link rel="icon" href="{{ url_for('static', filename='images/different-solar-system-galaxy-live.jpg') }}"
         type="image/jpg" sizes="128x128" />
     <!-- Bootstrap CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/bootstrap/bootstrap.min.css') }}" rel="stylesheet">
     <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fontawesome/css/all.min.css') }}">
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="{{ url_for('static', filename='vendor/inter/inter.css') }}" rel="stylesheet">
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block styles %}{% endblock %}
@@ -27,7 +26,7 @@
             <a class="navbar-brand" href="{{ url_for('main.home') }}">
                 <i class="fas fa-store me-2"></i>Fashion Store
             </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Mở menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
@@ -60,8 +59,8 @@
                 <form class="d-flex me-3 search-bar" action="{{ url_for('product.products') }}" method="get"
                     id="searchForm">
                     <input class="form-control" type="search" name="search" id="searchInput"
-                        placeholder="Tìm kiếm sản phẩm..." autocomplete="off">
-                    <button class="btn btn-outline-primary" type="submit">
+                        placeholder="Tìm kiếm sản phẩm..." autocomplete="off" aria-label="Tìm kiếm sản phẩm" aria-controls="searchAutocomplete" aria-expanded="false">
+                    <button class="btn btn-outline-primary" type="submit" aria-label="Tìm kiếm">
                         <i class="fas fa-search"></i>
                     </button>
                     <div class="search-autocomplete" id="searchAutocomplete"></div>
@@ -69,7 +68,7 @@
 
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link position-relative" href="{{ url_for('cart.view_cart') }}">
+                        <a class="nav-link position-relative" href="{{ url_for('cart.view_cart') }}" aria-label="Giỏ hàng">
                             <i class="fas fa-shopping-cart"></i>
                             {% if session.cart %}
                             <span class="badge bg-primary cart-badge">{{ session.cart|length }}</span>
@@ -78,7 +77,7 @@
                     </li>
                     {% if session.user_id %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('product.view_wishlist') }}">
+                        <a class="nav-link" href="{{ url_for('product.view_wishlist') }}" aria-label="Danh sách yêu thích">
                             <i class="fas fa-heart"></i>
                         </a>
                     </li>
@@ -110,9 +109,10 @@
                             <li>
                                 <hr class="dropdown-divider">
                             </li>
-                            <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}">
-                                    <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                                </a></li>
+                            <li><form action="{{ url_for('auth.logout') }}" method="post">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button class="dropdown-item" type="submit"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</button>
+                                </form></li>
                         </ul>
                     </li>
                     {% else %}
@@ -128,7 +128,7 @@
                     </li>
                     {% endif %}
                     <li class="nav-item">
-                        <button class="btn btn-link nav-link" id="toggleTheme">
+                        <button class="btn btn-link nav-link" id="toggleTheme" aria-label="Đổi giao diện sáng tối">
                             <i class="fas fa-moon" id="darkIcon" style="display:none;"></i>
                             <i class="fas fa-sun" id="lightIcon" style="display:none;"></i>
                         </button>
@@ -167,9 +167,8 @@
                     <h5 class="mb-3">
                         <i class="fas fa-store me-2"></i>Fashion Store
                     </h5>
-                    <p class="mb-3">Cửa hàng thời trang trực tuyến hàng đầu với các sản phẩm chất lượng cao và dịch vụ
-                        khách hàng tuyệt vời.</p>
-                    <p>Ở cửa hàng này, bạn sẽ thấy được những sản phẩm thời trang tuyệt vời nhất.</p>
+                    <p class="mb-3">Ứng dụng dự án cá nhân mô phỏng cửa hàng thời trang và các thao tác quản lý đơn hàng.</p>
+                    <p>Dữ liệu thử nghiệm không đại diện cho hoạt động kinh doanh thực tế.</p>
                 </div>
                 <div class="col-md-4 mb-4">
                     <h5 class="mb-3">
@@ -207,17 +206,11 @@
                         <i class="fas fa-envelope me-2"></i>Liên hệ & Đăng ký
                     </h5>
                     <address class="mb-3">
-                        <p><i class="fas fa-map-marker-alt me-2"></i> 69 Đường Gì Đó, Quận XYZ, TP.HCM</p>
-                        <p><i class="fas fa-phone me-2"></i> (123) 456-7890</p>
-                        <p><i class="fas fa-envelope me-2"></i> siushop420@fashionstore.com</p>
+                        {% if contact_details.address %}<p><i class="fas fa-map-marker-alt me-2"></i> {{ contact_details.address }}</p>{% endif %}
+                        {% if contact_details.phone %}<p><i class="fas fa-phone me-2"></i> {{ contact_details.phone }}</p>{% endif %}
+                        {% if contact_details.email %}<p><i class="fas fa-envelope me-2"></i> {{ contact_details.email }}</p>{% endif %}
                     </address>
 
-                    <div class="mb-3">
-                        <a href="#" class="social-icon"><i class="fab fa-facebook-f"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-twitter"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-instagram"></i></a>
-                        <a href="#" class="social-icon"><i class="fab fa-youtube"></i></a>
-                    </div>
 
                     <!-- Newsletter Subscription -->
                     <div>
@@ -229,34 +222,24 @@
                                     <i class="fas fa-envelope-open-text text-warning"></i>
                                 </div>
                                 <h6 class="fw-bold mb-3 text-primary" style="letter-spacing:1px;">
-                                    <i class="fas fa-bell me-2 text-warning"></i>Nhận Ưu Đãi Đặc Biệt
+                                    <i class="fas fa-bell me-2 text-warning"></i>Đăng ký nhận tin
                                 </h6>
-                                <form class="d-flex align-items-center gap-2 mb-2" id="newsletter-form"
-                                    onsubmit="return false;">
+                                <form class="d-flex align-items-center gap-2 mb-2" id="newsletter-form">
                                     <div class="input-group flex-nowrap">
                                         <input type="email" class="form-control rounded-start-pill shadow-none border-0"
                                             id="newsletter-email" placeholder="Nhập email của bạn" required
                                             style="background:rgba(255,255,255,0.85); min-width:0;">
-                                        <button type="button" class="btn btn-gradient-pink rounded-end-pill px-4"
+                                        <button type="submit" class="btn btn-gradient-pink rounded-end-pill px-4"
                                             id="subscribe-btn" style="box-shadow:0 2px 8px rgba(240,147,251,0.15);">
                                             <i class="fas fa-paper-plane me-1"></i>Đăng ký
                                         </button>
                                     </div>
                                 </form>
+                                <div id="newsletter-status" role="status" aria-live="polite"></div>
                                 <small class="text-muted d-block mt-2" style="font-size: 0.97em;">
                                     <i class="fas fa-gift me-1 text-success"></i>
-                                    Đăng ký để nhận thông tin khuyến mãi, ưu đãi và xu hướng mới nhất mỗi tuần!
+                                    Địa chỉ email được lưu cho tính năng nhận tin của ứng dụng; chưa có lịch gửi tự động.
                                 </small>
-                                <div class="d-flex gap-2 mt-3">
-                                    <span class="badge bg-warning text-dark fw-normal px-3 py-2"
-                                        style="font-size:0.92em; border-radius: 12px;">
-                                        <i class="fas fa-percent me-1"></i>Giảm giá độc quyền
-                                    </span>
-                                    <span class="badge bg-success px-3 py-2"
-                                        style="font-size:0.92em; border-radius: 12px;">
-                                        <i class="fas fa-truck-fast me-1"></i>Miễn phí vận chuyển
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -275,240 +258,33 @@
     {% block floating_contact_widget %}
     {% if not session.is_admin %}
     <div class="floating-contact">
-        <div class="contact-btn-main btn-pulse" id="contactBtn">
+        <button type="button" class="contact-btn-main" id="contactBtn" aria-label="Mở hỗ trợ" aria-expanded="false">
             <i class="fas fa-comment-dots"></i>
             <div class="contact-pulse"></div>
-        </div>
+        </button>
         <div class="contact-options" id="contactMenu">
-            <div onclick="toggleLiveChat()" class="contact-option-item">
-                <div class="contact-btn-sub c-livechat">
-                    <i class="fas fa-headset"></i>
-                </div>
-                <span>Chat Trực Tiếp</span>
-            </div>
-            <a href="https://zalo.me/0123456789" target="_blank" class="contact-option-item">
-                <div class="contact-btn-sub c-zalo">
-                    <i class="fas fa-comment"></i>
-                </div>
-                <span>Chat Zalo</span>
+            <button type="button" onclick="toggleLiveChat()" class="contact-option-item border-0">
+                <span class="contact-btn-sub c-livechat"><i class="fas fa-headset"></i></span>
+                <span>Chat hỗ trợ</span>
+            </button>
+            {% if contact_details.phone %}
+            <a href="tel:{{ contact_details.phone }}" class="contact-option-item">
+                <span class="contact-btn-sub c-hotline"><i class="fas fa-phone-alt"></i></span>
+                <span>{{ contact_details.phone }}</span>
             </a>
-            <a href="https://m.me/fashionstore" target="_blank" class="contact-option-item">
-                <div class="contact-btn-sub c-messenger">
-                    <i class="fab fa-facebook-messenger"></i>
-                </div>
-                <span>Messenger</span>
-            </a>
-            <a href="tel:0123456789" class="contact-option-item">
-                <div class="contact-btn-sub c-hotline">
-                    <i class="fas fa-phone-alt"></i>
-                </div>
-                <span>Hotline: 0123.456.789</span>
-            </a>
+            {% endif %}
         </div>
     </div>
     {% endif %}
     {% endblock %}
 
     <!-- Bootstrap JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <!-- jQuery -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}"></script>
     <!-- Custom JS -->
-    <script type="text/template" id="base-data">
-        {
-            "isLoggedIn": {{ 'true' if session.user_id else 'false' }},
-            "subscribeUrl": "{{ url_for('main.subscribe_newsletter') }}"
-        }
-    </script>
-    <script>
-        // Floating Contact Widget Logic
-        const contactBtn = document.getElementById('contactBtn');
-        if (contactBtn) {
-            contactBtn.addEventListener('click', function () {
-                this.classList.toggle('active');
-                document.getElementById('contactMenu').classList.toggle('show');
-                const icon = this.querySelector('i');
-                if (this.classList.contains('active')) {
-                    icon.classList.remove('fa-comment-dots');
-                    icon.classList.add('fa-times');
-                } else {
-                    icon.classList.remove('fa-times');
-                    icon.classList.add('fa-comment-dots');
-                }
-            });
-        }
-
-        const baseData = JSON.parse(document.getElementById('base-data').textContent);
-        const isUserLoggedIn = baseData.isLoggedIn;
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-        // Auto-hide flash messages after 5 seconds
-        setTimeout(function () {
-            $('.alert').alert('close');
-        }, 5000);
-
-        // Newsletter subscription
-        document.getElementById('subscribe-btn').addEventListener('click', function () {
-            const email = document.getElementById('newsletter-email').value;
-            const btn = this;
-            const originalContent = btn.innerHTML;
-
-            if (!email) {
-                alert('Vui lòng nhập email');
-                return;
-            }
-
-            // Show loading state
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-            btn.disabled = true;
-
-            fetch(baseData.subscribeUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': csrfToken
-                },
-                body: `email=${email}`
-            })
-                .then(response => response.json())
-                .then(data => {
-                    alert(data.message);
-                    if (data.success) {
-                        document.getElementById('newsletter-email').value = '';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Đã xảy ra lỗi khi đăng ký');
-                })
-                .finally(() => {
-                    btn.innerHTML = originalContent;
-                    btn.disabled = false;
-                });
-        });
-
-        // Dark mode toggle
-        document.getElementById('toggleTheme').addEventListener('click', function () {
-            const currentTheme = document.documentElement.getAttribute('data-bs-theme');
-            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-
-            document.documentElement.setAttribute('data-bs-theme', newTheme);
-
-            // Update icons
-            document.getElementById('darkIcon').style.display = newTheme === 'dark' ? 'inline' : 'none';
-            document.getElementById('lightIcon').style.display = newTheme === 'light' ? 'inline' : 'none';
-
-            // Save preference
-            if (isUserLoggedIn) {
-                fetch("{{ url_for('auth.toggle_dark_mode') }}", {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: `dark_mode=${newTheme === 'dark' ? 1 : 0}`
-                });
-            } else {
-                // Save to localStorage for non-logged in users
-                localStorage.setItem('darkMode', newTheme === 'dark' ? 'enabled' : 'disabled');
-            }
-        });
-
-        // Check localStorage for theme preference on page load (for non-logged in users)
-        document.addEventListener('DOMContentLoaded', function () {
-            var themeApplied = false;
-
-            if (!isUserLoggedIn) {
-                var savedTheme = localStorage.getItem('darkMode');
-                if (savedTheme === 'enabled') {
-                    document.documentElement.setAttribute('data-bs-theme', 'dark');
-                    document.getElementById('darkIcon').style.display = 'inline';
-                    document.getElementById('lightIcon').style.display = 'none';
-                    themeApplied = true;
-                } else if (savedTheme === 'disabled') {
-                    document.documentElement.setAttribute('data-bs-theme', 'light');
-                    document.getElementById('darkIcon').style.display = 'none';
-                    document.getElementById('lightIcon').style.display = 'inline';
-                    themeApplied = true;
-                }
-            }
-
-            if (!themeApplied) {
-                // Default: show correct icon based on initial theme
-                var currentTheme = document.documentElement.getAttribute('data-bs-theme');
-                document.getElementById('darkIcon').style.display = currentTheme === 'dark' ? 'inline' : 'none';
-                document.getElementById('lightIcon').style.display = currentTheme === 'light' ? 'inline' : 'none';
-            }
-        });
-
-        // Live Search Autocomplete
-        (function () {
-            const searchInput = document.getElementById('searchInput');
-            const autocomplete = document.getElementById('searchAutocomplete');
-            let debounceTimer;
-
-            if (!searchInput || !autocomplete) return;
-
-            searchInput.addEventListener('input', function () {
-                const query = this.value.trim();
-
-                clearTimeout(debounceTimer);
-
-                if (query.length < 1) {
-                    autocomplete.classList.remove('show');
-                    autocomplete.innerHTML = '';
-                    return;
-                }
-
-                debounceTimer = setTimeout(() => {
-                    fetch(`/api/search_autocomplete?q=${encodeURIComponent(query)}`)
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.success && data.products.length > 0) {
-                                autocomplete.innerHTML = data.products.map(p => `
-                                    <a href="/product/${p.id}" class="search-autocomplete-item">
-                                        <img src="${p.image || '/static/images/placeholder.jpg'}" 
-                                             alt="${p.name}" 
-                                             class="search-autocomplete-img"
-                                             onerror="this.onerror=null;this.src='/static/images/placeholder.jpg'">
-                                        <div class="search-autocomplete-info">
-                                            <div class="search-autocomplete-name">${p.name}</div>
-                                            <div class="search-autocomplete-meta">
-                                                <span class="search-autocomplete-price">${new Intl.NumberFormat('vi-VN').format(p.price)}₫</span>
-                                                <span class="ms-2">${p.category}</span>
-                                            </div>
-                                        </div>
-                                    </a>
-                                `).join('');
-                                autocomplete.classList.add('show');
-                            } else if (data.success && data.products.length === 0) {
-                                autocomplete.innerHTML = '<div class="search-no-results"><i class="fas fa-search me-2"></i>Không tìm thấy sản phẩm</div>';
-                                autocomplete.classList.add('show');
-                            } else {
-                                autocomplete.classList.remove('show');
-                            }
-                        })
-                        .catch(() => {
-                            autocomplete.classList.remove('show');
-                        });
-                }, 250);
-            });
-
-            // Hide on click outside
-            document.addEventListener('click', function (e) {
-                if (!searchInput.contains(e.target) && !autocomplete.contains(e.target)) {
-                    autocomplete.classList.remove('show');
-                }
-            });
-
-            // Show again on focus if has content
-            searchInput.addEventListener('focus', function () {
-                if (this.value.trim().length >= 1 && autocomplete.innerHTML) {
-                    autocomplete.classList.add('show');
-                }
-            });
-        })();
-    </script>
+    <script type="application/json" id="base-data">{{ {'isLoggedIn': session.get('user_id') is not none, 'subscribeUrl': url_for('main.subscribe_newsletter'), 'themeUrl': url_for('auth.toggle_dark_mode'), 'searchUrl': url_for('product.search_autocomplete')}|tojson }}</script>
+    <script src="{{ url_for('static', filename='js/site.js') }}"></script>
     {% block chat_widget %}
     {% include 'chat_widget.html' %}
     {% endblock %}

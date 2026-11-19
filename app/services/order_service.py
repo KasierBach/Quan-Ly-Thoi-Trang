@@ -1,161 +1,298 @@
+from typing import Any
+
+import psycopg2
+
 from app.services.base_service import BaseService
+from app.services.product_service import ProductService
+from app.validation import ValidationError, email_address, phone_number, positive_int, required_text
+
 
 class OrderService(BaseService):
+    PAYMENT_METHOD = 'Thanh toán khi nhận hàng'
+    STATUS_TRANSITIONS = {
+        'Pending': {'Processing', 'Cancelled'},
+        'Processing': {'Shipped', 'Cancelled'},
+        'Shipped': {'Delivered'},
+        'Delivered': set(),
+        'Cancelled': set(),
+    }
+
     @staticmethod
-    def create_order(user_id: int, payment_method: str, shipping_address: str, cart_items: list):
-        """Create a new order and its details in a transaction."""
+    def create_order(
+        user_id: int,
+        payment_method: str,
+        shipping_address: str,
+        cart_items: list,
+        *,
+        recipient_name=None,
+        recipient_phone=None,
+        recipient_email=None,
+        notes='',
+    ) -> dict[str, Any]:
+        """Validate before writing and leave authoritative prices/stock to SQL atomics."""
+        try:
+            user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
+            shipping_address = required_text(shipping_address, 'Địa chỉ giao hàng', 500)
+            payment_method = required_text(payment_method, 'Phương thức thanh toán', 100)
+            if payment_method != OrderService.PAYMENT_METHOD:
+                raise ValidationError('Phương thức thanh toán chưa được hỗ trợ')
+            items = ProductService.normalize_cart_items(cart_items)
+            if not items:
+                raise ValidationError('Giỏ hàng trống')
+            if any(value is not None for value in (recipient_name, recipient_phone, recipient_email)):
+                recipient_name = required_text(recipient_name, 'Họ và tên', 255)
+                recipient_phone = phone_number(recipient_phone)
+                recipient_email = email_address(recipient_email)
+            notes = ProductService.optional_text(notes, 'Ghi chú', 2000)
+        except ValidationError as exc:
+            return {'success': False, 'message': str(exc), 'status_code': 400}
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                # 1. Create main order record via stored procedure
-                cursor.execute('SELECT sp_CreateOrder(%s, %s, %s) AS OrderID', 
-                             (user_id, payment_method, shipping_address))
+                cursor.execute(
+                    'SELECT sp_CreateOrder(%s, %s, %s) AS OrderID',
+                    (user_id, payment_method, shipping_address),
+                )
                 order_id = cursor.fetchone().OrderID
-                
-                # 2. Add order items
-                for item in cart_items:
-                    cursor.execute('SELECT sp_AddOrderDetail(%s, %s, %s)', 
-                                 (order_id, item['variant_id'], item['quantity']))
-                
+                if recipient_name is not None or notes:
+                    cursor.execute(
+                        """
+                        UPDATE Orders
+                        SET recipient_name = %s, recipient_phone = %s, recipient_email = %s, notes = %s
+                        WHERE OrderID = %s
+                    """,
+                        (recipient_name, recipient_phone, recipient_email, notes, order_id),
+                    )
+                # A stable lock order avoids deadlocks across carts containing the same variants.
+                for item in items:
+                    cursor.execute(
+                        'SELECT sp_AddOrderDetail(%s, %s, %s)',
+                        (order_id, item['variant_id'], item['quantity']),
+                    )
                 conn.commit()
                 return {'success': True, 'order_id': order_id}
-        except Exception as e:
+        except psycopg2.Error as exc:
             conn.rollback()
-            return OrderService.handle_error(e, "Lỗi khi tạo đơn hàng. Vui lòng kiểm tra lại giỏ hàng.")
+            if exc.pgcode in ('23514', 'P0001'):
+                return {
+                    'success': False,
+                    'message': 'Sản phẩm không đủ tồn kho hoặc giỏ hàng không hợp lệ',
+                    'status_code': 409,
+                }
+            result = OrderService.handle_error(exc, 'Không thể tạo đơn hàng. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
+        except Exception as exc:
+            conn.rollback()
+            result = OrderService.handle_error(exc, 'Không thể tạo đơn hàng. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
         finally:
             conn.close()
 
     @staticmethod
-    def cancel_order(order_id, user_id):
-        """Cancel an order only if it belongs to the user and is in 'Pending' status."""
+    def cancel_order(order_id, user_id) -> dict[str, Any]:
+        """Lock an owner-scoped pending order so cancelling cannot race fulfilment."""
+        try:
+            order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
+            user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
+        except ValidationError as exc:
+            return {'success': False, 'message': str(exc), 'status_code': 400}
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT Status, CustomerID FROM Orders WHERE OrderID = %s', (order_id,))
+                cursor.execute(
+                    """
+                    SELECT Status FROM Orders WHERE OrderID = %s AND CustomerID = %s FOR UPDATE
+                """,
+                    (order_id, user_id),
+                )
                 order = cursor.fetchone()
-                
-                if not order: return {'success': False, 'message': 'Đơn hàng không tồn tại'}
-                if order.CustomerID != user_id: return {'success': False, 'message': 'Không có quyền'}
-                if order.Status != 'Pending': return {'success': False, 'message': 'Chỉ hủy được đơn ở trạng thái Chờ xử lý'}
-                
+                if not order:
+                    return {'success': False, 'message': 'Đơn hàng không tồn tại', 'status_code': 404}
+                if order.Status != 'Pending':
+                    return {
+                        'success': False,
+                        'message': 'Chỉ hủy được đơn ở trạng thái Chờ xử lý',
+                        'status_code': 409,
+                    }
                 cursor.execute('SELECT sp_UpdateOrderStatus(%s, %s)', (order_id, 'Cancelled'))
                 conn.commit()
-                return {'success': True}
-        except Exception as e:
+                return {'success': True, 'message': 'Đã hủy đơn hàng'}
+        except Exception as exc:
             conn.rollback()
-            return OrderService.handle_error(e, "Lỗi khi hủy đơn hàng")
+            result = OrderService.handle_error(exc, 'Không thể hủy đơn hàng. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
         finally:
             conn.close()
 
     @staticmethod
     def get_customer_orders(user_id):
         """Return a customer's orders for the account page."""
+        user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('''
+                cursor.execute(
+                    """
                     SELECT OrderID, OrderDate, TotalAmount, Status, PaymentMethod
                     FROM Orders
                     WHERE CustomerID = %s
                     ORDER BY OrderDate DESC
-                ''', (user_id,))
+                """,
+                    (user_id,),
+                )
                 return cursor.fetchall()
         finally:
             conn.close()
 
     @staticmethod
     def get_user_order_detail(order_id, user_id):
-        """Get order details with ownership verification."""
+        """Scope the first query by owner before fetching order items."""
+        order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
+        user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT * FROM sp_GetOrderDetails_Main(%s)', (order_id,))
+                cursor.execute(
+                    """
+                    SELECT o.*, c.FullName AS CustomerName, c.PhoneNumber AS CustomerPhone, c.Email AS CustomerEmail
+                    FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID
+                    WHERE o.OrderID = %s AND o.CustomerID = %s
+                """,
+                    (order_id, user_id),
+                )
                 order = cursor.fetchone()
-                
-                if not order or order.CustomerID != user_id: return None
-                
-                cursor.execute('''
-                    SELECT od.Quantity, od.Price as UnitPrice, p.ProductName, 
-                           c.ColorName, s.SizeName, p.ImageURL 
+                if not order:
+                    return None
+                cursor.execute(
+                    """
+                    SELECT od.Quantity, od.Price, od.Price AS UnitPrice,
+                           od.Price * od.Quantity AS Subtotal, p.ProductName,
+                           c.ColorName, s.SizeName, p.ImageURL
                     FROM OrderDetails od
                     JOIN ProductVariants pv ON od.VariantID = pv.VariantID
                     JOIN Products p ON pv.ProductID = p.ProductID
                     JOIN Colors c ON pv.ColorID = c.ColorID
                     JOIN Sizes s ON pv.SizeID = s.SizeID
-                    WHERE od.OrderID = %s
-                ''', (order_id,))
-                items = cursor.fetchall()
-                return {'order': order, 'items': items}
+                    WHERE od.OrderID = %s ORDER BY od.OrderDetailID
+                """,
+                    (order_id,),
+                )
+                return {'order': order, 'items': cursor.fetchall()}
         finally:
             conn.close()
 
     @staticmethod
     def get_orders_admin(status, page, per_page):
-        """Fetch orders for admin with filtering and pagination."""
+        """Fetch orders for admin with filtering and bounded pagination."""
+        if status is not None and (
+            not isinstance(status, str) or (status and status not in OrderService.STATUS_TRANSITIONS)
+        ):
+            raise ValidationError('Trạng thái đơn hàng không hợp lệ')
+        try:
+            page = positive_int(page, 'Trang', ProductService.MAX_INTEGER)
+        except ValidationError:
+            page = 1
+        try:
+            per_page = positive_int(per_page, 'Số đơn hàng mỗi trang')
+        except ValidationError:
+            per_page = 20
+        if per_page not in (10, 20, 50, 100):
+            per_page = 20
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                where_clause = "WHERE o.Status = %s" if status else ""
+                where_clause = 'WHERE o.Status = %s' if status else ''
                 params = [status] if status else []
-                
-                cursor.execute(f"SELECT COUNT(*) FROM Orders o {where_clause}", params)
+                cursor.execute(f'SELECT COUNT(*) FROM Orders o {where_clause}', params)
                 total_records = cursor.fetchone()[0]
-                total_pages = (total_records + per_page - 1) // per_page if total_records > 0 else 1
-                page = min(max(1, page), total_pages)
+                total_pages = max(1, (total_records + per_page - 1) // per_page)
+                page = min(page, total_pages)
                 offset = (page - 1) * per_page
-                
-                query = f'''
-                    SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail 
-                    FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID 
-                    {where_clause} ORDER BY o.OrderDate DESC LIMIT %s OFFSET %s
-                '''
-                cursor.execute(query, params + [per_page, offset])
-                orders = cursor.fetchall()
-                
+                cursor.execute(
+                    f"""
+                    SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail
+                    FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID
+                    {where_clause} ORDER BY o.OrderDate DESC, o.OrderID DESC LIMIT %s OFFSET %s
+                """,
+                    params + [per_page, offset],
+                )
                 return {
-                    'orders': orders, 'total_records': total_records, 'total_pages': total_pages,
-                    'current_page': page, 'per_page': per_page,
-                    'start_index': offset + 1 if total_records > 0 else 0,
-                    'end_index': min(offset + per_page, total_records)
+                    'orders': cursor.fetchall(),
+                    'total_records': total_records,
+                    'total_pages': total_pages,
+                    'current_page': page,
+                    'per_page': per_page,
+                    'start_index': offset + 1 if total_records else 0,
+                    'end_index': min(offset + per_page, total_records),
                 }
         finally:
             conn.close()
 
     @staticmethod
     def get_order_detail(order_id):
-        """Get order details for admin (no ownership check)."""
+        """Get order details for routes protected by the admin role guard."""
+        order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID WHERE o.OrderID = %s', (order_id,))
+                cursor.execute(
+                    """
+                    SELECT o.*, c.FullName AS CustomerName, c.Email AS CustomerEmail, c.PhoneNumber AS CustomerPhone
+                    FROM Orders o JOIN Customers c ON o.CustomerID = c.CustomerID WHERE o.OrderID = %s
+                """,
+                    (order_id,),
+                )
                 order = cursor.fetchone()
-                if not order: return None
-                
-                cursor.execute('''
-                    SELECT od.Quantity, od.Price as UnitPrice, p.ProductName, 
-                           c.ColorName, s.SizeName, p.ImageURL 
+                if not order:
+                    return None
+                cursor.execute(
+                    """
+                    SELECT od.Quantity, od.Price, od.Price AS UnitPrice,
+                           od.Price * od.Quantity AS Subtotal, p.ProductName,
+                           c.ColorName, s.SizeName, p.ImageURL
                     FROM OrderDetails od
                     JOIN ProductVariants pv ON od.VariantID = pv.VariantID
                     JOIN Products p ON pv.ProductID = p.ProductID
                     JOIN Colors c ON pv.ColorID = c.ColorID
                     JOIN Sizes s ON pv.SizeID = s.SizeID
-                    WHERE od.OrderID = %s
-                ''', (order_id,))
+                    WHERE od.OrderID = %s ORDER BY od.OrderDetailID
+                """,
+                    (order_id,),
+                )
                 return {'order': order, 'items': cursor.fetchall()}
         finally:
             conn.close()
 
     @staticmethod
-    def update_order_status(order_id, new_status):
-        """Update order status via stored procedure."""
+    def update_order_status(order_id, new_status) -> dict[str, Any]:
+        """Permit only idempotent or forward state transitions under the order lock."""
+        try:
+            order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
+            if not isinstance(new_status, str) or new_status not in OrderService.STATUS_TRANSITIONS:
+                raise ValidationError('Trạng thái đơn hàng không hợp lệ')
+        except ValidationError as exc:
+            return {'success': False, 'message': str(exc), 'status_code': 400}
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
+                cursor.execute('SELECT Status FROM Orders WHERE OrderID = %s FOR UPDATE', (order_id,))
+                order = cursor.fetchone()
+                if not order:
+                    return {'success': False, 'message': 'Đơn hàng không tồn tại', 'status_code': 404}
+                if new_status == order.Status:
+                    return {'success': True}
+                if new_status not in OrderService.STATUS_TRANSITIONS.get(order.Status, set()):
+                    return {'success': False, 'message': 'Không thể chuyển về trạng thái này', 'status_code': 409}
                 cursor.execute('SELECT sp_UpdateOrderStatus(%s, %s)', (order_id, new_status))
                 conn.commit()
                 return {'success': True}
-        except Exception as e:
+        except Exception as exc:
             conn.rollback()
-            return OrderService.handle_error(e)
+            result = OrderService.handle_error(exc, 'Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau.')
+            result['status_code'] = 503
+            return result
         finally:
             conn.close()

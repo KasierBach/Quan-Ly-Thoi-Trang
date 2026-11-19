@@ -29,9 +29,10 @@
                     <a href="#appearance" class="list-group-item list-group-item-action" data-bs-toggle="list">
                         <i class="fas fa-palette me-2"></i>Giao diện
                     </a>
-                    <a href="{{ url_for('auth.logout') }}" class="list-group-item list-group-item-action text-danger">
-                        <i class="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                    </a>
+                    <form action="{{ url_for('auth.logout') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="list-group-item list-group-item-action text-danger"><i class="fas fa-sign-out-alt me-2"></i>Đăng xuất</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -48,29 +49,12 @@
                                 <div class="card-body">
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
-                                            <h6 class="mb-0 text-white-50">Thành viên</h6>
-                                            {% set total_spent = namespace(value=0) %}
-                                            {% for order in orders %}
-                                            {% if order.Status != 'Cancelled' %}
-                                            {% set total_spent.value = total_spent.value + order.TotalAmount %}
-                                            {% endif %}
-                                            {% endfor %}
-
-                                            {% set tier = 'Silver' %}
-                                            {% if total_spent.value >= 10000000 %}
-                                            {% set tier = 'Diamond' %}
-                                            {% elif total_spent.value >= 5000000 %}
-                                            {% set tier = 'Platinum' %}
-                                            {% elif total_spent.value >= 1000000 %}
-                                            {% set tier = 'Gold' %}
-                                            {% endif %}
-
-                                            <h4 class="mb-0">{{ tier }}</h4>
+                                            <h6 class="mb-0 text-white-50">Tài khoản</h6>
+                                            <h4 class="mb-0">{{ 'Quản trị viên' if is_admin else 'Khách hàng' }}</h4>
                                         </div>
-                                        <i class="fas fa-crown fa-2x text-warning"></i>
+                                        <i class="fas fa-user fa-2x text-warning"></i>
                                     </div>
-                                    <small class="mt-2 d-block text-white-50">Tích lũy: {{
-                                        "{:,.0f}".format(total_spent.value / 1000) }} điểm</small>
+                                    <small class="mt-2 d-block text-white-50">Vai trò hiện tại</small>
                                 </div>
                             </div>
                         </div>
@@ -84,7 +68,7 @@
                                         </div>
                                         <i class="fas fa-shopping-bag fa-2x text-white-50"></i>
                                     </div>
-                                    <small class="mt-2 d-block text-white-50">Đã hoàn thành</small>
+                                    <small class="mt-2 d-block text-white-50">Tất cả trạng thái</small>
                                 </div>
                             </div>
                         </div>
@@ -96,7 +80,7 @@
                                             <h6 class="mb-0 text-white-50">Tổng chi tiêu</h6>
                                             {% set total_spent = namespace(value=0) %}
                                             {% for order in orders %}
-                                            {% if order.Status != 'Cancelled' %}
+                                            {% if order.Status == 'Delivered' %}
                                             {% set total_spent.value = total_spent.value + order.TotalAmount %}
                                             {% endif %}
                                             {% endfor %}
@@ -104,8 +88,7 @@
                                         </div>
                                         <i class="fas fa-wallet fa-2x text-white-50"></i>
                                     </div>
-                                    <small class="mt-2 d-block text-white-50">Tháng này: +{{
-                                        "{:,.0f}".format(total_spent.value|float * 0.1) }}đ</small>
+                                    <small class="mt-2 d-block text-white-50">Tổng tiền các đơn đã giao</small>
                                 </div>
                             </div>
                         </div>
@@ -132,15 +115,10 @@
                                 <div class="row">
                                     <div class="col-md-4 text-center mb-3">
                                         <div class="position-relative d-inline-block">
-                                            <div class="avatar-circle bg-light border d-flex align-items-center justify-content-center mx-auto mb-3"
-                                                style="width: 120px; height: 120px; border-radius: 50%;">
-                                                <i class="fas fa-user fa-4x text-secondary"></i>
-                                            </div>
-                                            <button type="button"
-                                                class="btn btn-sm btn-light border position-absolute bottom-0 end-0 rounded-circle"
-                                                title="Thay đổi ảnh đại diện">
-                                                <i class="fas fa-camera"></i>
-                                            </button>
+                                            <img id="profile-avatar" src="{{ customer.AvatarUrl or url_for('static', filename='images/default.jpg') }}" alt="Ảnh đại diện" class="rounded-circle border mb-3" style="width:120px;height:120px;object-fit:cover;">
+                                            <label for="avatar-upload" class="btn btn-sm btn-light border"><i class="fas fa-camera me-1"></i>Đổi ảnh</label>
+                                            <input type="file" id="avatar-upload" accept="image/png,image/jpeg,image/gif,image/webp" class="form-control form-control-sm">
+                                            <div id="avatar-status" role="status" aria-live="polite"></div>
                                         </div>
                                         <p class="text-muted small">Ảnh đại diện</p>
                                     </div>
@@ -166,7 +144,7 @@
                                             <div class="col-md-6">
                                                 <label class="form-label">Ngày sinh</label>
                                                 <input type="date" class="form-control" name="dob"
-                                                    value="{{ customer.DateOfBirth }}">
+                                                    value="{{ customer.DateOfBirth or '' }}">
                                             </div>
                                         </div>
                                         <div class="row mb-3">
@@ -371,55 +349,45 @@
     </div>
 </div>
 
-<script type="text/template" id="account-config">
-    {
-        "toggleDarkModeUrl": "{{ url_for('auth.toggle_dark_mode') }}"
-    }
-</script>
+<script type="application/json" id="account-config">{{ {'toggleDarkModeUrl': url_for('auth.toggle_dark_mode'), 'avatarUrl': url_for('auth.upload_avatar')}|tojson }}</script>
 <script>
-    const accountConfig = JSON.parse(document.getElementById('account-config').textContent);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-    // Kiểm tra mật khẩu trùng khớp
-    document.getElementById('passwordForm').addEventListener('submit', function (e) {
-        const newPassword = document.getElementById('newPassword').value;
-        const confirmPassword = document.getElementById('confirmPassword').value;
-
-        if (newPassword !== confirmPassword) {
-            e.preventDefault();
-            alert('Mật khẩu xác nhận không khớp với mật khẩu mới!');
-        }
-
-        // Kiểm tra độ mạnh mật khẩu
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
-        if (!passwordRegex.test(newPassword)) {
-            e.preventDefault();
-            alert('Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ hoa, chữ thường và số!');
+(() => {
+    const config = JSON.parse(document.getElementById('account-config').textContent);
+    const token = document.querySelector('meta[name="csrf-token"]').content;
+    const hash = location.hash;
+    const target = document.querySelector(`.list-group a[href="${['#profile', '#orders', '#address', '#password', '#appearance'].includes(hash) ? hash : '#profile'}"]`);
+    if (target) bootstrap.Tab.getOrCreateInstance(target).show();
+    document.getElementById('passwordForm').addEventListener('submit', event => {
+        if (document.getElementById('newPassword').value !== document.getElementById('confirmPassword').value) {
+            event.preventDefault();
+            document.getElementById('confirmPassword').setCustomValidity('Mật khẩu xác nhận không khớp');
+            event.target.reportValidity();
         }
     });
-
-    // Xử lý chế độ tối
-    document.getElementById('darkModeToggle').addEventListener('change', function () {
-        const isDarkMode = this.checked;
-
-        // Gửi yêu cầu cập nhật chế độ tối
-        fetch(accountConfig.toggleDarkModeUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken
-            },
-            body: `dark_mode=${isDarkMode ? 1 : 0}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Áp dụng chế độ tối ngay lập tức
-                    document.documentElement.setAttribute('data-bs-theme', isDarkMode ? 'dark' : 'light');
-
-                    // Lưu trạng thái vào localStorage
-                    localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
-                }
-            });
+    document.getElementById('confirmPassword').addEventListener('input', event => event.target.setCustomValidity(''));
+    document.getElementById('darkModeToggle').addEventListener('change', async event => {
+        const toggle = event.target;
+        try {
+            const response = await fetch(config.toggleDarkModeUrl, { method: 'POST', headers: { 'X-CSRFToken': token }, body: new URLSearchParams({ dark_mode: toggle.checked ? '1' : '0' }) });
+            if (!response.ok || !(await response.json()).success) throw new Error('Không thể lưu giao diện');
+            document.documentElement.dataset.bsTheme = toggle.checked ? 'dark' : 'light';
+        } catch { toggle.checked = !toggle.checked; }
     });
+    document.getElementById('avatar-upload').addEventListener('change', async event => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const data = new FormData();
+        data.append('avatar', file);
+        const status = document.getElementById('avatar-status');
+        status.textContent = 'Đang tải ảnh...';
+        try {
+            const response = await fetch(config.avatarUrl, { method: 'POST', headers: { 'X-CSRFToken': token }, body: data });
+            const result = await response.json();
+            if (!response.ok || !result.success) throw new Error(result.message);
+            document.getElementById('profile-avatar').src = result.avatar_url;
+            status.textContent = 'Đã cập nhật ảnh đại diện';
+        } catch (error) { status.textContent = error.message || 'Không thể cập nhật ảnh'; }
+    });
+})();
 </script>
 {% endblock %}

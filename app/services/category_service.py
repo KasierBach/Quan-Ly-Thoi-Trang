@@ -1,24 +1,17 @@
-from app.services.base_service import BaseService
 from app.cache import cached
+
+from .base_service import BaseService
+
 
 class CategoryService(BaseService):
     @staticmethod
-    @cached(timeout=600, key_prefix='categories:')  # Cache for 10 minutes
+    @cached(timeout=600, key_prefix='categories:')
     def get_all_categories():
-        """
-        Retrieve all categories from the database.
-        Returns a list of category records.
-        """
-        conn = BaseService.get_connection()
-        cursor = conn.cursor()
+        """Failures are handled by the route, not cached as an empty catalog."""
+        conn = CategoryService.get_connection()
         try:
-            cursor.execute('SELECT * FROM Categories')
-            categories = cursor.fetchall()
-            # Return as list (CaseInsensitiveRecord already works with Jinja2)
-            return list(categories)
-        except Exception as e:
-            print(f"Error fetching categories: {e}")
-            return []
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT CategoryID, CategoryName FROM Categories ORDER BY CategoryName, CategoryID')
+                return list(cursor.fetchall())
         finally:
-            cursor.close()
             conn.close()

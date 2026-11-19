@@ -11,7 +11,7 @@
                     <i class="fas fa-check-circle text-success fa-5x mb-4"></i>
                     <h2 class="mb-4">Đặt hàng thành công!</h2>
                     <p class="lead">Cảm ơn bạn đã mua sắm tại Fashion Store.</p>
-                    <p>Đơn hàng của bạn đã được xác nhận và đang được xử lý.</p>
+                    <p>Đơn hàng đã được ghi nhận. Trạng thái hiện tại: <strong>{{ order.Status }}</strong>.</p>
                     <p>Mã đơn hàng: <strong>#{{ order.OrderID }}</strong></p>
                     <hr class="my-4">
 
@@ -24,7 +24,10 @@
                                 <p><strong>Phương thức thanh toán:</strong> {{ order.PaymentMethod }}</p>
                             </div>
                             <div class="col-md-6">
-                                <p><strong>Tổng tiền:</strong> {{ "{:,.0f}".format(order.TotalAmount) }} đ</p>
+                                <p><strong>Tổng tiền:</strong> {{ order.TotalAmount|money }} đ</p>
+                                <p><strong>Người nhận:</strong> {{ order.recipient_name or order.CustomerName }}</p>
+                                <p><strong>Số điện thoại:</strong> {{ order.recipient_phone or order.CustomerPhone or 'Chưa cập nhật' }}</p>
+                                {% if order.notes %}<p><strong>Ghi chú:</strong> {{ order.notes }}</p>{% endif %}
                                 <p><strong>Địa chỉ giao hàng:</strong> {{ order.ShippingAddress }}</p>
                             </div>
                         </div>
@@ -51,15 +54,15 @@
                                         <td>{{ item.ColorName }}</td>
                                         <td>{{ item.SizeName }}</td>
                                         <td>{{ item.Quantity }}</td>
-                                        <td class="text-end">{{ "{:,.0f}".format(item.Price) }} đ</td>
-                                        <td class="text-end">{{ "{:,.0f}".format(item.Subtotal) }} đ</td>
+                                        <td class="text-end">{{ item.Price|money }} đ</td>
+                                        <td class="text-end">{{ item.Subtotal|money }} đ</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                                 <tfoot>
                                     <tr>
                                         <th colspan="5" class="text-end">Tổng cộng:</th>
-                                        <th class="text-end">{{ "{:,.0f}".format(order.TotalAmount) }} đ</th>
+                                        <th class="text-end">{{ order.TotalAmount|money }} đ</th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -67,6 +70,9 @@
                     </div>
 
                     <div class="d-flex justify-content-center gap-3 mt-4">
+                        <a href="{{ url_for('cart.order_detail', order_id=order.OrderID) }}" class="btn btn-primary">
+                            <i class="fas fa-receipt me-2"></i>Theo dõi đơn hàng
+                        </a>
                         <a href="{{ url_for('main.home') }}" class="btn btn-primary">
                             <i class="fas fa-home me-2"></i>Trang chủ
                         </a>

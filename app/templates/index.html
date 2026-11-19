@@ -48,12 +48,11 @@
                         style="left: 0; right: 0; top: 0; bottom: 0;" data-aos="zoom-in">
                         <h1 class="display-3 fw-bold mb-4"
                             style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                            Giảm giá đến <span
-                                style="color: #ff6b6b; text-shadow: 2px 2px 4px rgba(0,0,0,0.7);">60%</span> 🔥
+                            Khám phá danh mục
                         </h1>
                         <p class="lead mb-4"
                             style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 600px;">
-                            Ưu đãi đặc biệt cho các sản phẩm hot nhất - Cơ hội không thể bỏ lỡ!
+                            Xem giá và biến thể size, màu được lưu trong ứng dụng.
                         </p>
                         <a href="{{ url_for('product.products') }}"
                             class="btn btn-warning btn-lg px-5 py-3 text-dark fw-bold">
@@ -77,7 +76,7 @@
                         </h1>
                         <p class="lead mb-4"
                             style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 500px;">
-                            Các sản phẩm chất lượng cao từ các thương hiệu nổi tiếng thế giới
+                            Các sản phẩm trong bộ dữ liệu của dự án cá nhân.
                         </p>
                         <a href="{{ url_for('product.products') }}" class="btn btn-outline-light btn-lg px-5 py-3">
                             <i class="fas fa-crown me-2"></i>Khám phá
@@ -107,8 +106,8 @@
                     <div class="feature-icon mb-3">
                         <i class="fas fa-truck fa-3x"></i>
                     </div>
-                    <h4 class="fw-bold mb-3">Giao hàng miễn phí</h4>
-                    <p class="text-muted">Miễn phí giao hàng cho đơn hàng trên 500.000đ</p>
+                    <h4 class="fw-bold mb-3">Thông tin sản phẩm</h4>
+                    <p class="text-muted">Tìm kiếm và xem biến thể size, màu</p>
                 </div>
             </div>
             <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="200">
@@ -116,8 +115,8 @@
                     <div class="feature-icon mb-3">
                         <i class="fas fa-undo fa-3x"></i>
                     </div>
-                    <h4 class="fw-bold mb-3">Đổi trả dễ dàng</h4>
-                    <p class="text-muted">Đổi trả sản phẩm trong vòng 30 ngày</p>
+                    <h4 class="fw-bold mb-3">Lịch sử đơn hàng</h4>
+                    <p class="text-muted">Xem đơn đã đặt và trạng thái trong ứng dụng</p>
                 </div>
             </div>
             <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="300">
@@ -125,8 +124,8 @@
                     <div class="feature-icon mb-3">
                         <i class="fas fa-lock fa-3x"></i>
                     </div>
-                    <h4 class="fw-bold mb-3">Thanh toán an toàn</h4>
-                    <p class="text-muted">Thanh toán an toàn với nhiều phương thức</p>
+                    <h4 class="fw-bold mb-3">Đặt hàng COD</h4>
+                    <p class="text-muted">Ghi nhận đơn, chưa tích hợp thanh toán online</p>
                 </div>
             </div>
             <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="400">
@@ -134,8 +133,8 @@
                     <div class="feature-icon mb-3">
                         <i class="fas fa-headset fa-3x"></i>
                     </div>
-                    <h4 class="fw-bold mb-3">Hỗ trợ 24/7</h4>
-                    <p class="text-muted">Luôn sẵn sàng hỗ trợ khách hàng mọi lúc</p>
+                    <h4 class="fw-bold mb-3">Tin nhắn hỗ trợ</h4>
+                    <p class="text-muted">Trao đổi qua tính năng chat của ứng dụng</p>
                 </div>
             </div>
         </div>
@@ -213,15 +212,7 @@
                         <div class="position-absolute bottom-0 start-0 end-0 p-3"
                             style="background: linear-gradient(transparent, rgba(0,0,0,0.8)); opacity: 0; transition: opacity 0.3s ease;">
                             <div class="d-flex gap-2">
-                                <button class="btn btn-light btn-sm flex-fill">
-                                    <i class="fas fa-heart"></i>
-                                </button>
-                                <button class="btn btn-light btn-sm flex-fill">
-                                    <i class="fas fa-eye"></i>
-                                </button>
-                                <button class="btn btn-primary btn-sm flex-fill">
-                                    <i class="fas fa-shopping-cart"></i>
-                                </button>
+                                <a class="btn btn-light btn-sm flex-fill" href="{{ url_for('product.product_detail', product_id=product.ProductID) }}">Xem và chọn biến thể</a>
                             </div>
                         </div>
                     </div>
@@ -338,23 +329,16 @@
                 <h2 class="fw-bold mb-3" style="color: #3a2e5c;">
                     <i class="fas fa-envelope me-3" style="color: #ffb347;"></i>Đăng ký nhận tin tức mới nhất
                 </h2>
-                <p class="lead" style="color: #5a5a5a;"></p>
-                Nhận thông báo về sản phẩm mới, khuyến mãi đặc biệt và xu hướng thời trang mới nhất
-                </p>
+                <p class="lead" style="color: #5a5a5a;">Đăng ký email để lưu yêu cầu nhận tin trong ứng dụng.</p>
             </div>
             <div class="col-lg-6" data-aos="fade-left">
-                <div class="newsletter-form">
+                <form id="hero-newsletter-form" class="newsletter-form">
                     <div class="input-group input-group-lg">
-                        <input type="email" class="form-control" id="hero-newsletter-email"
-                            placeholder="Nhập email của bạn...">
-                        <button class="btn btn-warning text-dark fw-bold px-4" type="button" id="hero-subscribe-btn">
-                            <i class="fas fa-paper-plane me-2"></i>Đăng ký ngay
-                        </button>
+                        <input type="email" class="form-control" id="hero-newsletter-email" aria-label="Email nhận tin" maxlength="254" required placeholder="Nhập email của bạn...">
+                        <button class="btn btn-warning text-dark fw-bold px-4" type="submit" id="hero-subscribe-btn"><i class="fas fa-paper-plane me-2"></i>Đăng ký ngay</button>
                     </div>
-                    <small class="text-white-50 mt-2 d-block">
-                        <i class="fas fa-shield-alt me-1"></i>Chúng tôi cam kết bảo mật thông tin của bạn
-                    </small>
-                </div>
+                    <div id="hero-newsletter-status" class="mt-2" role="status" aria-live="polite"></div>
+                </form>
             </div>
         </div>
     </div>
@@ -362,118 +346,33 @@
 {% endblock %}
 
 {% block scripts %}
-<script type="text/template" id="index-config">
-    {
-        "subscribeUrl": "{{ url_for('main.subscribe_newsletter') }}"
-    }
-</script>
+<script type="application/json" id="index-config">{{ {'subscribeUrl': url_for('main.subscribe_newsletter')}|tojson }}</script>
 <script>
-    const indexConfig = JSON.parse(document.getElementById('index-config').textContent);
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-
-    // Hero newsletter subscription
-    document.getElementById('hero-subscribe-btn').addEventListener('click', function () {
-        const email = document.getElementById('hero-newsletter-email').value;
-        const btn = this;
-        const originalContent = btn.innerHTML;
-
-        if (!email) {
-            alert('Vui lòng nhập email');
-            return;
-        }
-
-        // Show loading state
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang xử lý...';
-        btn.disabled = true;
-
-        fetch(indexConfig.subscribeUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': csrfToken
-            },
-            body: `email=${email}`
-        })
-            .then(response => response.json())
-            .then(data => {
-                alert(data.message);
-                if (data.success) {
-                    document.getElementById('hero-newsletter-email').value = '';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('Đã xảy ra lỗi khi đăng ký');
-            })
-            .finally(() => {
-                btn.innerHTML = originalContent;
-                btn.disabled = false;
-            });
+(() => {
+    const config = JSON.parse(document.getElementById('index-config').textContent);
+    const form = document.getElementById('hero-newsletter-form');
+    form.addEventListener('submit', async event => {
+        event.preventDefault();
+        if (!form.reportValidity()) return;
+        const button = document.getElementById('hero-subscribe-btn');
+        const status = document.getElementById('hero-newsletter-status');
+        button.disabled = true;
+        try {
+            const response = await fetch(config.subscribeUrl, { method: 'POST', headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content }, body: new URLSearchParams({ email: document.getElementById('hero-newsletter-email').value }) });
+            const data = await response.json();
+            status.textContent = data.message;
+            if (response.ok && data.success) form.reset();
+        } catch { status.textContent = 'Không thể đăng ký. Vui lòng thử lại.'; }
+        finally { button.disabled = false; }
     });
-
-    // Product card hover effects
     document.querySelectorAll('.product-card').forEach(card => {
         const overlay = card.querySelector('.position-absolute.bottom-0');
-
-        card.addEventListener('mouseenter', function () {
-            if (overlay) {
-                overlay.style.opacity = '1';
-            }
-        });
-
-        card.addEventListener('mouseleave', function () {
-            if (overlay) {
-                overlay.style.opacity = '0';
-            }
-        });
+        if (!overlay) return;
+        card.addEventListener('mouseenter', () => { overlay.style.opacity = '1'; });
+        card.addEventListener('mouseleave', () => { overlay.style.opacity = '0'; });
+        card.addEventListener('focusin', () => { overlay.style.opacity = '1'; });
+        card.addEventListener('focusout', () => { overlay.style.opacity = '0'; });
     });
-
-    // Category card hover effects
-    document.querySelectorAll('.category-card').forEach(card => {
-        const img = card.querySelector('.card-img-top');
-
-        card.addEventListener('mouseenter', function () {
-            if (img) {
-                img.style.transform = 'scale(1.1)';
-            }
-        });
-
-        card.addEventListener('mouseleave', function () {
-            if (img) {
-                img.style.transform = 'scale(1)';
-            }
-        });
-    });
-
-    // Smooth scroll for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
-            if (target) {
-                target.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start'
-                });
-            }
-        });
-    });
-
-    // Add loading states to buttons
-    document.querySelectorAll('.btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            if (this.type === 'submit' || this.href) {
-                const originalContent = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Đang tải...';
-
-                // Reset after 2 seconds if still on page
-                setTimeout(() => {
-                    if (this.innerHTML.includes('fa-spinner')) {
-                        this.innerHTML = originalContent;
-                    }
-                }, 2000);
-            }
-        });
-    });
+})();
 </script>
 {% endblock %}

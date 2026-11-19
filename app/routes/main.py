@@ -1,11 +1,15 @@
-from flask import Blueprint, render_template, request, flash, redirect, url_for, jsonify
-from app.services.main_service import MainService
-from app.services.product_service import ProductService
-from app.decorators import handle_db_errors
-import re
 from datetime import datetime
 
+from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+
+from app.decorators import handle_db_errors
+from app.services.main_service import MainService
+from app.services.product_service import ProductService
+from app.validation import ValidationError, email_address
+
+
 main_bp = Blueprint('main', __name__)
+
 
 @main_bp.route('/')
 @handle_db_errors
@@ -14,47 +18,60 @@ def home():
     best_selling = ProductService.get_best_selling_products(8)
     return render_template('index.html', featured_products=featured, best_selling=best_selling)
 
+
+def _contact_page(values=None, error=None):
+    return render_template(
+        'contact.html',
+        values=values or {},
+        error=error,
+        contact_address=current_app.config.get('CONTACT_ADDRESS'),
+        contact_phone=current_app.config.get('CONTACT_PHONE'),
+        contact_email=current_app.config.get('CONTACT_EMAIL'),
+    )
+
+
 @main_bp.route('/contact', methods=['GET', 'POST'])
 @handle_db_errors
 def contact():
     if request.method == 'GET':
-        return render_template('contact.html')
-        
-    name, email = request.form.get('name'), request.form.get('email')
-    subj, msg = request.form.get('subject'), request.form.get('message')
-    
-    if not all([name, email, msg]):
-        flash('Vui lòng điền đầy đủ thông tin', 'error')
-        return redirect(url_for('main.contact'))
-    
-    if not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        flash('Email không hợp lệ', 'error')
-        return redirect(url_for('main.contact'))
-    
-    res = MainService.add_contact_message(name, email, subj, msg)
-    if res['success']:
-        flash('Cảm ơn bạn đã liên hệ!', 'success')
-    else:
-        flash('Gửi tin không thành công', 'error')
-    
+        return _contact_page()
+    values = {field: request.form.get(field, '') for field in ('name', 'email', 'subject', 'message')}
+    try:
+        validated = MainService.validate_contact(values['name'], values['email'], values['subject'], values['message'])
+        result = MainService.add_contact_message(*validated)
+    except ValidationError as exc:
+        return _contact_page(values, str(exc)), 400
+    if not result['success']:
+        return _contact_page(values, 'Gửi tin không thành công. Vui lòng thử lại sau.'), 500
+    flash('Đã lưu tin nhắn liên hệ. Cảm ơn bạn!', 'success')
     return redirect(url_for('main.contact'))
+
 
 @main_bp.route('/subscribe_newsletter', methods=['POST'])
 @handle_db_errors
 def subscribe_newsletter():
-    email = request.form.get('email')
-    if not email or not re.match(r"[^@]+@[^@]+\.[^@]+", email):
-        return jsonify({'success': False, 'message': 'Email không hợp lệ'})
-    
-    return jsonify(MainService.subscribe_newsletter(email))
+    try:
+        email = email_address(request.form.get('email'))
+        result = dict(MainService.subscribe_newsletter(email))
+    except ValidationError as exc:
+        return jsonify({'success': False, 'message': str(exc)}), 400
+    status = result.pop('status_code', 200 if result.get('success') else 500)
+    return jsonify(result), status
 
+
+@main_bp.route('/health/live')
+def health_live():
+    return jsonify({'status': 'live'}), 200
+
+
+@main_bp.route('/health/ready')
 @main_bp.route('/health')
 def health_check():
-    """Health check endpoint for uptime monitoring."""
     is_healthy = MainService.check_health()
-    status = 'healthy' if is_healthy else 'unhealthy'
-    return jsonify({
-        'status': status,
-        'database': 'connected' if is_healthy else 'error',
-        'timestamp': datetime.now().isoformat()
-    }), (200 if is_healthy else 500)
+    return jsonify(
+        {
+            'status': 'healthy' if is_healthy else 'unhealthy',
+            'database': 'connected' if is_healthy else 'error',
+            'timestamp': datetime.now().isoformat(),
+        }
+    ), (200 if is_healthy else 503)
