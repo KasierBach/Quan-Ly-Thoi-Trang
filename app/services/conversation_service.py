@@ -89,7 +89,7 @@ def _verify_guest(token, sid, binding):
         raise ChatAccessError('Phiên chat không thuộc trình duyệt này', 401)
 
 
-def refresh_identity(actor: ChatIdentity) -> ChatIdentity:
+def refresh_identity(actor: ChatIdentity, *, cursor=None) -> ChatIdentity:
     if actor.user_id is None:
         _verify_guest(actor.guest_token, actor.guest_id, actor.guest_binding)
         return actor
@@ -97,13 +97,17 @@ def refresh_identity(actor: ChatIdentity) -> ChatIdentity:
         return actor
     from .auth_service import AuthService
 
-    state = AuthService.get_identity_state(actor.user_id)
+    state = (
+        AuthService.get_identity_state(actor.user_id)
+        if cursor is None
+        else AuthService.get_identity_state(actor.user_id, cursor=cursor)
+    )
     if state is None or state.AuthVersion != actor.auth_version:
         raise ChatAccessError('Phiên đăng nhập đã hết hiệu lực', 401)
     return replace(actor, is_admin=state.Role == 'admin', name=state.FullName)
 
 
-def get_identity(auth_token=None) -> ChatIdentity:
+def get_identity(auth_token=None, *, cursor=None) -> ChatIdentity:
     uid = session.get('user_id')
     if uid is not None:
         return refresh_identity(
@@ -113,7 +117,8 @@ def get_identity(auth_token=None) -> ChatIdentity:
                 name=session.get('user_name') or 'Người dùng',
                 guest_id=session.get('chat_guest_id'),
                 auth_version=session.get('auth_version'),
-            )
+            ),
+            cursor=cursor,
         )
     token = auth_token or request.headers.get('X-Chat-Token') or request.args.get('auth_token')
     actor = ChatIdentity(
@@ -172,7 +177,7 @@ def participant_settings(value):
 class ConversationService(BaseService):
     @staticmethod
     def get_access(conversation_id=None, session_id=None, *, actor=None, permission='read', cursor=None) -> ChatAccess:
-        actor = refresh_identity(actor) if actor is not None else get_identity()
+        actor = refresh_identity(actor, cursor=cursor) if actor is not None else get_identity(cursor=cursor)
         if conversation_id not in (None, '') and not re.fullmatch(r'[0-9]+', str(conversation_id)):
             session_id, conversation_id = conversation_id, None
         if conversation_id in (None, ''):
@@ -213,10 +218,12 @@ class ConversationService(BaseService):
             row.created_by == actor.user_id or row.role == 'admin' or (actor.is_admin and row.type == 'support')
         ):
             raise ChatAccessError('Cần quyền quản lý cuộc trò chuyện')
-        if permission in {'read_receipt', 'call'} and not row.role:
+        if permission in {'read_receipt', 'call', 'group_call'} and not row.role:
             raise ChatAccessError()
         if permission == 'call' and row.type != 'private':
             raise ChatAccessError('Chỉ hỗ trợ cuộc gọi một-một', 409)
+        if permission == 'group_call' and row.type != 'group':
+            raise ChatAccessError('Chỉ hỗ trợ gọi nhóm trong cuộc trò chuyện nhóm', 409)
         return ChatAccess(actor, cid, conversation_type=row.type, created_by=row.created_by, role=row.role)
 
     @staticmethod
@@ -350,7 +357,13 @@ class ConversationService(BaseService):
 
     @staticmethod
     def get_user_conversations(user_id, *, actor=None) -> list[dict[str, Any]]:
-        actor = actor or get_identity()
+        """List current member rooms in fixed last-activity/ID descending order.
+
+        Unread follows get_messages' full-history policy: joined_at is not a
+        visibility cutoff. Only visible, non-self messages after last_read_at
+        count; PostgreSQL COUNT returns integer zero for an empty match.
+        """
+        actor = refresh_identity(actor) if actor is not None else get_identity()
         uid = positive_int(user_id, 'Tài khoản', 2147483647)
         if actor.user_id != uid:
             raise ChatAccessError()
@@ -362,6 +375,11 @@ class ConversationService(BaseService):
                     SELECT c.*, p.role, p.last_read_at, p.nickname AS my_nickname,
                         (SELECT content FROM Messages WHERE conversation_id = c.id AND NOT is_deleted ORDER BY id DESC LIMIT 1) AS last_message,
                         (SELECT created_at FROM Messages WHERE conversation_id = c.id AND NOT is_deleted ORDER BY id DESC LIMIT 1) AS last_message_at,
+                        (SELECT COUNT(*) FROM Messages m
+                            WHERE m.conversation_id = c.id AND NOT m.is_deleted
+                              AND m.user_id IS DISTINCT FROM %s
+                              AND (p.last_read_at IS NULL OR m.created_at > p.last_read_at)
+                        ) AS unread_count,
                         CASE WHEN c.type = 'private' THEN (
                             SELECT COALESCE(p2.nickname, u.FullName) FROM Participants p2 JOIN Customers u ON p2.user_id = u.CustomerID
                             WHERE p2.conversation_id = c.id AND p2.user_id != %s ORDER BY p2.id LIMIT 1
@@ -369,7 +387,7 @@ class ConversationService(BaseService):
                     FROM Conversations c JOIN Participants p ON c.id = p.conversation_id
                     WHERE p.user_id = %s ORDER BY last_message_at DESC NULLS LAST, c.id DESC
                 """,
-                    (uid, uid),
+                    (uid, uid, uid),
                 )
                 results = []
                 for row in cursor.fetchall():
@@ -457,6 +475,36 @@ class ConversationService(BaseService):
         except psycopg2.Error as exc:
             conn.rollback()
             return ConversationService.handle_error(exc)
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_publication_targets(cid) -> list[dict[str, int]]:
+        """Current authenticated readers for post-commit cross-worker content delivery."""
+        cid = positive_int(cid, 'Cuộc trò chuyện', 2147483647)
+        conn = ConversationService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT DISTINCT c.CustomerID AS user_id, c.auth_version
+                    FROM Conversations conv
+                    JOIN Customers c ON TRUE
+                    LEFT JOIN Participants p
+                      ON p.conversation_id = conv.id AND p.user_id = c.CustomerID
+                    WHERE conv.id = %s
+                      AND (p.user_id IS NOT NULL OR (conv.type = 'support' AND c.Role = 'admin'))
+                    ORDER BY c.CustomerID
+                    """,
+                    (cid,),
+                )
+                return [
+                    {
+                        'user_id': positive_int(row.user_id, 'Tài khoản', 2147483647),
+                        'auth_version': positive_int(row.auth_version, 'Phiên tài khoản', 2147483647),
+                    }
+                    for row in cursor.fetchall()
+                ]
         finally:
             conn.close()
 
@@ -557,9 +605,9 @@ class ConversationService(BaseService):
             return False
         finally:
             conn.close()
-        from .attachment_service import AttachmentService
+        from .attachment_storage import cleanup_files
 
-        AttachmentService.cleanup_files(cleanup)
+        cleanup_files(cleanup)
         return True
 
     @staticmethod

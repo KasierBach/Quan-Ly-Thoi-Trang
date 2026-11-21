@@ -15,8 +15,8 @@ from flask import (
     url_for,
 )
 
-from app import limiter
 from app.decorators import handle_db_errors, login_required
+from app.extensions import limiter
 from app.services.auth_service import AuthService
 from app.services.order_service import OrderService
 from app.uploads import save_image

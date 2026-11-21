@@ -383,6 +383,65 @@ def test_track_view_checks_product_and_deduplicates_bounded_ids(client, catalog)
     assert client.post('/api/track_product_view', data={'product_id': 99}).status_code == 404
 
 
+@pytest.mark.parametrize('poison', [None, '2', {'2': True}, 2], ids=['null', 'string', 'mapping', 'integer'])
+def test_product_detail_recovers_nonlist_recently_viewed(client, catalog, poison):
+    cart = [{'variant_id': 2, 'quantity': 1}]
+    with client.session_transaction() as state:
+        state.update(recently_viewed=poison, cart=cart)
+    response = client.get('/product/1')
+    assert response.status_code == 200
+    assert response.mimetype == 'text/html'
+    with client.session_transaction() as state:
+        assert state['recently_viewed'] == [1]
+        assert state['cart'] == cart
+
+
+@pytest.mark.parametrize('poison', [None, '2', {'2': True}, 2], ids=['null', 'string', 'mapping', 'integer'])
+def test_track_view_recovers_nonlist_recently_viewed(client, catalog, poison):
+    cart = [{'variant_id': 2, 'quantity': 1}]
+    with client.session_transaction() as state:
+        state.update(recently_viewed=poison, cart=cart)
+    response = client.post('/api/track_product_view', json={'product_id': 1})
+    assert response.status_code == 200
+    assert response.json == {'success': True}
+    with client.session_transaction() as state:
+        assert state['recently_viewed'] == [1]
+        assert state['cart'] == cart
+
+
+def test_identical_tracking_does_not_rewrite_session(client, catalog, monkeypatch):
+    _, products = catalog
+    product_read = Mock(return_value=products[1])
+    monkeypatch.setattr(ProductService, 'get_product_by_id', product_read)
+    before = {'recently_viewed': [1, 2], 'cart': [{'variant_id': 2, 'quantity': 1}]}
+    with client.session_transaction() as state:
+        state.update(before)
+    for _ in range(2):
+        response = client.post('/api/track_product_view', json={'product_id': 1})
+        assert response.status_code == 200
+        assert response.json == {'success': True}
+        assert 'Set-Cookie' not in response.headers
+    with client.session_transaction() as state:
+        assert dict(state) == before
+    assert product_read.call_count == 2
+    product_read.assert_called_with(1)
+
+
+@pytest.mark.parametrize('per_page', ['', 'bad', '13'], ids=['empty', 'nonnumeric', 'unsupported-size'])
+def test_invalid_per_page_defaults_to_12_without_resetting_page_or_sort(client, catalog, monkeypatch, per_page):
+    _, products = catalog
+    search = Mock(
+        return_value={'products': [products[1]], 'total_records': 25, 'total_pages': 3, 'current_page': 2, 'offset': 12}
+    )
+    monkeypatch.setattr(ProductService, 'search_products', search)
+    response = client.get('/products', query_string={'page': '2', 'per_page': per_page, 'sort': 'price_asc'})
+    assert response.status_code == 200
+    search.assert_called_once_with('', None, None, None, None, None, 0, 2, 12, 'price_asc')
+    soup = BeautifulSoup(response.data, 'html.parser')
+    assert soup.select_one('#filterForm input[name=per_page]')['value'] == '12'
+    assert soup.select_one('#filterForm input[name=sort]')['value'] == 'price_asc'
+
+
 def test_products_filters_pagination_and_sort_controls_preserve_state(client, catalog, monkeypatch):
     _, products = catalog
     search = Mock(
@@ -497,8 +556,11 @@ def test_storefront_rendered_scripts_parse_without_global_redeclaration(
     scripts = [
         node.get_text()
         for node in soup.find_all('script')
-        if not node.get('src') and node.get('type', '') not in {'application/json', 'text/template'}
+        if not node.get('src')
+        and node.get('type', '') not in {'application/json', 'application/ld+json', 'text/template'}
     ]
+    for data_script in soup.select('script[type="application/ld+json"]'):
+        assert isinstance(json.loads(data_script.get_text()), (dict, list))
     script_path = tmp_path / 'storefront-rendered.js'
     script_path.write_text('\n'.join(scripts), encoding='utf-8')
     checked = subprocess.run(

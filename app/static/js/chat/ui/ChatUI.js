@@ -2,7 +2,94 @@ import { createNode, escapeHtml, findMessage, stickerUrl } from '../utils/helper
 
 /** Colorful chat UI; persisted content is always text or validated DOM properties. */
 class ChatUI {
-    constructor(app) { this.app = app; }
+    constructor(app) {
+        this.app = app;
+        this.openDialogId = null;
+        this.dialogReturnFocus = null;
+        this.eventController = new AbortController();
+        document.addEventListener('keydown', event => this.handleDialogKeydown(event), { signal: this.eventController.signal });
+    }
+
+    showContextMenu(id, event) {
+        this.hideContextMenu();
+        const menu = document.getElementById(id);
+        if (!menu) return;
+        const anchor = event?.currentTarget?.getBoundingClientRect?.();
+        const left = event?.clientX || anchor?.left || 8;
+        const top = event?.clientY || anchor?.bottom || 8;
+        this.contextReturnFocus = document.activeElement;
+        this.contextMenuId = id;
+        menu.style.display = 'block';
+        menu.style.left = `${Math.max(8, Math.min(left, window.innerWidth - menu.offsetWidth - 8))}px`;
+        menu.style.top = `${Math.max(8, Math.min(top, window.innerHeight - menu.offsetHeight - 8))}px`;
+        menu.querySelector('button:not([hidden])')?.focus();
+    }
+
+    hideContextMenu() {
+        for (const id of ['msgContextMenu', 'convContextMenu']) {
+            const menu = document.getElementById(id);
+            if (menu) menu.style.display = 'none';
+        }
+        this.contextMenuId = null;
+    }
+
+    handleDialogKeydown(event) {
+        if (this.contextMenuId) {
+            const menu = document.getElementById(this.contextMenuId);
+            const options = Array.from(menu?.querySelectorAll('button:not([hidden])') || []);
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                this.hideContextMenu();
+                this.contextReturnFocus?.focus();
+            } else if (['ArrowDown', 'ArrowUp'].includes(event.key) && options.length) {
+                event.preventDefault();
+                const direction = event.key === 'ArrowDown' ? 1 : -1;
+                const index = options.indexOf(document.activeElement);
+                options[(index + direction + options.length) % options.length].focus();
+            }
+            return;
+        }
+        const dialog = document.getElementById(this.openDialogId);
+        if (!dialog) return;
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.closeDialog();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const targets = Array.from(dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), a[href], [tabindex="0"]'))
+            .filter(element => !element.hidden && element.getClientRects().length > 0);
+        if (!targets.length) { event.preventDefault(); dialog.focus(); return; }
+        const first = targets[0], last = targets[targets.length - 1];
+        if (event.shiftKey && (document.activeElement === first || !dialog.contains(document.activeElement))) { event.preventDefault(); last.focus(); }
+        else if (!event.shiftKey && (document.activeElement === last || !dialog.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
+    }
+
+    openDialog(id) {
+        const dialog = document.getElementById(id);
+        if (!dialog) return;
+        this.dialogReturnFocus = document.activeElement;
+        this.openDialogId = id;
+        dialog.style.display = 'block';
+        dialog.setAttribute('aria-hidden', 'false');
+        dialog.querySelector('input:not([disabled]), button:not([disabled])')?.focus();
+    }
+
+    closeDialog() {
+        const dialog = document.getElementById(this.openDialogId);
+        if (dialog) {
+            dialog.style.display = 'none';
+            dialog.setAttribute('aria-hidden', 'true');
+        }
+        this.openDialogId = null;
+        if (this.dialogReturnFocus?.isConnected) this.dialogReturnFocus.focus();
+    }
+
+    dispose() {
+        this.eventController.abort();
+        clearTimeout(this.toastTimer);
+        document.getElementById('chatToast')?.remove();
+    }
 
     get messagesArea() { return document.getElementById('messagesArea'); }
     get conversationList() { return document.getElementById('conversationList'); }
@@ -14,45 +101,69 @@ class ChatUI {
 
     renderConversationList(conversations, currentId, onSelect) {
         if (!this.conversationList) return;
+        this.conversationList.setAttribute('aria-busy', 'false');
+        const selected = document.activeElement?.dataset?.conversationId;
         this.conversationList.replaceChildren(this.createConversationItem({
             id: null, name: 'Hỗ trợ khách hàng', last_message: 'Chat với đội ngũ hỗ trợ',
-            is_support: true, active: currentId === null
+            is_support: true, active: this.app.hasSelectedConversation && currentId === null
         }, onSelect));
         if (!conversations.length) this.renderEmptyConversations();
         for (const conv of conversations) {
             this.conversationList.appendChild(this.createConversationItem({
-                ...conv, active: String(currentId) === String(conv.id)
+                ...conv, active: this.app.hasSelectedConversation && String(currentId) === String(conv.id)
             }, onSelect));
+        }
+        if (selected !== undefined) {
+            const item = Array.from(this.conversationList.children).find(element => element.dataset.conversationId === selected);
+            item?.focus({ preventScroll: true });
         }
     }
 
     createConversationItem(conv, onSelect) {
-        const item = createNode('div', `conv-item${conv.active ? ' active' : ''}`);
+        const count = Number(conv.unread_count);
+        const unread = Number.isSafeInteger(count) && count > 0 ? count : 0;
+        const item = createNode('button', `conv-item${conv.active ? ' active' : ''}${unread ? ' unread' : ''}`);
+        item.type = 'button';
+        item.setAttribute('aria-pressed', String(!!conv.active));
         item.dataset.conversationId = conv.id ?? '';
         const name = String(conv.name || 'Người dùng');
-        const avatar = createNode('div', `conv-avatar${conv.is_support ? ' support-avatar' : ''}`);
+        const avatar = createNode('span', `conv-avatar${conv.is_support ? ' support-avatar' : ''}`);
         if (conv.is_support) avatar.appendChild(createNode('i', 'fas fa-headset'));
         else avatar.textContent = name[0].toUpperCase();
-        if (conv.is_online) avatar.appendChild(createNode('div', 'online-dot'));
-        const info = createNode('div', 'conv-info');
-        info.append(createNode('div', 'conv-name', name), createNode('div', 'conv-preview', conv.last_message || 'Chưa có tin nhắn'));
+        if (conv.is_online) avatar.appendChild(createNode('span', 'online-dot'));
+        const info = createNode('span', 'conv-info');
+        info.append(createNode('span', 'conv-name', name), createNode('span', 'conv-preview', conv.last_message || 'Chưa có tin nhắn'));
         item.append(avatar, info);
-        if (!conv.is_support) item.appendChild(createNode('div', 'conv-time', this.formatTime(conv.last_message_at)));
+        if (!conv.is_support) {
+            const meta = createNode('span', 'conv-meta');
+            meta.appendChild(createNode('span', 'conv-time', this.formatTime(conv.last_message_at)));
+            if (unread) {
+                const badge = createNode('span', 'conv-badge', unread > 99 ? '99+' : String(unread));
+                badge.setAttribute('role', 'status');
+                badge.setAttribute('aria-label', `${unread} tin nhắn chưa đọc`);
+                meta.appendChild(badge);
+            }
+            item.appendChild(meta);
+        }
         item.addEventListener('click', () => onSelect(conv.id, name, conv.is_online));
+        if (!conv.is_support && /^\d+$/.test(String(conv.id))) {
+            item.addEventListener('contextmenu', event => this.app.showConversationOptions(conv.id, event));
+        }
         return item;
     }
 
     renderEmptyConversations() {
-        const hint = createNode('div', '', this.app.userId ?
-            'Chưa có cuộc trò chuyện nào khác. Tìm bạn bè ở thanh tìm kiếm.' :
-            'Đăng nhập để trò chuyện với bạn bè. Bạn vẫn có thể nhắn hỗ trợ.');
-        hint.style.cssText = 'padding:20px; text-align:center; color:var(--text-secondary); font-size:0.9rem;';
+        const hint = createNode('div', 'conversation-empty', this.app.userId ?
+            'Tìm người dùng ở ô phía trên để bắt đầu đoạn chat riêng.' :
+            'Đăng nhập để nhắn bạn bè. Kênh hỗ trợ vẫn dùng được cho khách.');
         this.conversationList?.appendChild(hint);
     }
 
     switchChatUI(name, isOnline, id) {
         if (this.welcomeScreen) this.welcomeScreen.style.display = 'none';
         this.activeChatContainer?.classList.add('active');
+        this.activeChatContainer?.setAttribute('aria-busy', 'true');
+        document.querySelector('.messenger-container')?.classList.add('mobile-chat-open');
         const chatName = String(name || 'Hỗ trợ khách hàng');
         for (const key of ['currentChatName', 'infoPanelName']) {
             const el = document.getElementById(key);
@@ -63,6 +174,53 @@ class ChatUI {
             if (el) el.textContent = chatName[0].toUpperCase();
         }
         this.updateStatus(id, isOnline);
+        document.getElementById('currentChatName')?.focus({ preventScroll: true });
+    }
+
+    showConversationList() {
+        document.querySelector('.messenger-container')?.classList.remove('mobile-chat-open');
+        document.getElementById('infoPanel')?.classList.remove('panel-open');
+        document.getElementById('searchResults')?.classList.remove('active');
+        document.getElementById('sidebarSearchInput')?.setAttribute('aria-expanded', 'false');
+        const selected = Array.from(this.conversationList?.children || []).find(element =>
+            element.dataset.conversationId === String(this.app.currentConversationId ?? ''));
+        selected?.focus({ preventScroll: true });
+    }
+
+    toggleInfoPanel() {
+        const panel = document.getElementById('infoPanel');
+        const toggle = document.getElementById('toggleInfoBtn');
+        if (!panel) return;
+        const narrow = window.matchMedia('(max-width: 1100px)').matches;
+        const open = narrow ? panel.classList.toggle('panel-open') : !panel.classList.toggle('hidden');
+        toggle?.setAttribute('aria-expanded', String(open));
+        if (narrow && open) document.getElementById('closeInfoBtn')?.focus();
+    }
+
+    showConversationError(message, retry) {
+        const error = createNode('div', 'conversation-empty');
+        error.setAttribute('role', 'status');
+        const button = createNode('button', 'header-btn', 'Thử lại');
+        button.type = 'button';
+        button.addEventListener('click', retry);
+        error.append(createNode('p', '', message || 'Chưa tải được hội thoại.'), button);
+        this.conversationList?.replaceChildren(error);
+    }
+
+    showEmptyHistory() {
+        const empty = createNode('div', 'chat-empty');
+        empty.append(createNode('i', 'far fa-comments'), createNode('p', '', 'Chưa có tin nhắn nào. Gửi lời chào để bắt đầu.'));
+        this.messagesArea?.appendChild(empty);
+    }
+
+    showHistoryError(message, retry) {
+        const error = createNode('div', 'chat-empty chat-error');
+        error.setAttribute('role', 'status');
+        const button = createNode('button', 'chat-empty-action', 'Thử tải lại');
+        button.type = 'button';
+        button.addEventListener('click', retry);
+        error.append(createNode('p', '', message || 'Chưa tải được tin nhắn.'), button);
+        this.messagesArea?.replaceChildren(error);
     }
 
     updateStatus(id, isOnline) {
@@ -94,7 +252,15 @@ class ChatUI {
             media.referrerPolicy = 'no-referrer';
             if (att.file_type === 'image') {
                 media.alt = name;
+                wrapper.tabIndex = 0;
+                wrapper.setAttribute('role', 'button');
+                wrapper.setAttribute('aria-label', `Xem ảnh ${name}`);
                 wrapper.addEventListener('click', () => this.app.viewer?.open(url));
+                wrapper.addEventListener('keydown', event => {
+                    if (!['Enter', ' '].includes(event.key)) return;
+                    event.preventDefault();
+                    this.app.viewer?.open(url);
+                });
             } else {
                 media.controls = true;
                 media.preload = 'metadata';
@@ -130,7 +296,8 @@ class ChatUI {
         bubble.dataset.msgId = id;
         bubble.addEventListener('contextmenu', event => this.app.showMsgOptions(id, event));
         if (data.parent_content) {
-            const quote = createNode('div', 'message-reply-quote');
+            const quote = createNode('button', 'message-reply-quote');
+            quote.type = 'button';
             quote.append(createNode('span', 'quote-user', data.parent_sender_name || 'Người dùng'),
                 createNode('span', 'quote-text', data.parent_content));
             quote.addEventListener('click', () => this.app.scrollToMessage(data.reply_to_id));
@@ -156,6 +323,7 @@ class ChatUI {
             const button = createNode('button', 'msg-action-btn');
             button.type = 'button';
             button.title = title;
+            button.setAttribute('aria-label', title);
             button.appendChild(createNode('i', icon));
             button.addEventListener('click', handler);
             return button;
@@ -166,7 +334,9 @@ class ChatUI {
         const quick = createNode('div', 'hover-reaction-bar');
         quick.id = `reactionBar-${id}`;
         for (const emoji of ['❤️', '😂', '😮', '😢', '😡', '👍']) {
-            const choice = createNode('span', 'hover-emoji', emoji);
+            const choice = createNode('button', 'hover-emoji', emoji);
+            choice.type = 'button';
+            choice.setAttribute('aria-label', `Thả ${emoji}`);
             choice.addEventListener('click', () => this.app.toggleReaction(id, emoji));
             quick.appendChild(choice);
         }
@@ -193,7 +363,10 @@ class ChatUI {
         }
         const area = createNode('div', 'message-reactions');
         for (const [emoji, count] of counts) {
-            const badge = createNode('div', `reaction-badge${own.has(emoji) ? ' own' : ''}`, emoji);
+            const badge = createNode('button', `reaction-badge${own.has(emoji) ? ' own' : ''}`, emoji);
+            badge.type = 'button';
+            badge.setAttribute('aria-pressed', String(own.has(emoji)));
+            badge.setAttribute('aria-label', `${emoji}, ${count} người đã thả cảm xúc`);
             badge.dataset.emoji = emoji;
             badge.title = `${count} người đã thả cảm xúc`;
             badge.appendChild(createNode('span', '', count > 1 ? count : ''));
@@ -233,12 +406,16 @@ class ChatUI {
         this.pinnedContent.textContent = content;
         this.pinnedShelf.classList.add('active');
     }
-    showToast(message, background = '#333') {
-        const toast = createNode('div', '', message);
-        toast.style.cssText = 'position:fixed; bottom:20px; left:50%; transform:translateX(-50%); color:white; padding:10px 20px; border-radius:30px; z-index:9999; font-size:14px;';
-        toast.style.background = background;
+    showToast(message, background) {
+        document.getElementById('chatToast')?.remove();
+        clearTimeout(this.toastTimer);
+        const toast = createNode('div', 'chat-toast', message);
+        toast.id = 'chatToast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        if (background) toast.style.background = background;
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        this.toastTimer = setTimeout(() => toast.remove(), 4000);
     }
     renderSeenStatus(userId) {
         if (!this.messagesArea) return;
@@ -261,8 +438,18 @@ class ChatUI {
     escapeHtml(value) { return escapeHtml(value); }
     applyTheme(color) {
         if (typeof color !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(color)) return;
-        document.documentElement.style.setProperty('--messenger-blue', color);
-        document.documentElement.style.setProperty('--messenger-primary', color);
+        const container = document.querySelector('.messenger-container');
+        if (!container) return;
+        container.style.setProperty('--conversation-color', color);
+        const channels = color.slice(1).match(/.{2}/g).map(value => parseInt(value, 16) / 255)
+            .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        const luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+        container.style.setProperty('--conversation-ink', luminance > 0.179 ? '#000000' : '#ffffff');
+        for (const choice of document.querySelectorAll('.theme-option')) {
+            const selected = choice.dataset.color?.toLowerCase() === color.toLowerCase();
+            choice.classList.toggle('active', selected);
+            choice.setAttribute('aria-pressed', String(selected));
+        }
     }
     renderSettings(data) {
         if (data.theme_color) this.applyTheme(data.theme_color);
@@ -289,7 +476,7 @@ class ChatUI {
             grid.appendChild(item);
         }
         if (!attachments.length) grid.appendChild(createNode('div', '', 'Không có file nào'));
-        modal.style.display = 'block';
+        this.openDialog('mediaBrowserModal');
     }
 }
 

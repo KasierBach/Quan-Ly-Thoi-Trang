@@ -1,492 +1,301 @@
 {% extends 'base.html' %}
 
-{% block title %}Tin nhắn{% endblock %}
-
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
-{% endblock %}
-
-
+{% block title %}Tin nhắn · Fashion Store{% endblock %}
+{% block body_class %}messages-page{% endblock %}
+{% block footer %}{% endblock %}
 {% block chat_widget %}{% endblock %}
 {% block floating_contact_widget %}{% endblock %}
 
+{% block navbar %}
+<nav class="navbar chat-topbar" aria-label="Điều hướng trang tin nhắn">
+    <a class="navbar-brand" href="{{ url_for('main.home') }}"><i class="fas fa-store" aria-hidden="true"></i><span>Fashion Store</span></a>
+    <div class="chat-topbar-actions">
+        <a href="{{ url_for('product.products') }}" title="Về cửa hàng" aria-label="Về cửa hàng"><i class="fas fa-shopping-bag" aria-hidden="true"></i><span>Về cửa hàng</span></a>
+        {% if session.get('user_id') %}
+        <a href="{{ url_for('auth.my_account') }}" title="Tài khoản của tôi" aria-label="Tài khoản của tôi"><i class="fas fa-user-circle" aria-hidden="true"></i><span>{{ session.get('user_name') }}</span></a>
+        {% else %}
+        <a href="{{ url_for('auth.login') }}" title="Đăng nhập" aria-label="Đăng nhập"><i class="fas fa-sign-in-alt" aria-hidden="true"></i><span>Đăng nhập</span></a>
+        {% endif %}
+        <button type="button" id="toggleTheme" title="Đổi giao diện sáng tối" aria-label="Đổi giao diện sáng tối"><i class="fas fa-moon" id="darkIcon" style="display:none" aria-hidden="true"></i><i class="fas fa-sun" id="lightIcon" style="display:none" aria-hidden="true"></i></button>
+    </div>
+</nav>
+{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/mesh-call.css') }}">
+{% endblock %}
+
 {% block content %}
-<div class="messenger-container">
-    <!-- Sidebar -->
-    <div class="msg-sidebar">
+<main class="messenger-container" aria-label="Tin nhắn">
+    <aside class="msg-sidebar" aria-label="Danh sách hội thoại">
         <div class="sidebar-header">
             <div class="header-top">
-                <h4>Chat</h4>
-                <div class="header-actions">
-                    <button class="header-btn" title="New Message" id="btnCreateGroup">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="header-btn" title="Settings">
-                        <i class="fas fa-cog"></i>
-                    </button>
-                </div>
+                <h1>Tin nhắn</h1>
+                {% if session.get('user_id') %}
+                <button type="button" class="header-btn" id="btnCreateGroup" title="Tạo nhóm mới" aria-label="Tạo nhóm mới">
+                    <i class="fas fa-edit" aria-hidden="true"></i>
+                </button>
+                {% else %}
+                <a class="sidebar-login" href="{{ url_for('auth.login') }}">Đăng nhập</a>
+                {% endif %}
             </div>
             <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" placeholder="Tìm kiếm trên Messenger" id="sidebarSearchInput">
-                <div class="search-results" id="searchResults">
-                    <!-- Results populated by JS -->
+                <label for="sidebarSearchInput">Tìm người để trò chuyện</label>
+                <div class="search-field">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                    <input type="search" id="sidebarSearchInput" placeholder="Tên hoặc email" autocomplete="off"
+                        aria-controls="searchResults" aria-expanded="false" {% if not session.get('user_id') %}disabled{% endif %}>
                 </div>
+                <div class="search-results" id="searchResults" aria-label="Kết quả tìm người dùng"></div>
             </div>
         </div>
-
-        <div class="conversation-list" id="conversationList">
-            <!-- Conversations populated by JS -->
-            <div class="text-center p-4 text-muted">
-                <i class="fas fa-spinner fa-spin"></i> Đang tải...
+        <div class="conversation-list" id="conversationList" aria-busy="true">
+            <div class="conversation-skeleton" role="status" aria-label="Đang tải hội thoại">
+                {% for _ in range(3) %}
+                <div class="skeleton-row"><span class="skeleton-avatar"></span><span class="skeleton-lines"></span></div>
+                {% endfor %}
             </div>
         </div>
-    </div>
+        <p class="sidebar-note">Nhắn bạn bè hoặc gửi câu hỏi tới kênh hỗ trợ.</p>
+    </aside>
 
-    <!-- Main Chat Area -->
-    <div class="msg-main">
+    <section class="msg-main" aria-label="Nội dung hội thoại">
         <div class="welcome-screen" id="welcomeScreen">
-            <i class="fab fa-facebook-messenger"></i>
-            <h3>Chào mừng đến với Messenger</h3>
-            <p>Chọn một đoạn chat để bắt đầu nhắn tin.</p>
+            <i class="far fa-comments" aria-hidden="true"></i>
+            <h2>Bắt đầu một đoạn chat</h2>
+            <p>Chọn hội thoại ở danh sách, hoặc gửi câu hỏi cho cửa hàng.</p>
+            <button type="button" class="chat-primary-action" id="btnOpenSupport">Nhắn kênh hỗ trợ</button>
         </div>
-
         <div id="activeChatContainer">
-            <div class="msg-chat-header">
-                <div class="header-avatar" id="currentChatAvatar">?</div>
+            <header class="msg-chat-header">
+                <button type="button" class="mobile-back-btn" id="btnMobileBack" aria-label="Quay lại danh sách chat">
+                    <i class="fas fa-arrow-left" aria-hidden="true"></i>
+                </button>
+                <div class="header-avatar" id="currentChatAvatar" aria-hidden="true">?</div>
                 <div class="chat-header-info">
-                    <h5 id="currentChatName">User Name</h5>
-                    <span class="status" id="headerStatus">Đang hoạt động</span>
+                    <h2 id="currentChatName" tabindex="-1">Hội thoại</h2>
+                    <span class="status" id="headerStatus">Chọn hội thoại để nhắn tin</span>
                 </div>
                 <div class="chat-header-actions">
-                    <button title="Call" id="btnCall"><i class="fas fa-phone-alt"></i></button>
-                    <button title="Video Call" id="btnVideo"><i class="fas fa-video"></i></button>
-                    <button title="Information" id="toggleInfoBtn"><i class="fas fa-info-circle"></i></button>
+                    <button type="button" id="btnCall" title="Gọi thoại" aria-label="Gọi thoại" disabled><i class="fas fa-phone" aria-hidden="true"></i></button>
+                    <button type="button" id="btnVideo" title="Gọi video" aria-label="Gọi video" disabled><i class="fas fa-video" aria-hidden="true"></i></button>
+                    <button type="button" id="toggleInfoBtn" title="Thông tin hội thoại" aria-label="Thông tin hội thoại" aria-controls="infoPanel" aria-expanded="false"><i class="fas fa-info-circle" aria-hidden="true"></i></button>
                 </div>
-            </div>
-
+            </header>
             <div class="pinned-shelf" id="pinnedShelf">
-                <div class="pinned-icon"><i class="fas fa-thumbtack"></i></div>
+                <i class="fas fa-thumbtack" aria-hidden="true"></i>
                 <div class="pinned-content" id="pinnedContent"></div>
-                <div class="pinned-close" id="closePinnedBtn"><i class="fas fa-times"></i></div>
+                <button type="button" class="pinned-close" id="closePinnedBtn" aria-label="Ẩn tin nhắn ghim"><i class="fas fa-times" aria-hidden="true"></i></button>
             </div>
-
-            <div class="messages-area" id="messagesArea">
-                <!-- Messages populated by JS -->
+            <div class="messages-area" id="messagesArea" role="log" aria-live="polite" aria-relevant="additions" aria-label="Tin nhắn trong hội thoại"></div>
+            <div class="typing-indicator" id="typingIndicator" role="status">
+                <span id="typingName"></span>
+                <span class="typing-dot" aria-hidden="true"></span><span class="typing-dot" aria-hidden="true"></span><span class="typing-dot" aria-hidden="true"></span>
             </div>
-
-            <div class="typing-indicator" id="typingIndicator">
-                <span id="typingName" style="margin-right: 8px; font-weight: 500;"></span>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-                <div class="typing-dot"></div>
-            </div>
-
             <div class="chat-input-area">
                 <div class="reply-preview-shelf" id="replyShelf">
-                    <div class="reply-content">
-                        <i class="fas fa-reply"></i>
-                        <div class="reply-text">
-                            <span class="reply-user" id="replyUserName">Ghé thăm</span>
-                            <span class="reply-msg" id="replyMsgPreview">Nội dung...</span>
-                        </div>
+                    <div class="reply-content"><i class="fas fa-reply" aria-hidden="true"></i>
+                        <div class="reply-text"><span class="reply-user" id="replyUserName"></span><span class="reply-msg" id="replyMsgPreview"></span></div>
                     </div>
-                    <button class="cancel-reply" id="cancelReplyBtn"><i class="fas fa-times"></i></button>
+                    <button type="button" class="cancel-reply" id="cancelReplyBtn" aria-label="Hủy trả lời"><i class="fas fa-times" aria-hidden="true"></i></button>
                 </div>
-
+                <div class="composer-caption"><label for="messageInput">Tin nhắn</label><span>Enter để gửi · Shift + Enter để&nbsp;xuống&nbsp;dòng</span></div>
+                <div class="input-actions" aria-label="Đính kèm và biểu cảm">
+                    <button type="button" id="attachFileBtn" title="Đính kèm tệp" aria-label="Đính kèm tệp" disabled><i class="fas fa-paperclip" aria-hidden="true"></i></button>
+                    <button type="button" id="attachImageBtn" title="Đính kèm ảnh" aria-label="Đính kèm ảnh" disabled><i class="far fa-image" aria-hidden="true"></i></button>
+                    <button type="button" id="stickerBtn" title="Chọn sticker" aria-label="Chọn sticker" aria-controls="stickerPicker" aria-expanded="false" disabled><i class="far fa-sticky-note" aria-hidden="true"></i></button>
+                    <button type="button" id="gifBtn" title="Chọn GIF" aria-label="Chọn GIF" aria-controls="stickerPicker" aria-expanded="false" disabled><span class="gif-label">GIF</span></button>
+                    <button type="button" id="micBtn" title="Ghi tin nhắn thoại" aria-label="Ghi tin nhắn thoại" disabled><i class="fas fa-microphone" aria-hidden="true"></i></button>
+                    <button type="button" id="emojiBtn" title="Chọn biểu cảm" aria-label="Chọn biểu cảm" aria-controls="emojiPicker" aria-expanded="false"><i class="far fa-smile" aria-hidden="true"></i></button>
+                    <button type="button" id="likeBtn" title="Gửi biểu cảm nhanh" aria-label="Gửi biểu cảm nhanh" disabled><i class="fas fa-thumbs-up" aria-hidden="true"></i></button>
+                    <input type="file" id="fileInput" hidden>
+                    <input type="file" id="imageInput" accept="image/*" hidden>
+                </div>
+                <div class="recording-ui" id="recordingUI">
+                    <button type="button" class="btn-cancel-record btn-record-action" id="cancelRecordBtn" aria-label="Hủy ghi âm"><i class="fas fa-times" aria-hidden="true"></i></button>
+                    <span class="recording-indicator" aria-hidden="true"></span>
+                    <div class="recording-timer" id="recordingTimer" role="timer" aria-live="off">00:00</div>
+                    <span>Đang ghi âm</span>
+                    <button type="button" class="btn-send-record btn-record-action" id="sendRecordBtn" aria-label="Gửi bản ghi âm"><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
+                </div>
                 <div class="input-main-row">
-                    <div class="input-actions">
-                        <button title="Add File" id="attachFileBtn"><i class="fas fa-plus-circle"></i></button>
-                        <input type="file" id="fileInput" hidden>
-                        <input type="file" id="imageInput" accept="image/*" hidden>
-                        <button title="Choose Image" id="attachImageBtn"><i class="fas fa-image"></i></button>
-                        <button title="Choose Sticker" id="stickerBtn"><i class="fas fa-sticky-note"></i></button>
-                        <button title="Choose GIF" id="gifBtn"><i class="fas fa-gift"></i></button>
-                        <button title="Voice Message" id="micBtn"><i class="fas fa-microphone"></i></button>
-                    </div>
-
-                    <!-- Recording UI -->
-                    <div class="recording-ui" id="recordingUI">
-                        <button class="btn-cancel-record btn-record-action" id="cancelRecordBtn"><i
-                                class="fas fa-times"></i></button>
-                        <div class="recording-timer" id="recordingTimer">00:00</div>
-                        <button class="btn-send-record btn-record-action" id="sendRecordBtn"><i
-                                class="fas fa-paper-plane"></i></button>
-                    </div>
-
                     <div class="message-input-wrapper">
-                        <input type="text" class="message-input" placeholder="Aa" id="messageInput">
-                        <div class="input-right-actions">
-                            <button title="Choose Emoji" id="emojiBtn"><i class="fas fa-smile"></i></button>
-                            <button title="Send Like" id="likeBtn"><i class="fas fa-thumbs-up"></i></button>
-                        </div>
-                        <!-- Emoji Picker -->
-                        <div class="emoji-picker" id="emojiPicker">
-                            <div class="emoji-picker-header">
-                                <input type="text" class="emoji-search" placeholder="Search emoji...">
-                            </div>
-                            <div class="emoji-grid-container">
-                                <div class="emoji-grid" id="emojiGrid"></div>
-                            </div>
-                        </div>
+                        <textarea class="message-input" id="messageInput" rows="1" maxlength="4000" placeholder="Nhập tin nhắn…" disabled></textarea>
                     </div>
-                    <button class="send-btn" id="sendBtn" aria-label="Gửi tin nhắn" disabled><i class="fas fa-paper-plane"></i></button>
+                    <button type="button" class="send-btn" id="sendBtn" aria-label="Gửi tin nhắn" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
                 </div>
-
-                <!-- Sticker Picker -->
-                <div class="sticker-picker" id="stickerPicker">
-                    <div class="sticker-grid" id="stickerGrid"></div>
+                <div class="emoji-picker" id="emojiPicker" aria-label="Chọn biểu cảm">
+                    <div class="emoji-picker-header"><label for="emojiSearch">Lọc biểu cảm</label><input type="search" class="emoji-search" id="emojiSearch" placeholder="Dán biểu cảm cần tìm"></div>
+                    <div class="emoji-grid-container"><div class="emoji-grid" id="emojiGrid"></div></div>
                 </div>
+                <div class="sticker-picker" id="stickerPicker" aria-label="Chọn sticker hoặc GIF"><div class="sticker-grid" id="stickerGrid"></div></div>
             </div>
         </div>
-    </div>
+    </section>
 
-    <!-- Right Info Panel -->
-    <div class="msg-info-panel" id="infoPanel">
+    <aside class="msg-info-panel hidden" id="infoPanel" aria-label="Thông tin hội thoại">
         <div class="info-header">
-            <div class="info-avatar" id="infoPanelAvatar">?</div>
-            <div class="info-name" id="infoPanelName">User Name</div>
-            <div class="info-status" id="infoPanelStatus">Đang hoạt động</div>
+            <button type="button" class="info-close-btn" id="closeInfoBtn" aria-label="Đóng thông tin hội thoại"><i class="fas fa-times" aria-hidden="true"></i></button>
+            <div class="info-avatar" id="infoPanelAvatar" aria-hidden="true">?</div>
+            <div class="info-name" id="infoPanelName">Hội thoại</div>
+            <div class="info-status" id="infoPanelStatus"></div>
         </div>
         <div class="info-actions">
-            <div class="info-action-btn" id="btnInfoProfile">
-                <div class="icon"><i class="fas fa-user"></i></div>
-                <span>Trang cá nhân</span>
-            </div>
-            <div class="info-action-btn" id="btnInfoMute">
-                <div class="icon"><i class="fas fa-bell"></i></div>
-                <span id="muteText">Tắt thông báo</span>
-            </div>
-            <div class="info-action-btn" id="btnInfoSearch">
-                <div class="icon"><i class="fas fa-search"></i></div>
-                <span>Tìm kiếm</span>
-            </div>
+            <button type="button" class="info-action-btn" id="btnInfoMute"><span class="icon"><i class="fas fa-bell" aria-hidden="true"></i></span><span id="muteText">Tắt thông báo</span></button>
+            <button type="button" class="info-action-btn" id="btnInfoSearch"><span class="icon"><i class="fas fa-search" aria-hidden="true"></i></span><span>Tìm người</span></button>
         </div>
-        <!-- Info Sections -->
         <div class="info-section open">
-            <div class="info-section-title">
-                <span>Tùy chỉnh đoạn chat</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
+            <button type="button" class="info-section-title" aria-expanded="true"><span>Tùy chỉnh đoạn chat</span><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
             <div class="info-section-content">
-                <div class="info-item" id="btnInfoTheme"><i class="fas fa-circle"
-                        style="color: var(--messenger-blue)"></i> Đổi chủ đề
-                </div>
-                <div class="info-item" id="btnInfoEmoji"><i class="fas fa-thumbs-up"></i> Thay đổi biểu tượng cảm xúc
-                </div>
-                <div class="info-item" id="btnInfoNickname"><i class="fas fa-pen"></i> Biệt danh</div>
+                <button type="button" class="info-item" id="btnInfoTheme"><i class="fas fa-palette" aria-hidden="true"></i>Đổi màu tin nhắn</button>
+                <button type="button" class="info-item" id="btnInfoEmoji"><i class="far fa-smile" aria-hidden="true"></i>Biểu cảm nhanh</button>
+                <button type="button" class="info-item" id="btnInfoNickname"><i class="fas fa-pen" aria-hidden="true"></i>Biệt danh</button>
             </div>
         </div>
-
-        <div class="info-section" id="groupMembersSection" style="display: none;">
-            <div class="info-section-title">
-                <span>Thành viên nhóm</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
-            <div class="info-section-content" id="groupMembersList">
-                <!-- Managed by JS -->
-            </div>
+        <div class="info-section" id="groupMembersSection" hidden>
+            <button type="button" class="info-section-title" aria-expanded="false"><span>Thành viên hội thoại</span><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
+            <div class="info-section-content" id="groupMembersList"></div>
         </div>
-
         <div class="info-section">
-            <div class="info-section-title">
-                <span>File phương tiện & file</span>
-                <i class="fas fa-chevron-down"></i>
-            </div>
+            <button type="button" class="info-section-title" aria-expanded="false"><span>Tệp đã chia sẻ</span><i class="fas fa-chevron-down" aria-hidden="true"></i></button>
             <div class="info-section-content">
-                <div class="info-item" id="btnInfoMedia"><i class="fas fa-image"></i> File phương tiện</div>
-                <div class="info-item" id="btnInfoFiles"><i class="fas fa-file"></i> File</div>
+                <button type="button" class="info-item" id="btnInfoMedia"><i class="far fa-image" aria-hidden="true"></i>Ảnh và video</button>
+                <button type="button" class="info-item" id="btnInfoFiles"><i class="far fa-file" aria-hidden="true"></i>Tệp đính kèm</button>
             </div>
         </div>
-    </div>
-</div>
+    </aside>
+</main>
 
-<!-- Image Viewer Modal -->
-<div class="image-viewer-modal" id="imageViewerModal">
-    <div class="viewer-header">
-        <div class="viewer-info" id="viewerInfo">1 / 1</div>
-    </div>
-
-    <div class="viewer-content" id="viewerContent">
-        <img src="" alt="Full size" id="viewerImage">
-    </div>
-
-    <button class="viewer-nav prev" id="viewerPrevBtn" title="Ảnh trước (Mũi tên trái)"><i
-            class="fas fa-chevron-left"></i></button>
-    <button class="viewer-nav next" id="viewerNextBtn" title="Ảnh sau (Mũi tên phải)"><i
-            class="fas fa-chevron-right"></i></button>
-
-    <button class="viewer-close" id="viewerCloseBtn" title="Đóng (Esc)"><i class="fas fa-times"></i></button>
-
+<div class="image-viewer-modal" id="imageViewerModal" role="dialog" aria-label="Xem ảnh" aria-modal="true">
+    <div class="viewer-header"><div class="viewer-info" id="viewerInfo">1 / 1</div></div>
+    <div class="viewer-content" id="viewerContent"><img alt="Ảnh đính kèm được phóng to" id="viewerImage"></div>
+    <button type="button" class="viewer-nav prev" id="viewerPrevBtn" title="Ảnh trước" aria-label="Ảnh trước"><i class="fas fa-chevron-left" aria-hidden="true"></i></button>
+    <button type="button" class="viewer-nav next" id="viewerNextBtn" title="Ảnh sau" aria-label="Ảnh sau"><i class="fas fa-chevron-right" aria-hidden="true"></i></button>
+    <button type="button" class="viewer-close" id="viewerCloseBtn" title="Đóng ảnh" aria-label="Đóng ảnh"><i class="fas fa-times" aria-hidden="true"></i></button>
     <div class="viewer-controls">
-        <button id="zoomInBtn" title="Phóng to"><i class="fas fa-search-plus"></i></button>
-        <button id="zoomOutBtn" title="Thu nhỏ"><i class="fas fa-search-minus"></i></button>
-        <button id="resetBtn" title="Đặt lại"><i class="fas fa-sync-alt"></i></button>
-        <button id="rotateLeftBtn" title="Xoay trái (L)"><i class="fas fa-undo"></i></button>
-        <button id="rotateRightBtn" title="Xoay phải (R)"><i class="fas fa-redo"></i></button>
-        <button id="flipHBtn" title="Lật ngang (H)"><i class="fas fa-arrows-alt-h"></i></button>
-        <button id="downloadBtn" title="Tải xuống"><i class="fas fa-download"></i></button>
+        {% for id, icon, label in [('zoomInBtn','search-plus','Phóng to'),('zoomOutBtn','search-minus','Thu nhỏ'),('resetBtn','sync-alt','Đặt lại ảnh'),('rotateLeftBtn','undo','Xoay trái'),('rotateRightBtn','redo','Xoay phải'),('flipHBtn','arrows-alt-h','Lật ngang'),('downloadBtn','download','Tải ảnh')] %}
+        <button type="button" id="{{ id }}" title="{{ label }}" aria-label="{{ label }}"><i class="fas fa-{{ icon }}" aria-hidden="true"></i></button>
+        {% endfor %}
     </div>
 </div>
-
-<!-- Context Custom Menus -->
-<div class="context-menu" id="msgContextMenu">
-    <div class="context-menu-item" onclick="window.reactMsg('❤️')"><i class="fas fa-heart"></i> Thả tim</div>
-    <div class="context-menu-item" onclick="window.reactMsg('😆')"><i class="fas fa-laugh"></i> Haha</div>
-    <div class="context-menu-item" id="ctxPinBtn" onclick="window.handlePin()"><i class="fas fa-thumbtack"></i> Ghim tin
-        nhắn</div>
-    <div class="context-menu-item" id="ctxUnpinBtn" onclick="window.handleUnpin()"><i class="fas fa-thumbtack"></i> Bỏ
-        ghim</div>
-    <div class="context-menu-item danger" onclick="window.handleRecall()"><i class="fas fa-trash"></i> Thu hồi</div>
+<div class="context-menu" id="msgContextMenu" role="menu" aria-label="Thao tác tin nhắn">
+    <button type="button" class="context-menu-item" data-message-action="heart" role="menuitem"><i class="fas fa-heart" aria-hidden="true"></i>Thả tim</button>
+    <button type="button" class="context-menu-item" data-message-action="laugh" role="menuitem"><i class="fas fa-laugh" aria-hidden="true"></i>Haha</button>
+    <button type="button" class="context-menu-item" id="ctxPinBtn" data-message-action="pin" role="menuitem"><i class="fas fa-thumbtack" aria-hidden="true"></i>Ghim tin nhắn</button>
+    <button type="button" class="context-menu-item" id="ctxUnpinBtn" data-message-action="unpin" role="menuitem"><i class="fas fa-thumbtack" aria-hidden="true"></i>Bỏ ghim</button>
+    <button type="button" class="context-menu-item danger" id="ctxRecallBtn" data-message-action="recall" role="menuitem"><i class="fas fa-trash" aria-hidden="true"></i>Thu hồi tin nhắn</button>
+</div>
+<div class="context-menu" id="convContextMenu" role="menu" aria-label="Thao tác hội thoại">
+    <button type="button" class="context-menu-item" id="ctxReadConversation" role="menuitem"><i class="fas fa-check-double" aria-hidden="true"></i>Đánh dấu đã đọc</button>
+    <button type="button" class="context-menu-item danger" id="ctxLeaveConversation" role="menuitem"><i class="fas fa-sign-out-alt" aria-hidden="true"></i>Rời hội thoại</button>
 </div>
 
-<div class="context-menu" id="convContextMenu">
-    <div class="context-menu-item" onclick="window.handleMarkRead()"><i class="fas fa-check-double"></i> Đánh dấu đã đọc
-    </div>
-    <div class="context-menu-item danger" onclick="window.handleDeleteConv()"><i class="fas fa-trash"></i> Xóa cuộc trò
-        chuyện</div>
-</div>
-
-<!-- Group Modal -->
-<div id="groupModal" class="modal">
+<div id="groupModal" class="modal chat-modal" role="dialog" aria-modal="true" aria-labelledby="groupModalTitle" aria-hidden="true" tabindex="-1">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>Tạo nhóm mới</h3>
-            <span class="close" data-close-group style="cursor:pointer; font-size:24px;">&times;</span>
-        </div>
+        <div class="modal-header"><h2 id="groupModalTitle">Tạo nhóm mới</h2><button type="button" class="close" data-close-modal aria-label="Đóng tạo nhóm"><i class="fas fa-times" aria-hidden="true"></i></button></div>
         <div class="modal-body">
-            <input type="text" id="groupName" placeholder="Tên nhóm...">
-            <!-- Future: Member selection list -->
+            <label for="groupName">Tên nhóm</label><input type="text" id="groupName" placeholder="Tên nhóm…" maxlength="100" required>
+            <label for="groupMemberSearch" class="mt-3">Thành viên (chọn tối đa 3)</label>
+            <input type="search" id="groupMemberSearch" placeholder="Tên hoặc email" autocomplete="off" aria-controls="groupMemberResults">
+            <div id="groupMemberResults" class="group-member-results" role="listbox" aria-multiselectable="true"></div>
+            <div id="groupSelectedUsers" class="group-selected-users" aria-live="polite"></div>
+            <p class="field-help">Nhóm nhỏ từ 2 đến 4 người có thể nhắn tin và gọi mesh. Thành viên được mời phải tham gia cuộc gọi.</p>
         </div>
-        <div class="modal-footer">
-            <button class="btn-secondary" data-close-group>Hủy</button>
-            <button class="btn-primary" id="btnSubmitGroup">Tạo nhóm</button>
-        </div>
+        <div class="modal-footer"><button type="button" class="btn-secondary" data-close-modal>Hủy</button><button type="button" class="btn-primary" id="btnSubmitGroup">Tạo nhóm</button></div>
     </div>
 </div>
-
-<!-- Theme Modal -->
-<div id="themeModal" class="modal">
+<div id="themeModal" class="modal chat-modal" role="dialog" aria-modal="true" aria-labelledby="themeModalTitle" aria-hidden="true" tabindex="-1">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>Đổi chủ đề</h3>
-            <span class="close" onclick="document.getElementById('themeModal').style.display='none'">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="theme-grid"
-                style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 15px;">
-                <div class="theme-option" data-color="#0084ff"
-                    style="background: #0084ff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#fa3c4c"
-                    style="background: #fa3c4c; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#ff7e29"
-                    style="background: #ff7e29; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#e68585"
-                    style="background: #e68585; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#7646ff"
-                    style="background: #7646ff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#20cef5"
-                    style="background: #20cef5; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#67fa94"
-                    style="background: #67fa94; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#ff6699"
-                    style="background: #ff6699; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#ffcc00"
-                    style="background: #ffcc00; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-                <div class="theme-option" data-color="#888888"
-                    style="background: #888888; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;"></div>
-            </div>
-        </div>
+        <div class="modal-header"><h2 id="themeModalTitle">Đổi màu tin nhắn</h2><button type="button" class="close" data-close-modal aria-label="Đóng đổi màu"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+        <div class="modal-body"><div class="theme-grid">
+            {% for color, name in [('#2563eb','Xanh dương'),('#fa3c4c','Đỏ'),('#ff7e29','Cam'),('#e68585','Hồng đất'),('#008578','Xanh ngọc'),('#20cef5','Xanh trời'),('#67fa94','Xanh lá'),('#ff6699','Hồng'),('#ffcc00','Vàng'),('#888888','Xám')] %}
+            <button type="button" class="theme-option" data-color="{{ color }}" style="background: {{ color }}" aria-label="{{ name }}" aria-pressed="false"></button>
+            {% endfor %}
+        </div></div>
     </div>
 </div>
-
-<!-- Nickname Modal -->
-<div id="nicknameModal" class="modal">
+<div id="nicknameModal" class="modal chat-modal" role="dialog" aria-modal="true" aria-labelledby="nicknameModalTitle" aria-hidden="true" tabindex="-1">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>Chỉnh sửa biệt danh</h3>
-            <span class="close" onclick="document.getElementById('nicknameModal').style.display='none'">&times;</span>
-        </div>
-        <div class="modal-body" id="nicknameListBody">
-            <!-- Populated by JS -->
-        </div>
-        <div class="modal-footer">
-            <button class="btn-primary"
-                onclick="document.getElementById('nicknameModal').style.display='none'">Xong</button>
-        </div>
+        <div class="modal-header"><h2 id="nicknameModalTitle">Chỉnh sửa biệt danh</h2><button type="button" class="close" data-close-modal aria-label="Đóng biệt danh"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+        <div class="modal-body" id="nicknameListBody"></div>
+        <div class="modal-footer"><button type="button" class="btn-primary" data-close-modal>Xong</button></div>
     </div>
 </div>
-
-<!-- Default Emoji Modal -->
-<div id="emojiDefaultModal" class="modal">
+<div id="emojiDefaultModal" class="modal chat-modal" role="dialog" aria-modal="true" aria-labelledby="emojiModalTitle" aria-hidden="true" tabindex="-1">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>Thay đổi biểu tượng cảm xúc</h3>
-            <span class="close"
-                onclick="document.getElementById('emojiDefaultModal').style.display='none'">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="emoji-default-grid" id="emojiDefaultGrid">
-                <div class="emoji-default-option" data-emoji="👍">👍</div>
-                <div class="emoji-default-option" data-emoji="❤️">❤️</div>
-                <div class="emoji-default-option" data-emoji="😂">😂</div>
-                <div class="emoji-default-option" data-emoji="😮">😮</div>
-                <div class="emoji-default-option" data-emoji="😢">😢</div>
-                <div class="emoji-default-option" data-emoji="😡">😡</div>
-                <div class="emoji-default-option" data-emoji="🔥">🔥</div>
-                <div class="emoji-default-option" data-emoji="🎉">🎉</div>
-                <div class="emoji-default-option" data-emoji="💯">💯</div>
-                <div class="emoji-default-option" data-emoji="🙏">🙏</div>
-                <div class="emoji-default-option" data-emoji="💪">💪</div>
-                <div class="emoji-default-option" data-emoji="✨">✨</div>
-            </div>
-        </div>
+        <div class="modal-header"><h2 id="emojiModalTitle">Biểu cảm nhanh</h2><button type="button" class="close" data-close-modal aria-label="Đóng biểu cảm"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+        <div class="modal-body"><div class="emoji-default-grid" id="emojiDefaultGrid">
+            {% for emoji in ['👍','❤️','😂','😮','😢','😡','🔥','🎉','💯','🙏','💪','✨'] %}
+            <button type="button" class="emoji-default-option" data-emoji="{{ emoji }}" aria-label="Chọn {{ emoji }}">{{ emoji }}</button>
+            {% endfor %}
+        </div></div>
+    </div>
+</div>
+<div id="mediaBrowserModal" class="modal chat-modal" role="dialog" aria-modal="true" aria-labelledby="mediaBrowserTitle" aria-hidden="true" tabindex="-1">
+    <div class="modal-content large">
+        <div class="modal-header"><h2 id="mediaBrowserTitle">Tệp đã chia sẻ</h2><button type="button" class="close" data-close-modal aria-label="Đóng tệp đã chia sẻ"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+        <div class="modal-body"><div class="media-grid" id="mediaGridBody"></div></div>
     </div>
 </div>
 
-<!-- Media Browser Modal -->
-<div id="mediaBrowserModal" class="modal">
-    <div class="modal-content large" style="max-width: 800px; width: 90%;">
-        <div class="modal-header">
-            <h3 id="mediaBrowserTitle">File phương tiện</h3>
-            <span class="close"
-                onclick="document.getElementById('mediaBrowserModal').style.display='none'">&times;</span>
-        </div>
-        <div class="modal-body">
-            <div class="media-grid" id="mediaGridBody"
-                style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 10px; padding: 15px;">
-                <!-- Populated by JS -->
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Call Overlay -->
-<div id="callOverlay" class="call-overlay">
-    <!-- Incoming Call Alert -->
+<div id="callOverlay" class="call-overlay" role="dialog" aria-modal="true" aria-label="Cuộc gọi" aria-hidden="true" tabindex="-1">
     <div id="incomingCallModal" class="incoming-call-modal">
         <div class="incoming-content">
-            <div class="incoming-avatar" id="incomingAvatar">?</div>
-            <h3 id="incomingName">User Name</h3>
-            <p>Incoming Call...</p>
+            <div class="incoming-avatar" id="incomingAvatar" aria-hidden="true">?</div>
+            <h2 id="incomingName">Người gọi</h2>
+            <p id="incomingCallType">Cuộc gọi đến</p>
             <div class="incoming-actions">
-                <button class="btn-circle btn-reject" id="btnRejectCall"><i class="fas fa-phone-slash"></i></button>
-                <button class="btn-circle btn-accept" id="btnAcceptCall"><i class="fas fa-phone"></i></button>
+                <button type="button" class="btn-circle btn-reject" id="btnRejectCall" aria-label="Từ chối cuộc gọi"><i class="fas fa-phone-slash" aria-hidden="true"></i><span class="control-label">Từ chối</span></button>
+                <button type="button" class="btn-circle btn-accept" id="btnAcceptCall" aria-label="Nhận cuộc gọi"><i class="fas fa-phone" aria-hidden="true"></i><span class="control-label">Nhận cuộc gọi</span></button>
             </div>
         </div>
     </div>
-
-    <!-- Active Video Call - Discord Style -->
     <div id="activeCallView" class="active-call-view">
-        <!-- Header Bar -->
         <div class="call-header">
-            <div class="header-left">
-                <i class="fas fa-volume-up"></i>
-                <span id="callChannelName">General</span>
-                <span class="header-divider">|</span>
-                <span id="callerInfo">User is streaming</span>
-            </div>
+            <div class="header-left"><i class="fas fa-phone" aria-hidden="true"></i><div class="call-header-info"><h2 id="callChannelName">Cuộc gọi</h2><span id="callerInfo">Đang kết nối</span></div></div>
             <div class="header-right">
                 <span class="quality-badge" id="qualityBadge">Cuộc gọi một-một</span>
-                <span class="live-indicator" id="liveIndicator">Cuộc gọi</span>
-                <button class="header-icon-btn" id="btnToggleChat" title="Toggle Chat"><i
-                        class="fas fa-comment-alt"></i></button>
-                <button class="header-icon-btn" id="btnFullscreen" title="Fullscreen"><i
-                        class="fas fa-expand"></i></button>
+                <span class="live-indicator" id="liveIndicator" role="status">Đang kết nối</span>
+                <span id="callDuration" class="call-duration" role="timer" aria-live="off" hidden>00:00</span>
+                <button type="button" class="header-icon-btn" id="btnToggleChat" title="Chat trong cuộc gọi" aria-label="Chat trong cuộc gọi" aria-controls="callChatPanel" aria-expanded="false"><i class="fas fa-comment-alt" aria-hidden="true"></i></button>
+                <button type="button" class="header-icon-btn" id="btnFullscreen" title="Toàn màn hình" aria-label="Toàn màn hình"><i class="fas fa-expand" aria-hidden="true"></i></button>
             </div>
         </div>
-
-        <!-- Main Content Area -->
         <div class="call-main-content">
-            <!-- Primary Stream/Screen Share -->
             <div class="primary-stream" id="primaryStream">
                 <video id="remoteVideo" autoplay playsinline></video>
-                <div class="primary-placeholder" id="remotePlaceholder"
-                    style="display:none; position:absolute; inset:0; background:#0f172a; align-items:center; justify-content:center; color:#64748b; flex-direction:column; z-index:5;">
-                    <i class="fas fa-user-circle" style="font-size: 8rem; margin-bottom: 2rem;"></i>
-                    <span style="font-size: 1.5rem; color: #94a3b8;">Audio Only</span>
-                </div>
-                <div class="stream-overlay">
-                    <div class="stream-name" id="remoteNameTag">Remote User</div>
-                </div>
-                <div class="call-status-badge" id="callStatus">Connecting...</div>
+                <div class="primary-placeholder" id="remotePlaceholder"><i class="fas fa-user-circle" aria-hidden="true"></i><span id="remoteMediaState">Chưa có hình ảnh</span></div>
+                <div class="stream-overlay"><div class="stream-name" id="remoteNameTag">Người tham gia</div></div>
+                <div class="call-status-badge" id="callStatus" role="status">Đang kết nối…</div>
             </div>
-
-            <!-- Call Chat Panel -->
-            <div class="call-chat-panel" id="callChatPanel">
-                <div class="call-chat-header">
-                    <span><i class="fas fa-comments"></i> Live Chat</span>
-                    <button class="call-chat-close" id="btnCloseCallChat" title="Close Chat">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="call-chat-messages" id="callChatMessages">
-                    <!-- Messages will be added here -->
-                    <div class="call-chat-empty">
-                        <i class="fas fa-comment-dots"></i>
-                        <span>Chưa có tin nhắn nào</span>
-                    </div>
-                </div>
-                <div class="call-chat-input-area">
-                    <input type="text" class="call-chat-input" id="callChatInput" placeholder="Nhập tin nhắn..."
-                        autocomplete="off">
-                    <button class="call-chat-send" id="btnSendCallChat" title="Send">
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </div>
-            </div>
+            <aside class="call-chat-panel" id="callChatPanel" aria-label="Chat trong cuộc gọi">
+                <div class="call-chat-header"><span>Chat trong cuộc gọi</span><button type="button" class="call-chat-close" id="btnCloseCallChat" aria-label="Đóng chat cuộc gọi"><i class="fas fa-times" aria-hidden="true"></i></button></div>
+                <div class="call-chat-messages" id="callChatMessages" role="log" aria-live="polite"><div class="call-chat-empty"><i class="far fa-comment-dots" aria-hidden="true"></i><span>Chưa có tin nhắn nào</span></div></div>
+                <div class="call-chat-input-area"><label class="visually-hidden" for="callChatInput">Tin nhắn trong cuộc gọi</label><input type="text" class="call-chat-input" id="callChatInput" placeholder="Nhập tin nhắn…" autocomplete="off" maxlength="4000"><button type="button" class="call-chat-send" id="btnSendCallChat" aria-label="Gửi vào chat cuộc gọi"><i class="fas fa-paper-plane" aria-hidden="true"></i></button></div>
+            </aside>
         </div>
-
-        <!-- Participant Strip at Bottom -->
-        <div class="participant-strip" id="participantStrip">
-            <div class="participant-item" id="localParticipant">
+        <div class="participant-strip" id="participantStrip" aria-label="Người tham gia cuộc gọi">
+            <div class="participant-item" id="localParticipant" role="button" tabindex="0" aria-label="Xem hình ảnh của bạn">
                 <video id="localVideo" autoplay playsinline muted></video>
-                <div class="participant-name">You</div>
-                <div class="participant-status" id="localMicStatus">
-                    <i class="fas fa-microphone"></i>
-                </div>
+                <div class="participant-placeholder" id="localPlaceholder"><i class="fas fa-user-circle" aria-hidden="true"></i><span id="localMediaState" class="participant-media-state">Chưa có hình ảnh</span></div>
+                <div class="participant-name">Bạn</div><div class="participant-status" id="localMicStatus" aria-label="Micro đang bật"><i class="fas fa-microphone" aria-hidden="true"></i></div>
             </div>
-            <!-- More participants will be added dynamically -->
         </div>
-
-        <!-- Control Bar -->
+        <div class="call-feedback"><span id="callUIFeedback" role="status" aria-live="polite"></span><button type="button" class="call-audio-recovery" id="btnPlayCallAudio" hidden><i class="fas fa-volume-up" aria-hidden="true"></i><span class="control-label">Bật âm thanh</span></button></div>
         <div class="call-controls-bar">
-            <div class="controls-left">
-                <!-- Optional: stream info -->
-            </div>
             <div class="controls-center">
-                <button class="control-btn" id="btnToggleMic" title="Mute Mic">
-                    <i class="fas fa-microphone"></i>
-                    <span class="btn-chevron"><i class="fas fa-chevron-up"></i></span>
-                </button>
-                <button class="control-btn" id="btnToggleCam" title="Toggle Camera">
-                    <i class="fas fa-video"></i>
-                    <span class="btn-chevron"><i class="fas fa-chevron-up"></i></span>
-                </button>
-                <button class="control-btn" id="btnShareScreen" title="Share Screen">
-                    <i class="fas fa-desktop"></i>
-                </button>
-                <button class="control-btn" id="btnGridView" title="Grid View">
-                    <i class="fas fa-th"></i>
-                </button>
-                <button class="control-btn" id="btnMoreOptions" title="More Options">
-                    <i class="fas fa-ellipsis-h"></i>
-                </button>
-                <button class="control-btn btn-disconnect" id="btnEndCall" title="Disconnect">
-                    <i class="fas fa-phone-slash"></i>
-                </button>
+                <button type="button" class="control-btn" id="btnToggleMic" title="Tắt micro" aria-label="Tắt micro" aria-pressed="false"><i class="fas fa-microphone" aria-hidden="true"></i><span class="control-label">Micro</span></button>
+                <button type="button" class="control-btn" id="btnToggleCam" title="Tắt camera" aria-label="Tắt camera" aria-pressed="false"><i class="fas fa-video" aria-hidden="true"></i><span class="control-label">Camera</span></button>
+                <button type="button" class="control-btn" id="btnShareScreen" title="Chia sẻ màn hình" aria-label="Chia sẻ màn hình" aria-pressed="false"><i class="fas fa-desktop" aria-hidden="true"></i><span class="control-label">Chia sẻ</span></button>
+                <button type="button" class="control-btn" id="btnGridView" title="Xem dạng lưới" aria-label="Xem dạng lưới" aria-pressed="false"><i class="fas fa-th" aria-hidden="true"></i><span class="control-label">Dạng lưới</span></button>
+                <button type="button" class="control-btn btn-disconnect" id="btnEndCall" title="Kết thúc cuộc gọi" aria-label="Kết thúc cuộc gọi"><i class="fas fa-phone-slash" aria-hidden="true"></i><span class="control-label">Kết thúc</span></button>
             </div>
-            <div class="controls-right">
-                <button class="control-btn control-btn-sm" id="btnPiP" title="Picture in Picture">
-                    <i class="fas fa-external-link-square-alt"></i>
-                </button>
-                <button class="control-btn control-btn-sm" id="btnPopout" title="Pop Out">
-                    <i class="fas fa-expand-alt"></i>
-                </button>
-            </div>
+            <button type="button" class="control-btn control-btn-sm" id="btnPiP" title="Hình trong hình" aria-label="Hình trong hình"><i class="fas fa-external-link-square-alt" aria-hidden="true"></i><span class="control-label">Thu nhỏ</span></button>
         </div>
     </div>
 </div>
+{% include 'partials/mesh_call.html' %}
 {% endblock %}
 
 {% block scripts %}
@@ -494,7 +303,7 @@
 <script>
     window.chatConfig = {{ {
         'userId': session.get('user_id'),
-        'userName': session.get('user_name', 'User'),
+        'userName': session.get('user_name', 'Khách'),
         'isAdmin': session.get('is_admin', False),
         'rtcIceServers': config.get('RTC_ICE_SERVERS', [{'urls': 'stun:stun.l.google.com:19302'}])
     } | tojson }};

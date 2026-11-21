@@ -1,6 +1,13 @@
 {% extends 'base.html' %}
 {% block title %}Chi tiết đơn hàng #{{ order.OrderID }} - Fashion Store{% endblock %}
 
+{% block styles %}
+{% if shipping_map_enabled is defined and shipping_map_enabled() %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/order-map.css') }}">
+{% endif %}
+{% endblock %}
+
 {% block content %}
 {% set labels = {'Pending': 'Chờ xử lý', 'Processing': 'Đang xử lý', 'Shipped': 'Đang giao', 'Delivered': 'Đã giao', 'Cancelled': 'Đã hủy'} %}
 {% set colors = {'Pending': 'warning', 'Processing': 'info', 'Shipped': 'primary', 'Delivered': 'success', 'Cancelled': 'danger'} %}
@@ -37,7 +44,31 @@
             </div>
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white py-3"><h5 class="mb-0"><i class="fas fa-truck text-primary me-2"></i>Thông tin vận chuyển</h5></div>
-                <div class="card-body"><p class="mb-0">Trạng thái trên được quản trị viên cập nhật trong ứng dụng. Chưa tích hợp mã vận đơn hoặc vị trí giao hàng trực tiếp từ hãng vận chuyển.</p></div>
+                <div class="card-body">
+                    <p class="mb-0">Trạng thái trên được quản trị viên cập nhật trong ứng dụng. Chưa tích hợp mã vận đơn hoặc vị trí giao hàng trực tiếp từ hãng vận chuyển.</p>
+                    {% if shipping_map_enabled is defined and shipping_map_enabled() %}
+                    <section id="shipping-address-map" class="order-map" aria-labelledby="shipping-map-title" aria-busy="false"
+                             data-geocode-url="{{ url_for('shipping.geocode', order_id=order.OrderID) }}">
+                        <h6 id="shipping-map-title" class="fw-bold">Vị trí theo địa chỉ nhận hàng</h6>
+                        <p id="shipping-map-caption" class="order-map__caption">Vị trí ước tính từ địa chỉ, không phải theo dõi đơn vị vận chuyển</p>
+                        <p id="shipping-map-privacy" class="order-map__privacy">
+                            Chỉ khi bạn chọn hiển thị, trình duyệt mới tải bản đồ từ OpenStreetMap, gửi IP, nguồn trang ở cấp tên miền và vùng tọa độ đang xem; ô bản đồ không chứa địa chỉ giao hàng đầy đủ.
+                            {% if shipping_geocode_network_enabled() %}
+                            Máy chủ sẽ gửi địa chỉ đã lưu tới Nominatim để tìm tọa độ nếu chưa có kết quả đã lưu. Không dùng tra cứu bên ngoài cho địa chỉ cá nhân hoặc thông tin bí mật.
+                            {% else %}
+                            Tra cứu địa chỉ bên ngoài đang tắt; chỉ vị trí đã lưu mới có thể hiển thị.
+                            {% endif %}
+                        </p>
+                        <div class="order-map__actions">
+                            <button type="button" class="btn btn-outline-primary" data-map-show disabled aria-controls="shipping-map-canvas" aria-expanded="false" aria-describedby="shipping-map-privacy">Hiển thị vị trí theo địa chỉ</button>
+                            <button type="button" class="btn btn-outline-secondary" data-map-hide hidden aria-controls="shipping-map-canvas">Ẩn bản đồ</button>
+                        </div>
+                        <div id="shipping-map-canvas" class="order-map__canvas" data-map-canvas hidden tabindex="0" role="region" aria-label="Bản đồ vị trí ước tính của địa chỉ nhận hàng" aria-describedby="shipping-map-caption"></div>
+                        <p class="order-map__status" data-map-status role="status" aria-live="polite" aria-atomic="true"></p>
+                        <noscript><p>Cần bật JavaScript và chọn hiển thị để xem bản đồ. Địa chỉ nhận hàng vẫn có ở bên cạnh.</p></noscript>
+                    </section>
+                    {% endif %}
+                </div>
             </div>
         </div>
         <div class="col-lg-4">
@@ -68,6 +99,10 @@
 {% endblock %}
 
 {% block scripts %}
+{% if shipping_map_enabled is defined and shipping_map_enabled() %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/order-map.js') }}" defer></script>
+{% endif %}
 <script>
 (() => {
     const button = document.getElementById('cancel-order-btn');

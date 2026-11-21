@@ -21,8 +21,11 @@ def test_rendered_inline_scripts_are_valid_and_globals_do_not_collide(client, pa
     scripts = [
         script.string or script.get_text()
         for script in html.find_all('script')
-        if not script.get('src') and script.get('type', '') not in {'application/json', 'text/template'}
+        if not script.get('src')
+        and script.get('type', '') not in {'application/json', 'application/ld+json', 'text/template'}
     ]
+    for data_script in html.select('script[type="application/ld+json"]'):
+        assert isinstance(json.loads(data_script.get_text()), (dict, list))
     filename = tmp_path / 'rendered-scripts.js'
     filename.write_text('\n'.join(scripts), encoding='utf-8')
     checked = subprocess.run(

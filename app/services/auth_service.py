@@ -37,29 +37,38 @@ class AuthService(BaseService):
                     (email,),
                 )
                 user = cursor.fetchone()
-                if user and check_password_hash(user.Password, password):
+                if (
+                    user
+                    and isinstance(user.Password, str)
+                    and user.Password
+                    and check_password_hash(user.Password, password)
+                ):
                     return user
                 return None
         finally:
             conn.close()
 
     @staticmethod
-    def get_identity_state(user_id):
+    def get_identity_state(user_id, *, cursor=None):
         user_id = positive_int(user_id, 'Tài khoản')
-        conn = AuthService.get_connection()
-        try:
-            with conn.cursor() as cursor:
-                cursor.execute(
-                    """
-                    SELECT CustomerID, FullName, DarkModeEnabled, auth_version AS AuthVersion,
-                           CASE WHEN IsAdmin THEN 'admin' ELSE COALESCE(Role, 'customer') END AS Role
-                    FROM Customers WHERE CustomerID = %s
-                """,
-                    (user_id,),
-                )
-                return cursor.fetchone()
-        finally:
-            conn.close()
+        if cursor is None:
+            conn = AuthService.get_connection()
+            try:
+                with conn.cursor() as db_cursor:
+                    return AuthService.get_identity_state(user_id, cursor=db_cursor)
+            finally:
+                conn.close()
+        if cursor is None:
+            raise RuntimeError('Identity revalidation requires a database cursor')
+        cursor.execute(
+            """
+            SELECT CustomerID, FullName, DarkModeEnabled, auth_version AS AuthVersion,
+                   CASE WHEN IsAdmin THEN 'admin' ELSE COALESCE(Role, 'customer') END AS Role
+            FROM Customers WHERE CustomerID = %s
+            """,
+            (user_id,),
+        )
+        return cursor.fetchone()
 
     @staticmethod
     def register_user(full_name, email, password, phone=None, address=None):
@@ -141,7 +150,12 @@ class AuthService(BaseService):
             with conn.cursor() as cursor:
                 cursor.execute('SELECT Password FROM Customers WHERE CustomerID = %s FOR UPDATE', (user_id,))
                 user = cursor.fetchone()
-                if not user or not check_password_hash(user.Password, current_password):
+                if (
+                    not user
+                    or not isinstance(user.Password, str)
+                    or not user.Password
+                    or not check_password_hash(user.Password, current_password)
+                ):
                     return {'success': False, 'message': 'Mật khẩu hiện tại không đúng'}
                 cursor.execute(
                     """

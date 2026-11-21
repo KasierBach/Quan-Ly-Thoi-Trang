@@ -10,6 +10,7 @@ globalThis.document = {
 globalThis.window = { addEventListener() {} };
 
 const { default: ChatAPI } = await import('../../app/static/js/chat/core/ChatAPI.js');
+const { shouldSendOnEnter } = await import('../../app/static/js/chat/utils/helpers.js');
 const { default: ChatSocket } = await import('../../app/static/js/chat/core/ChatSocket.js');
 const { ChatApp } = await import('../../app/static/js/chat/core/ChatApp.js');
 const { default: CallState } = await import('../../app/static/js/chat/call/CallState.js');
@@ -33,6 +34,95 @@ function track(kind = 'audio') {
     return { kind, stopped: false, enabled: true, id: kind, stop() { this.stopped = true; } };
 }
 function stream(...tracks) { return { getTracks: () => tracks, getAudioTracks: () => tracks.filter(item => item.kind === 'audio'), getVideoTracks: () => tracks.filter(item => item.kind === 'video') }; }
+
+test('Enter submits only once outside IME, modifier keys and multiline composition', () => {
+    assert.equal(shouldSendOnEnter({ key: 'Enter' }), true);
+    for (const guard of [
+        { shiftKey: true }, { ctrlKey: true }, { metaKey: true }, { altKey: true },
+        { isComposing: true }, { keyCode: 229 }, { repeat: true }, { defaultPrevented: true },
+    ]) assert.equal(shouldSendOnEnter({ key: 'Enter', ...guard }), false);
+    assert.equal(shouldSendOnEnter({ key: 'a' }), false);
+});
+
+function readState(socket) {
+    return Object.assign(Object.create(ChatApp.prototype), {
+        closed: false, hasSelectedConversation: true, userId: 1, currentConversationId: 2,
+        pendingReads: new Map(), conversations: [{ id: 2, unread_count: 3 }],
+        conversationRevision: 0, socket, scope: id => ({ conversation_id: id }),
+        refreshConversationList() { this.rendered = (this.rendered || 0) + 1; },
+        scheduleConversationRefresh() { this.refreshed = true; },
+    });
+}
+
+test('unread clears only after read receipt ACK and concurrent reads coalesce', async () => {
+    const pending = deferred();
+    let requests = 0;
+    const app = readState({ connected: true, request(event, data) {
+        ++requests;
+        assert.equal(event, 'mark_read');
+        assert.deepEqual(data, { conversation_id: 2 });
+        return pending.promise;
+    } });
+    const first = app.markRead();
+    const second = app.markRead();
+    assert.equal(requests, 1);
+    assert.equal(app.conversations[0].unread_count, 3);
+    pending.resolve({ success: true });
+    await Promise.all([first, second]);
+    assert.equal(app.conversations[0].unread_count, 0);
+    assert.equal(app.rendered, 1);
+    assert.equal(app.refreshed, true);
+    assert.equal(app.pendingReads.size, 0);
+});
+
+test('failed read receipt never clears the badge or reports optimistic success', async () => {
+    const app = readState({ connected: true, request: async () => { throw new Error('Denied'); } });
+    await assert.rejects(app.markRead(), /Denied/);
+    assert.equal(app.conversations[0].unread_count, 3);
+    assert.equal(app.rendered, undefined);
+    assert.equal(app.pendingReads.size, 0);
+});
+
+test('read receipt uses HTTP when disconnected and hidden pages never mark read', async () => {
+    const app = readState({ connected: false });
+    const ids = [];
+    app.api = { markAsRead: async id => ids.push(id) };
+    await app.markRead();
+    assert.deepEqual(ids, [2]);
+    assert.equal(app.conversations[0].unread_count, 0);
+    document.hidden = true;
+    try { await app.markRead(); assert.deepEqual(ids, [2]); }
+    finally { document.hidden = false; }
+});
+
+test('late read ACK after page disposal cannot rerender stale state', async () => {
+    const pending = deferred();
+    const app = readState({ connected: true, request: () => pending.promise });
+    const read = app.markRead();
+    app.closed = true;
+    pending.resolve({ success: true });
+    await read;
+    assert.equal(app.conversations[0].unread_count, 3);
+    assert.equal(app.rendered, undefined);
+});
+
+test('conversation list ignores stale responses when invalidation races refresh', async () => {
+    const first = deferred(), second = deferred();
+    let requests = 0;
+    const app = Object.assign(Object.create(ChatApp.prototype), {
+        userId: 1, closed: false, conversationRevision: 0, ui: fakeUI(),
+        api: { getConversations: () => ++requests === 1 ? first.promise : second.promise },
+        refreshConversationList() { this.rendered = (this.rendered || 0) + 1; },
+    });
+    const oldLoad = app.loadConversations();
+    const newLoad = app.loadConversations();
+    second.resolve({ conversations: [{ id: 2, unread_count: 5 }] });
+    await newLoad;
+    first.resolve({ conversations: [{ id: 2, unread_count: 1 }] });
+    await oldLoad;
+    assert.equal(app.conversations[0].unread_count, 5);
+    assert.equal(app.rendered, 1);
+});
 
 test('API coalesces fresh credentials and never requests history before issuance', async () => {
     const pending = deferred();
@@ -103,6 +193,7 @@ test('ChatApp does not construct or connect socket before credentials', async ()
     assert.equal(await app.ready, true);
     assert.deepEqual(order, ['construct', 'ui', 'connect']);
     assert.equal(app.sessionId, credentials.session_id);
+    assert.equal(app.hasSelectedConversation, false);
     app.dispose();
 });
 

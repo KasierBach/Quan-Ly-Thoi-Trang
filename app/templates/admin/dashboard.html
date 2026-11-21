@@ -1,17 +1,12 @@
-{% extends 'base.html' %}
+{% extends 'admin/base.html' %}
 
 {% block title %}Quản trị - Dashboard - Fashion Store{% endblock %}
 
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-{% endblock %}
-
 {% block content %}
-<!-- Bắt đầu wrapper scrollable -->
-<div class="main-content">
+<div class="admin-dashboard">
 
     <div class="container-fluid py-4">
-        <div class="row">
+        <div class="row admin-layout">
             <!-- Sidebar -->
             <div class="col-md-3 col-lg-2">
                 <div class="list-group admin-sidebar mb-4">
@@ -230,10 +225,10 @@
     </div>
 
 </div>
-<!-- Kết thúc wrapper scrollable -->
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script src="{{ url_for('static', filename='vendor/chart/chart.umd.js') }}"></script>
 <script type="application/json" id="revenue-data">{{ monthly_chart|tojson }}</script>
 <script type="application/json" id="category-data">{{ category_chart|tojson }}</script>

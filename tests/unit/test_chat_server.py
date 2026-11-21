@@ -14,6 +14,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 
 from app.database import CaseInsensitiveRecord
+from app.services import attachment_storage
 from app.services.attachment_service import AttachmentService
 from app.services.auth_service import AuthService
 from app.services.base_service import BaseService
@@ -421,7 +422,7 @@ def test_send_ignores_untrusted_sender_type_and_uses_authoritative_actor(app, fa
 
 def test_send_revalidates_role_inside_service_boundary(app, fake_db, monkeypatch):
     app.config['SESSION_REVALIDATION_ENABLED'] = True
-    monkeypatch.setattr(AuthService, 'get_identity_state', lambda uid: state(role='customer'))
+    monkeypatch.setattr(AuthService, 'get_identity_state', lambda uid, **kwargs: state(role='customer'))
     fake_db.cursor.fetchone.side_effect = [
         CaseInsensitiveRecord(id=2, type='private', created_by=1, role='owner'),
         CaseInsensitiveRecord(id=10, created_at=datetime(2026, 11, 17)),
@@ -451,15 +452,53 @@ def test_denied_reply_rolls_back_and_never_commits_a_message(app, fake_db):
     fake_db.conn.close.assert_called_once()
 
 
+def test_attachment_storage_facade_preserves_public_arguments(app, monkeypatch):
+    inserted = CaseInsensitiveRecord(id=17)
+    monkeypatch.setattr(attachment_storage, 'storage_path', lambda name: ('path', name))
+    monkeypatch.setattr(
+        attachment_storage,
+        'insert_attachment',
+        lambda cursor, mid, attachment: ('insert', cursor, mid, attachment),
+    )
+    monkeypatch.setattr(attachment_storage, 'delete_records', lambda cursor, mid: ('delete', cursor, mid))
+    monkeypatch.setattr(attachment_storage, 'cleanup_files', lambda names: ('cleanup', names))
+
+    assert AttachmentService.storage_path('a' * 32 + '.txt') == ('path', 'a' * 32 + '.txt')
+    assert AttachmentService.insert_attachment(inserted, 4, {'storage_name': 'x'}) == (
+        'insert',
+        inserted,
+        4,
+        {'storage_name': 'x'},
+    )
+    assert AttachmentService.delete_records(inserted, 4) == ('delete', inserted, 4)
+    assert AttachmentService.cleanup_files(['x']) == ('cleanup', ['x'])
+
+
 @pytest.mark.parametrize('operation', ['recall', 'delete_attachments'])
 @pytest.mark.parametrize('commit_failure', [False, True])
 def test_attachment_cleanup_runs_only_after_committed_deletion(app, fake_db, monkeypatch, operation, commit_failure):
     order = []
     monkeypatch.setattr(ChatService, 'get_message_access', lambda *args, **kwargs: ChatAccess(account(), 2))
-    monkeypatch.setattr(AttachmentService, 'delete_records', lambda cursor, mid: ['a' * 32 + '.txt'])
+    if operation == 'recall':
+        monkeypatch.setattr(attachment_storage, 'delete_records', lambda cursor, mid: ['a' * 32 + '.txt'])
+    else:
+        monkeypatch.setattr(AttachmentService, 'delete_records', lambda cursor, mid: ['a' * 32 + '.txt'])
     cleanup = Mock(side_effect=lambda names: order.append('cleanup'))
-    monkeypatch.setattr(AttachmentService, 'cleanup_files', cleanup)
-    fake_db.cursor.fetchone.return_value = CaseInsensitiveRecord(id=9)
+    if operation == 'recall':
+        monkeypatch.setattr(attachment_storage, 'cleanup_files', cleanup)
+    else:
+        monkeypatch.setattr(AttachmentService, 'cleanup_files', cleanup)
+    fake_db.cursor.fetchone.return_value = CaseInsensitiveRecord(
+        id=9,
+        conversation_id=2,
+        session_id='user_1',
+        user_id=1,
+        sender_type='user',
+        is_deleted=False,
+        type='private',
+        created_by=1,
+        role='owner',
+    )
 
     def commit():
         order.append('commit')

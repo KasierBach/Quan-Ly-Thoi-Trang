@@ -4,15 +4,18 @@ These tests execute production services and inspect committed rows; no cursor
 mock proves SQL behavior. Run serially only after acquiring the shared DB slot.
 """
 
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
+from threading import Barrier
 
 from flask_wtf.csrf import generate_csrf
 import pytest
 
 from app import socketio
 from app.database import CaseInsensitiveRecord
+from app.services import attachment_storage
 from app.services.attachment_service import AttachmentService
 from app.services.chat_service import ChatService
 from app.services.conversation_service import ChatAccessError, ChatIdentity
@@ -283,6 +286,58 @@ def test_direct_conversation_reuses_pair_and_private_room_cannot_add_third_membe
     assert one(db_connection, 'SELECT COUNT(*) AS count FROM Participants WHERE conversation_id=2').count == 2
 
 
+def test_new_direct_pair_concurrent_and_repeat_creation_commits_one_private_room(db_app, db_connection):
+    pair_sql = """
+        SELECT c.id, c.type, c.created_by FROM Conversations c
+        JOIN Participants p1 ON p1.conversation_id = c.id
+        JOIN Participants p2 ON p2.conversation_id = c.id
+        WHERE p1.user_id = %s AND p2.user_id = %s ORDER BY c.id
+    """
+    # Users 2 and 3 share the seeded group, but have no private room to reuse.
+    assert [(row.id, row.type) for row in rows(db_connection, pair_sql, (2, 3))] == [(3, 'group')]
+    start = Barrier(2)
+
+    def create(uid, target):
+        client = browser(db_app, uid)
+        start.wait(timeout=10)
+        response = client.post('/api/conversations/direct', json={'user_id': target})
+        assert response.status_code == 200, response.get_json()
+        result = response.get_json()
+        assert result['success'] is True, result
+        return result['conversation']
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        requests = [executor.submit(create, 2, 3), executor.submit(create, 3, 2)]
+        concurrent = [request.result(timeout=20) for request in requests]
+    cid = concurrent[0]['id']
+    expected = {'id': cid, 'type': 'private'}
+    assert concurrent == [expected, expected]
+    assert cid not in {1, 2, 3}
+
+    for uid, target in [(2, 3), (3, 2), (2, 3)]:
+        response = browser(db_app, uid).post('/api/conversations/direct', json={'user_id': target})
+        assert response.status_code == 200, response.get_json()
+        assert response.get_json()['success'] is True
+        assert response.get_json()['conversation'] == expected
+
+    rooms = rows(db_connection, pair_sql, (2, 3))
+    assert [(row.id, row.type) for row in rooms] == [(3, 'group'), (cid, 'private')]
+    created = rooms[1]
+    assert created.created_by in {2, 3}
+    participants = rows(
+        db_connection,
+        'SELECT user_id, role FROM Participants WHERE conversation_id = %s ORDER BY user_id',
+        (cid,),
+    )
+    assert [(row.user_id, row.role) for row in participants] == [
+        (uid, 'admin' if uid == created.created_by else 'member') for uid in (2, 3)
+    ]
+    assert [
+        row.user_id
+        for row in rows(db_connection, 'SELECT user_id FROM Participants WHERE conversation_id = 3 ORDER BY user_id')
+    ] == [1, 2, 3]
+
+
 def test_real_reply_scope_rejects_other_conversation_and_deleted_parent_without_insert(db_client, db_connection):
     sign_in(db_client, 1)
     assert (
@@ -396,10 +451,10 @@ def test_history_pagination_applies_id_window_and_chronological_order(db_client,
 
 def test_user_conversations_and_status_expose_only_actual_membership(db_app, db_client):
     sign_in(db_client, 1)
-    assert {row['id'] for row in db_client.get('/api/conversations').get_json()['conversations']} == {1, 2}
-    assert {row['id'] for row in browser(db_app, 3).get('/api/conversations').get_json()['conversations']} == {2}
-    assert {row['id'] for row in browser(db_app, 2).get('/api/conversations').get_json()['conversations']} == {1}
-    assert browser(db_app, 3).get('/api/users/2/status').status_code == 403
+    assert {row['id'] for row in db_client.get('/api/conversations').get_json()['conversations']} == {1, 2, 3}
+    assert {row['id'] for row in browser(db_app, 3).get('/api/conversations').get_json()['conversations']} == {2, 3}
+    assert {row['id'] for row in browser(db_app, 2).get('/api/conversations').get_json()['conversations']} == {1, 3}
+    assert browser(db_app, 3).get('/api/users/2/status').status_code == 200
     assert db_client.get('/api/users/3/status').status_code == 200
     assert db_client.get('/api/users/1/status').status_code == 200
 
@@ -505,7 +560,7 @@ def test_upload_database_error_after_both_real_inserts_rolls_back_rows_and_remov
     db_app, db_client, db_connection, monkeypatch
 ):
     sign_in(db_client, 1)
-    insert = AttachmentService.insert_attachment
+    insert = attachment_storage.insert_attachment
     wrote = []
 
     def fail_after_insert(cursor, mid, attachment):
@@ -518,7 +573,7 @@ def test_upload_database_error_after_both_real_inserts_rolls_back_rows_and_remov
         cursor.execute('SELECT 1 / 0')
         return result
 
-    monkeypatch.setattr(AttachmentService, 'insert_attachment', fail_after_insert)
+    monkeypatch.setattr(attachment_storage, 'insert_attachment', fail_after_insert)
     response = upload(db_client)
     assert response.status_code == 503, response.get_json()
     assert len(wrote) == 1 and not wrote[0].exists()

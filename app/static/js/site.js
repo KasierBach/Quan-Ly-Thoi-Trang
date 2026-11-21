@@ -87,6 +87,11 @@
                     link.href = `/product/${Number(product.id)}`;
                     link.className = 'search-autocomplete-item';
                     const image = document.createElement('img');
+                    image.loading = 'lazy';
+                    image.decoding = 'async';
+                    // This is the existing CSS crop box, not the source image's dimensions.
+                    image.style.aspectRatio = '1 / 1';
+                    image.style.flexShrink = '0';
                     const candidate = new URL(product.image || '/static/images/default.jpg', location.origin);
                     image.src = candidate.origin === location.origin || candidate.protocol === 'https:' ? candidate.href : '/static/images/default.jpg';
                     image.alt = product.name;

@@ -27,20 +27,19 @@ class ChatSocket {
         on('disconnect', () => {
             for (const cancel of this.pendingRequests) cancel(new Error('Kết nối chat đã đóng'));
             this.app.callManager?.handleSocketDisconnected();
+            this.app.meshCallManager?.handleSocketDisconnected();
         });
         on('connect_error', () => this.app.ui.showToast('Không thể kết nối chat. Hãy tải lại trang để khởi tạo phiên mới.'));
         on('error', data => {
-            if (data.call_id) this.app.callManager?.handleSignalError(data);
+            if (data.call_id && this.app.meshCallManager?.matches(data)) this.app.meshCallManager.fail?.(this.app.meshCallManager.currentCall, new Error(data.message || 'Máy chủ từ chối cuộc gọi nhóm'));
+            else if (data.call_id) this.app.callManager?.handleSignalError(data);
             else this.app.ui.showToast(data.message || 'Thao tác chat không thành công');
         });
         on('new_message', data => this.app.handleNewMessage(data));
-        on('reaction_update', async data => {
+        on('conversation_updated', () => this.app.scheduleConversationRefresh());
+        on('reaction_update', data => {
             if (!this.app.isCurrentScope(data)) return;
-            const revision = this.app.selectionRevision;
-            const res = await this.app.api.getHistory(this.app.sessionId, this.app.currentConversationId);
-            if (revision !== this.app.selectionRevision) return;
-            const message = res.messages?.find(msg => String(msg.id) === String(data.message_id));
-            if (message) this.app.ui.updateMessageReactions(data.message_id, message.reactions);
+            return this.app.reloadReactions(data.message_id);
         });
         on('message_recalled', data => {
             if (this.app.isCurrentScope(data)) return this.app.loadHistory();
@@ -49,6 +48,8 @@ class ChatSocket {
             on(event, data => {
                 if (!this.app.isCurrentScope(data)) return;
                 this.app.loadPinnedMessages(this.app.currentConversationId);
+                const record = this.app.messageRecords.get(String(data.message_id));
+                if (record) record.is_pinned = pinned;
                 const group = findMessage(data.message_id);
                 if (group) {
                     group.classList.toggle('pinned', pinned);
@@ -80,13 +81,22 @@ class ChatSocket {
                 if (text) text.textContent = data.settings.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
             }
         });
+        on('group_call_invited', data => this.app.meshCallManager?.handleInvited(data));
+        on('group_call_state', data => this.app.meshCallManager?.handleState(data));
+        on('group_call_signal', data => this.app.meshCallManager?.handleSignal(data));
         for (const [event, method] of Object.entries({
             incoming_call: 'handleIncomingCall', call_answered: 'handleCallAnswered',
             call_rejected: 'handleCallRejected', call_ended: 'handleCallEnded',
-            remote_ice_candidate: 'handleIceCandidate', call_resume: 'handleCallResume',
-            stream_status: 'handleStreamStatus', call_chat_message: 'handleCallChatMessage',
-            media_status: 'handleMediaStatus'
+            remote_ice_candidate: 'handleIceCandidate', call_resume: 'handleCallResume'
         })) on(event, data => this.app.callManager?.[method](data));
+        for (const [event, directMethod, meshMethod] of [
+            ['stream_status', 'handleStreamStatus', 'handleStreamStatus'],
+            ['call_chat_message', 'handleCallChatMessage', 'handleCallChatMessage'],
+            ['media_status', 'handleMediaStatus', 'handleMediaStatus']
+        ]) on(event, data => {
+            if (this.app.meshCallManager?.matches(data)) return this.app.meshCallManager[meshMethod](data);
+            return this.app.callManager?.[directMethod](data);
+        });
     }
 
     emit(event, data) {

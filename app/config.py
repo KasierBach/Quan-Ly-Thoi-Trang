@@ -44,8 +44,29 @@ class Config:
     SESSION_REVALIDATION_ENABLED = True
     RATELIMIT_DEFAULT = '300 per minute'
     RATELIMIT_STORAGE_URI = 'memory://'
+    # None keeps the existing single-process Socket.IO manager.
+    SOCKETIO_MESSAGE_QUEUE = None
     MAIL_SUPPRESS_SEND = False
     PIXABAY_ENDPOINT = 'https://pixabay.com/api/'
+    # Scoped public-asset freshness; global send_file/private policies stay unchanged.
+    HTTP_ASSET_CACHE_MAX_AGE = 300
+
+    # OAuth credentials are environment-only; missing configuration disables providers.
+    OAUTH_ENABLED = True
+    OAUTH_GOOGLE_CLIENT_ID = None
+    OAUTH_GOOGLE_CLIENT_SECRET = None
+    OAUTH_GITHUB_CLIENT_ID = None
+    OAUTH_GITHUB_CLIENT_SECRET = None
+    OAUTH_STATE_TTL = 600
+    OAUTH_REAUTH_TTL = 300
+    OAUTH_HTTP_TIMEOUT = 10
+
+    # Shipping maps require explicit opt-in and a real operator identity/contact.
+    GEOCODE_ENABLED = False
+    GEOCODE_NETWORK_ENABLED = False
+    GEOCODE_ALLOW_PUBLIC_ADDRESS_QUERIES = False
+    GEOCODE_USER_AGENT = None
+    GEOCODE_CONTACT = None
 
     @classmethod
     def from_environment(cls):
@@ -73,6 +94,7 @@ class Config:
             ]
             or None,
             'RATELIMIT_STORAGE_URI': os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
+            'SOCKETIO_MESSAGE_QUEUE': os.environ.get('SOCKETIO_MESSAGE_QUEUE') or None,
             'MAIL_SERVER': os.environ.get('MAIL_SERVER', 'smtp.gmail.com'),
             'MAIL_PORT': int(os.environ.get('MAIL_PORT', '465')),
             'MAIL_USERNAME': os.environ.get('MAIL_USERNAME'),
@@ -85,7 +107,19 @@ class Config:
             'CONTACT_EMAIL': os.environ.get('CONTACT_EMAIL'),
             'CONTACT_PHONE': os.environ.get('CONTACT_PHONE'),
             'CONTACT_ADDRESS': os.environ.get('CONTACT_ADDRESS'),
+            # Shipping map configuration (never derive contact from customer data).
+            'GEOCODE_ENABLED': env_bool('GEOCODE_ENABLED', False),
+            'GEOCODE_NETWORK_ENABLED': env_bool('GEOCODE_NETWORK_ENABLED', False),
+            'GEOCODE_ALLOW_PUBLIC_ADDRESS_QUERIES': env_bool('GEOCODE_ALLOW_PUBLIC_ADDRESS_QUERIES', False),
+            'GEOCODE_USER_AGENT': os.environ.get('GEOCODE_USER_AGENT'),
+            'GEOCODE_CONTACT': os.environ.get('GEOCODE_CONTACT'),
             'PUBLIC_BASE_URL': os.environ.get('PUBLIC_BASE_URL'),
+            # OAuth client secrets are read only from the process environment.
+            'OAUTH_ENABLED': env_bool('OAUTH_ENABLED', True),
+            'OAUTH_GOOGLE_CLIENT_ID': os.environ.get('OAUTH_GOOGLE_CLIENT_ID'),
+            'OAUTH_GOOGLE_CLIENT_SECRET': os.environ.get('OAUTH_GOOGLE_CLIENT_SECRET'),
+            'OAUTH_GITHUB_CLIENT_ID': os.environ.get('OAUTH_GITHUB_CLIENT_ID'),
+            'OAUTH_GITHUB_CLIENT_SECRET': os.environ.get('OAUTH_GITHUB_CLIENT_SECRET'),
         }
 
 

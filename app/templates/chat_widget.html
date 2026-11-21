@@ -1,20 +1,18 @@
-<!-- Chat Widget -->
+<!-- Support channel; availability is not a promise that an operator is online. -->
 <link rel="stylesheet" href="{{ url_for('static', filename='css/chat-widget.css') }}">
 
-<div class="chat-window" id="chatWindow">
+<div class="chat-window" id="chatWindow" role="region" aria-labelledby="chatWidgetTitle" aria-hidden="true">
     <div class="chat-header">
-        <h5><i class="fas fa-headset"></i> Hỗ trợ trực tuyến</h5>
-        <button type="button" class="chat-close" id="chatClose"><i class="fas fa-times"></i></button>
+        <h2 id="chatWidgetTitle"><i class="fas fa-headset" aria-hidden="true"></i> Kênh hỗ trợ</h2>
+        <button type="button" class="chat-close" id="chatClose" aria-label="Đóng chat hỗ trợ"><i class="fas fa-times" aria-hidden="true"></i></button>
     </div>
-    <div class="chat-body" id="chatBody">
-        <div class="message admin">
-            Chào bạn! Shop có thể giúp gì cho bạn hôm nay?
-            <div class="message-time">Vừa xong</div>
-        </div>
+    <div class="chat-body" id="chatBody" role="log" aria-live="polite" aria-label="Tin nhắn hỗ trợ">
+        <div class="message admin">Chào bạn! Shop có thể giúp gì cho bạn hôm nay?<div class="message-time">Hệ thống</div></div>
     </div>
     <div class="chat-footer">
+        <label class="visually-hidden" for="chatInput">Tin nhắn hỗ trợ</label>
         <input type="text" class="chat-input" id="chatInput" placeholder="Nhập tin nhắn..." maxlength="4000" disabled>
-        <button type="button" class="chat-send" id="chatSend" disabled><i class="fas fa-paper-plane"></i></button>
+        <button type="button" class="chat-send" id="chatSend" aria-label="Gửi tin nhắn hỗ trợ" disabled><i class="fas fa-paper-plane" aria-hidden="true"></i></button>
     </div>
 </div>
 <script type="application/json" id="chatWidgetConfig">{{ {'authenticated': session.get('user_id') is not none} | tojson }}</script>

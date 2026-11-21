@@ -18,6 +18,9 @@ jobs:
     name: Lint, type-check and offline tests
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      DISABLE_DOTENV: '1'
+      TEST_DATABASE_URL: ''
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -32,6 +35,33 @@ jobs:
           .venv/bin/pip install --require-hashes -r requirements-dev.txt
       - name: Install frontend dev dependencies
         run: npm ci --ignore-scripts
+      - name: Audit hash-locked Python runtime dependencies
+        timeout-minutes: 3
+        run: .venv/bin/python -m pip_audit --strict --require-hashes --disable-pip -r requirements.txt --progress-spinner off
+      - name: Audit hash-locked Python dev dependencies
+        timeout-minutes: 3
+        run: .venv/bin/python -m pip_audit --strict --require-hashes --disable-pip -r requirements-dev.txt --progress-spinner off
+      - name: Audit installed frontend dependencies (including dev)
+        timeout-minutes: 2
+        run: npm audit --include=dev
+      # Only HIGH severity fails CI. MEDIUM findings require manual review;
+      # retain docs/SECURITY_REVIEW.md and the raw scan, with no ignore/baseline filters.
+      - name: Bandit HIGH severity gate
+        run: |
+          mkdir -p artifacts
+          .venv/bin/python -m bandit -r app run.py -lll -f json -o artifacts/bandit-high-ci.json
+      - name: Retain unfiltered Bandit report for manual MEDIUM review
+        if: ${{ always() && !cancelled() }}
+        run: |
+          mkdir -p artifacts
+          .venv/bin/python -m bandit -r app run.py --exit-zero -f json -o artifacts/bandit-review-ci.json
+      - name: Upload Bandit evidence
+        if: ${{ always() && !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-scan-artifacts
+          path: artifacts/bandit-*-ci.json
+          if-no-files-found: warn
       - name: Ruff format check
         run: .venv/bin/ruff format --check app run.py tests tools
       - name: Ruff lint
@@ -79,8 +109,8 @@ jobs:
           .venv/bin/pip install --require-hashes -r requirements-dev.txt
       - name: Backend tests with coverage
         run: .venv/bin/python -m pytest -m "not e2e" --cov=app --cov-config=pyproject.toml --cov-branch --cov-report=json:artifacts/coverage-full-final.json --junitxml=artifacts/tests-ci.xml -q
-      - name: Coverage gate
-        run: .venv/bin/python tools/check_coverage.py
+      - name: Coverage gate (unchanged 90% lines / 85% branches)
+        run: .venv/bin/python tools/check_coverage.py --report artifacts/coverage-full-final.json --line-threshold 90 --branch-threshold 85
       - name: Upload test artifacts
         if: always()
         uses: actions/upload-artifact@v4

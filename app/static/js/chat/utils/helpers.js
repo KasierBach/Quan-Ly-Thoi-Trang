@@ -3,6 +3,11 @@
  * Handles emojis, stickers, and helper functions.
  */
 
+export function shouldSendOnEnter(event) {
+    return event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey &&
+        !event.isComposing && event.keyCode !== 229 && !event.repeat && !event.defaultPrevented;
+}
+
 export function createNode(tag, className = '', text = null) {
     const node = document.createElement(tag);
     if (className) node.className = className;
@@ -26,7 +31,7 @@ export function findMessage(id) {
     return Array.from(document.querySelectorAll('.message-group')).find(node => node.dataset.messageId === String(id)) || null;
 }
 
-export function initEmojiPicker() {
+export function initEmojiPicker(signal) {
     const emojiList = [
         '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇',
         '🥰', '😍', '🤩', '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑',
@@ -62,7 +67,18 @@ export function initEmojiPicker() {
 
     if (!grid) return;
 
-    grid.innerHTML = emojiList.map(e => `<div class="emoji-item" data-emoji="${e}">${e}</div>`).join('');
+    grid.replaceChildren(...emojiList.map(emoji => {
+        const item = createNode('button', 'emoji-item', emoji);
+        item.type = 'button';
+        item.dataset.emoji = emoji;
+        item.setAttribute('aria-label', `Chèn ${emoji}`);
+        return item;
+    }));
+    const search = document.getElementById('emojiSearch');
+    search?.addEventListener('input', () => {
+        const query = search.value.trim();
+        for (const item of grid.children) item.hidden = !!query && !item.dataset.emoji.includes(query);
+    }, { signal });
 
     grid.querySelectorAll('.emoji-item').forEach(item => {
         item.onclick = (e) => {
@@ -92,11 +108,11 @@ export function initEmojiPicker() {
     }
 
     window.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && hoveredEmoji && picker && picker.classList.contains('active')) {
+        if (shouldSendOnEnter(e) && hoveredEmoji && picker && picker.classList.contains('active')) {
             e.preventDefault();
             insertEmoji(hoveredEmoji);
         }
-    });
+    }, { signal });
 }
 
 
@@ -116,7 +132,9 @@ export function renderStickers(gridId) {
     const grid = document.getElementById(gridId);
     if (grid) {
         grid.replaceChildren(...stickers.map(url => {
-            const item = createNode('div', 'sticker-item');
+            const item = createNode('button', 'sticker-item');
+            item.type = 'button';
+            item.setAttribute('aria-label', 'Gửi sticker');
             const image = createNode('img');
             image.src = url;
             image.alt = 'Sticker';
@@ -141,7 +159,9 @@ export function renderGifs(gridId) {
     const grid = document.getElementById(gridId);
     if (grid) {
         grid.replaceChildren(...gifs.map(url => {
-            const item = createNode('div', 'sticker-item');
+            const item = createNode('button', 'sticker-item');
+            item.type = 'button';
+            item.setAttribute('aria-label', 'Gửi sticker');
             const image = createNode('img');
             image.src = url;
             image.alt = 'GIF';

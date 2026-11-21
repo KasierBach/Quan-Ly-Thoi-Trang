@@ -20,6 +20,33 @@ class ProductService(BaseService):
     }
 
     @staticmethod
+    @cached(timeout=300, key_prefix='catalog:sitemap:')
+    def get_sitemap_entries():
+        """One ID-only query for public categories/products, bounded before caching."""
+        limit = 50_000 - 3  # The sitemap also includes home, contact, and the catalog.
+        conn = BaseService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT 'category' AS Kind, CategoryID AS EntityID FROM Categories
+                    WHERE CategoryID > 0
+                    UNION ALL
+                    SELECT 'product' AS Kind, p.ProductID AS EntityID FROM Products p
+                    JOIN Categories c ON c.CategoryID = p.CategoryID
+                    WHERE p.ProductID > 0
+                    ORDER BY Kind, EntityID LIMIT %s
+                    """,
+                    (limit + 1,),
+                )
+                rows = cursor.fetchall()
+                if len(rows) > limit:
+                    raise ValueError('Public sitemap exceeds its URL limit')
+                return tuple((row.Kind, row.EntityID) for row in rows)
+        finally:
+            conn.close()
+
+    @staticmethod
     def optional_text(value, field, max_length):
         if value is None or value == '':
             return ''

@@ -26,7 +26,7 @@ def slugify(text):
 
 # Hàm gửi email
 def send_email(to_email, subject, html_content, attachments=None):
-    from app import mail
+    from app.extensions import mail
     from app.validation import email_address
 
     try:

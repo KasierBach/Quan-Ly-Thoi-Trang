@@ -1,0 +1,70 @@
+{% extends 'base.html' %}
+
+{% block body_class %}{{ super() }} admin-page{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-theme.css') }}">
+{% endblock %}
+
+{% block navbar %}
+<nav class="navbar navbar-expand-md sticky-top admin-navbar" aria-label="Điều hướng quản trị">
+    <div class="container-fluid gap-2">
+        <a class="navbar-brand" href="{{ url_for('admin.admin_dashboard') }}">
+            <i class="fas fa-store me-2" aria-hidden="true"></i>Fashion Store <span class="badge bg-danger ms-1">Admin</span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#adminNavbar"
+            aria-controls="adminNavbar" aria-expanded="false" aria-label="Mở menu quản trị">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse justify-content-end" id="adminNavbar">
+            <ul class="navbar-nav align-items-md-center gap-1">
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('main.home') }}">
+                    <i class="fas fa-store me-1" aria-hidden="true"></i>Xem cửa hàng
+                </a></li>
+                {% if session.user_id %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('chat.messages_page') }}" aria-label="Tin nhắn" title="Tin nhắn">
+                    <i class="fas fa-comments" aria-hidden="true"></i>
+                </a></li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle admin-account" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-user me-1" aria-hidden="true"></i><span>{{ session.user_name }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li><a class="dropdown-item" href="{{ url_for('auth.my_account') }}">
+                            <i class="fas fa-user-circle me-2" aria-hidden="true"></i>Tài khoản của tôi
+                        </a></li>
+                        {% if session.is_admin %}
+                        <li><a class="dropdown-item" href="{{ url_for('admin.admin_dashboard') }}">
+                            <i class="fas fa-cog me-2" aria-hidden="true"></i>Quản trị
+                        </a></li>
+                        {% endif %}
+                        <li><hr class="dropdown-divider"></li>
+                        <li><form action="{{ url_for('auth.logout') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button class="dropdown-item" type="submit"><i class="fas fa-sign-out-alt me-2" aria-hidden="true"></i>Đăng xuất</button>
+                        </form></li>
+                    </ul>
+                </li>
+                {% else %}
+                <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.login') }}">Đăng nhập</a></li>
+                {% endif %}
+                <li class="nav-item">
+                    <button class="btn btn-link nav-link" type="button" id="toggleTheme" aria-label="Đổi giao diện sáng tối">
+                        <i class="fas fa-moon" id="darkIcon" style="display:none;" aria-hidden="true"></i>
+                        <i class="fas fa-sun" id="lightIcon" style="display:none;" aria-hidden="true"></i>
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+{% endblock %}
+
+{% block footer %}{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script defer src="{{ url_for('static', filename='js/admin-theme.js') }}"></script>
+{% endblock %}

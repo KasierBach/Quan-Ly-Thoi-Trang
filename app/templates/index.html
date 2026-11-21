@@ -15,7 +15,7 @@
             <div class="carousel-item active">
                 <div class="position-relative overflow-hidden" style="height: 500px;">
                     <img src="{{ url_for('static', filename='images/collection.jpg') }}" class="d-block w-100 h-100"
-                        alt="Bộ sưu tập mới"
+                        alt="Bộ sưu tập mới" width="3480" height="2000" loading="eager" decoding="async" fetchpriority="high"
                         style="object-fit: cover; object-position: center; filter: brightness(0.8);">
                     <div class="position-absolute top-0 start-0 w-100 h-100"
                         style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));">
@@ -40,7 +40,8 @@
             <div class="carousel-item">
                 <div class="position-relative overflow-hidden" style="height: 500px;">
                     <img src="{{ url_for('static', filename='images/giam-gia.jpg') }}" class="d-block w-100 h-100"
-                        alt="Giảm giá" style="object-fit: cover; object-position: center; filter: brightness(0.8);">
+                        alt="Giảm giá" width="1920" height="640" loading="eager" decoding="async" fetchpriority="low"
+                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
                     <div class="position-absolute top-0 start-0 w-100 h-100"
                         style="background: linear-gradient(45deg, rgba(240, 147, 251, 0.3), rgba(245, 87, 108, 0.3));">
                     </div>
@@ -64,7 +65,7 @@
             <div class="carousel-item">
                 <div class="position-relative overflow-hidden" style="height: 500px;">
                     <img src="{{ url_for('static', filename='images/caocap.jpg') }}" class="d-block w-100 h-100"
-                        alt="Thời trang cao cấp"
+                        alt="Thời trang cao cấp" width="4727" height="2000" loading="eager" decoding="async" fetchpriority="low"
                         style="object-fit: cover; object-position: center; filter: brightness(0.8);">
                     <div class="position-absolute top-0 start-0 w-100 h-100"
                         style="background: linear-gradient(45deg, rgba(44, 62, 80, 0.4), rgba(52, 73, 94, 0.4));"></div>
@@ -159,7 +160,7 @@
                 <div class="card category-card h-100 border-0 overflow-hidden">
                     <div class="position-relative">
                         <img src="{{ category|image_url }}" class="card-img-top"
-                            alt="{{ category.CategoryName }}"
+                            alt="{{ category.CategoryName }}" loading="lazy" decoding="async"
                             style="height: 280px; object-fit: cover; transition: transform 0.5s ease;">
                         <div class="position-absolute top-0 start-0 w-100 h-100"
                             style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));">
@@ -203,7 +204,7 @@
                 <div class="card product-card border-0">
                     <div class="position-relative overflow-hidden">
                         <img src="{{ product|image_url }}"
-                            class="card-img-top product-img" alt="{{ product.ProductName }}">
+                            class="card-img-top product-img" alt="{{ product.ProductName }}" loading="lazy" decoding="async">
                         <div class="position-absolute top-0 end-0 m-3">
                             <span class="badge bg-primary px-3 py-2">
                                 <i class="fas fa-star me-1"></i>Nổi bật
@@ -264,7 +265,7 @@
                 <div class="card product-card border-0">
                     <div class="position-relative overflow-hidden">
                         <img src="{{ product|image_url }}"
-                            class="card-img-top product-img" alt="{{ product.ProductName }}">
+                            class="card-img-top product-img" alt="{{ product.ProductName }}" loading="lazy" decoding="async">
                         <div class="position-absolute top-0 start-0 m-3">
                             <span class="badge bg-danger px-3 py-2 animate-pulse">
                                 <i class="fas fa-fire me-1"></i>Hot

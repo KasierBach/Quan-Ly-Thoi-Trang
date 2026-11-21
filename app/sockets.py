@@ -7,11 +7,11 @@ import time
 from typing import Any
 
 from flask import Flask, current_app, request
-from flask_socketio import emit, join_room, leave_room
 from flask_wtf.csrf import validate_csrf
 from wtforms.validators import ValidationError as CSRFValidationError
 import psycopg2
 
+from app.calls import MeshCallRegistry
 from app.services.chat_service import ChatService
 from app.services.conversation_service import (
     ChatAccessError,
@@ -33,25 +33,28 @@ def socket_sid():
 
 def guarded_event(method):
     @wraps(method)
-    def guarded(self, data=None):
+    def guarded(self, data=None, **kwargs):
+        sid = socket_sid()
+        with self.lock:
+            generation = self.generations.get(sid)
         try:
-            self._actor()
+            self._actor(sid)
             if not isinstance(data, dict):
                 raise ValidationError('Dữ liệu sự kiện không hợp lệ')
-            return method(self, data)
+            return method(self, data, **kwargs)
         except (ChatAccessError, ValidationError) as exc:
             status = exc.status if isinstance(exc, ChatAccessError) else 400
             result = {'success': False, 'message': str(exc), 'status': status}
             if isinstance(data, dict) and isinstance(data.get('call_id'), str):
                 result['call_id'] = data['call_id'][:64]
-            emit('error', result)
+            self._emit_to_sid('error', result, sid, generation)
             if status == 401:
-                self._revoke(socket_sid())
+                self._revoke(sid, generation)
             return result
         except psycopg2.Error:
             current_app.logger.exception('Chat socket database operation failed')
             result = {'success': False, 'message': 'Chat tạm thời không khả dụng', 'status': 503}
-            emit('error', result)
+            self._emit_to_sid('error', result, sid, generation)
             return result
 
     return guarded
@@ -62,22 +65,29 @@ class ChatSocketHandlers:
         self.socketio = socketio
         self.clients = {}
         self.joined = {}
+        self.generations = {}
+        self.room_intents = {}
         self.calls = {}
         self.lock = RLock()
         self.clock = time.monotonic
         self.app = app
         self.closed = False
+        self.mesh_calls = MeshCallRegistry(self)
 
     def close(self):
         with self.lock:
             self.closed = True
+            self.mesh_calls.close()
             for call in self.calls.values():
                 timer = call.get('timer')
                 if timer is not None:
                     timer.cancel()
             self.calls.clear()
-            self.clients.clear()
+            for sid in list(self.clients):
+                self._remove_client(sid)
             self.joined.clear()
+            self.generations.clear()
+            self.room_intents.clear()
 
     def _ring_timeout(self, call_id):
         with self.app.app_context(), self.lock:
@@ -117,133 +127,418 @@ class ChatSocketHandlers:
             'request_stream': self.handle_request_stream,
             'call_chat_message': self.handle_call_chat_message,
             'media_status': self.handle_media_status,
+            'group_call_start': self.handle_group_call_start,
+            'group_call_join': self.handle_group_call_join,
+            'group_call_leave': self.handle_group_call_leave,
+            'group_call_signal': self.handle_group_call_signal,
         }
         for event, handler in events.items():
             self.socketio.on(event)(handler)
 
+    def _connected(self, sid, *, connecting=False):
+        manager = self.socketio.server.manager
+        return manager.is_connected(sid, '/') or (connecting and manager.is_pre_connected(sid, '/'))
+
+    def _live(self, sid, generation, *, connecting=False):
+        return (
+            not self.closed
+            and generation is not None
+            and self.generations.get(sid) is generation
+            and sid in self.clients
+            and self._connected(sid, connecting=connecting)
+        )
+
     def _actor(self, sid=None):
         sid = sid or socket_sid()
         with self.lock:
-            actor = self.clients.get(sid)
-        if actor is None:
-            raise ChatAccessError('Cần kết nối chat được xác thực', 401)
-        actor = refresh_identity(actor)  # Recheck auth_version/role or signed guest expiry on EVERY event.
+            generation = self.generations.get(sid)
+            if not self._live(sid, generation):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Cần kết nối chat được xác thực', 401)
+            actor = self.clients[sid]
+        actor = refresh_identity(actor)  # Slow auth I/O must not resurrect a disconnected SID.
         with self.lock:
+            if not self._live(sid, generation):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Cần kết nối chat được xác thực', 401)
             self.clients[sid] = actor
         return actor
 
+    @staticmethod
+    def _delivery_room(conversation_id, user_id, auth_version):
+        cid = positive_int(conversation_id, 'Cuộc trò chuyện', 2147483647)
+        uid = positive_int(user_id, 'Tài khoản', 2147483647)
+        version = positive_int(auth_version, 'Phiên tài khoản', 2147483647)
+        return f'conv_{cid}_user_{uid}_v{version}'
+
+    def _emit_to_sid(self, event, payload, sid, generation):
+        with self.lock:
+            if not self._live(sid, generation):
+                return False
+            self.socketio.emit(event, payload, to=sid, namespace='/')
+            return True
+
+    def _emit_current(self, event, payload):
+        sid = socket_sid()
+        with self.lock:
+            return self._emit_to_sid(event, payload, sid, self.generations.get(sid))
+
+    def _room_error_is_disconnect(self, exc, sid, *, connecting=False):
+        # These are the two missing-connection paths in the pinned Socket.IO manager.
+        # An unrelated ValueError/KeyError is a bug, even if a disconnect also happened.
+        missing_connection = (
+            isinstance(exc, ValueError) and str(exc) == 'sid is not connected to requested namespace'
+        ) or (isinstance(exc, KeyError) and exc.args in ((sid,), ('/',), (None,)))
+        return missing_connection and not self._connected(sid, connecting=connecting)
+
+    def _enter_room(self, room, *, sid=None, generation=None, intent=None, connecting=False):
+        sid = sid or socket_sid()
+        with self.lock:
+            generation = generation or self.generations.get(sid)
+            if not self._live(sid, generation, connecting=connecting):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Cần kết nối chat được xác thực', 401)
+            if intent is not None and self.room_intents[sid].get(room) is not intent:
+                raise ChatAccessError('Yêu cầu vào phòng đã được thay thế', 409)
+            try:
+                self.socketio.server.enter_room(sid, room, namespace='/')
+            except (ValueError, KeyError) as exc:
+                if not self._room_error_is_disconnect(exc, sid, connecting=connecting):
+                    raise
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Kết nối chat đã đóng', 401) from exc
+            if not self._live(sid, generation, connecting=connecting):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Kết nối chat đã đóng', 401)
+            if room not in self.socketio.server.rooms(sid, namespace='/'):
+                raise ChatAccessError('Không thể vào phòng chat', 503)
+            self.joined[sid].add(room)
+            return True
+
+    def _leave_room(self, sid, room):
+        with self.lock:
+            try:
+                self.socketio.server.leave_room(sid, room, namespace='/')
+            except (ValueError, KeyError) as exc:
+                if not self._room_error_is_disconnect(exc, sid):
+                    raise
+                self._remove_client(sid)
+                return False
+            if room in self.socketio.server.rooms(sid, namespace='/'):
+                raise ChatAccessError('Không thể rời phòng chat', 503)
+            rooms = self.joined.get(sid)
+            if rooms is not None:
+                rooms.discard(room)
+            return self._connected(sid)
+
     def handle_connect(self, auth=None):
+        sid = socket_sid()
         auth = auth if isinstance(auth, dict) else {}
+        generation = None
+        accepted = False
         try:
             if current_app.config.get('WTF_CSRF_ENABLED', True):
                 validate_csrf(auth.get('csrf_token'))
             actor = get_identity(auth.get('auth_token'))
+            access = ConversationService.get_access(session_id=actor.guest_id, actor=actor) if actor.guest_id else None
+            with self.lock:
+                if self.closed or not self._connected(sid, connecting=True):
+                    return False
+                generation = object()
+                self.clients[sid] = actor
+                self.joined[sid] = set()
+                self.generations[sid] = generation
+                self.room_intents[sid] = {}
+                if access is not None:
+                    self._enter_room(access.room, sid=sid, generation=generation, connecting=True)
+            if actor.user_id is not None:
+                ChatService.update_last_seen(actor.user_id, actor=actor)
+            with self.lock:
+                accepted = self._live(sid, generation, connecting=True)
+                return accepted
         except (ChatAccessError, ValidationError, CSRFValidationError):
             return False
         except psycopg2.Error:
             current_app.logger.exception('Chat socket connection authentication failed')
             return False
-        with self.lock:
-            self.clients[socket_sid()] = actor
-            self.joined[socket_sid()] = set()
-        if actor.guest_id:
-            access = ConversationService.get_access(session_id=actor.guest_id, actor=actor)
-            join_room(access.room)
-            self.joined[socket_sid()].add(access.room)
-        if actor.user_id is not None:
-            ChatService.update_last_seen(actor.user_id, actor=actor)
-        return True
+        finally:
+            if not accepted and generation is not None:
+                self._remove_client(sid, generation)
 
-    def _revoke(self, sid):
-        self._remove_client(sid)
-        self.socketio.server.disconnect(sid, namespace='/')
+    def _revoke(self, sid, generation=None):
+        with self.lock:
+            if generation is not None and self.generations.get(sid) is not generation:
+                return
+            self._remove_client(sid, generation)
+            self.socketio.server.disconnect(sid, namespace='/')
 
     def revoke_user(self, user_id):
         with self.lock:
-            sids = [sid for sid, actor in self.clients.items() if actor.user_id == user_id]
-        for sid in sids:
-            self._revoke(sid)
+            for sid, actor in list(self.clients.items()):
+                if actor.user_id == user_id:
+                    self._revoke(sid, self.generations.get(sid))
 
-    def _remove_client(self, sid):
+    def _remove_client(self, sid, generation=None, *, disconnecting=False):
         with self.lock:
+            if generation is not None and self.generations.get(sid) is not generation:
+                return
+            current_generation = self.generations.get(sid)
+            self.mesh_calls.on_disconnect(sid, current_generation)
             self.clients.pop(sid, None)
-            self.joined.pop(sid, None)
+            self.generations.pop(sid, None)
+            self.room_intents.pop(sid, None)
+            rooms = self.joined.pop(sid, set())
+            if not disconnecting:
+                for room in rooms:
+                    self._leave_room(sid, room)
             for call_id, call in list(self.calls.items()):
                 if sid in call['sids']:
                     self._finish_call(call_id, 'call_ended', sid, reason='disconnected')
 
     def handle_disconnect(self, reason=None):
-        self._remove_client(socket_sid())
+        self._remove_client(socket_sid(), disconnecting=True)
 
     def evict_conversation_user(self, cid, uid):
+        room = f'conv_{cid}'
         with self.lock:
+            self.mesh_calls.evict(cid, uid)
             for sid, actor in list(self.clients.items()):
                 if actor.user_id == uid:
-                    self.joined.get(sid, set()).discard(f'conv_{cid}')
-                    self.socketio.server.leave_room(sid, f'conv_{cid}', namespace='/')
+                    self.room_intents[sid][room] = object()  # Supersede an in-flight join/ACL check.
+                    self._leave_delivery_room(cid, sid)
+                    self._leave_room(sid, room)
                     for call_id, call in list(self.calls.items()):
                         if call['conversation_id'] == cid and sid in call['sids']:
                             self._finish_call(call_id, 'call_ended', sid, reason='left_conversation')
 
-    def _access(self, data, permission='read'):
-        return ConversationService.get_access(
-            data.get('conversation_id'), data.get('session_id'), actor=self._actor(), permission=permission
-        )
-
-    def _broadcast(self, event, payload, access, exclude_sid=None):
-        # Routing uses the persisted message scope, never the caller's room/recipient fields.
-        # Recipient ACLs are refreshed as well, so departed participants/stale admins cannot listen forever.
+    def _enter_delivery_room(self, access, *, sid=None, generation=None, connecting=False, intent=None):
+        if access.conversation_id is None or access.actor.user_id is None:
+            return None
+        sid = sid or socket_sid()
+        room = self._delivery_room(access.conversation_id, access.actor.user_id, access.actor.auth_version)
         with self.lock:
-            recipients = list(self.clients.items())
-        for sid, actor in recipients:
-            if sid == exclude_sid:
-                continue
-            if access.room not in self.joined.get(sid, set()) and not (
-                access.conversation_id is None and actor.is_admin
-            ):
-                continue
+            if intent is not None and self.room_intents.get(sid, {}).get(access.room) is not intent:
+                raise ChatAccessError('Yêu cầu vào phòng đã được thay thế', 409)
+            if access.room not in self.joined.get(sid, set()):
+                raise ChatAccessError('Phòng nội dung đã đóng', 409)
+            self._enter_room(room, sid=sid, generation=generation, connecting=connecting)
+        return room
+
+    def _leave_delivery_room(self, conversation_id, sid):
+        with self.lock:
+            actor = self.clients.get(sid)
+        if conversation_id is None or actor is None or actor.user_id is None:
+            return
+        room = self._delivery_room(conversation_id, actor.user_id, actor.auth_version)
+        self._leave_room(sid, room)
+
+    def _access(self, data, permission='read'):
+        sid = socket_sid()
+        with self.lock:
+            generation = self.generations.get(sid)
+        access = ConversationService.get_access(
+            data.get('conversation_id'), data.get('session_id'), actor=self._actor(sid), permission=permission
+        )
+        with self.lock:
+            if not self._live(sid, generation):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Kết nối chat đã đóng', 401)
+        return access
+
+    def _block_delivery(self, access, sid, generation, blocked_rooms):
+        with self.lock:
+            if self.generations.get(sid) is not generation:
+                return
+            actor = self.clients.get(sid)
+            if access.conversation_id is not None and actor is not None and actor.user_id is not None:
+                blocked_rooms.add(self._delivery_room(access.conversation_id, actor.user_id, actor.auth_version))
+
+    def _broadcast(self, event, payload, access, exclude_sid=None, *, participants_only=False, queued_room=False):
+        # Snapshot only routing candidates. Refresh outside the lock, then recheck the
+        # same connection AND room intent under the lock immediately before enqueueing.
+        room = access.room
+        blocked_rooms = set()
+        with self.lock:
+            recipients = [
+                (sid, self.generations.get(sid), self.room_intents.get(sid, {}).get(room))
+                for sid, actor in self.clients.items()
+                if sid != exclude_sid
+                and (
+                    (participants_only and actor.user_id is not None)
+                    or (
+                        not participants_only
+                        and (room in self.joined.get(sid, set()) or (access.conversation_id is None and actor.is_admin))
+                    )
+                )
+            ]
+        for sid, generation, intent in recipients:
             try:
-                actor = refresh_identity(actor)
+                with self.lock:
+                    if not self._live(sid, generation):
+                        continue
+                actor = self._actor(sid)
                 recipient_access = ConversationService.get_access(
-                    access.conversation_id, access.session_id, actor=actor
+                    access.conversation_id,
+                    access.session_id,
+                    actor=actor,
+                    permission='read_receipt' if participants_only else 'read',
                 )
             except ChatAccessError as exc:
-                if exc.status == 401:
-                    self._revoke(sid)
-                else:
-                    self.joined.get(sid, set()).discard(access.room)
-                    self.socketio.server.leave_room(sid, access.room, namespace='/')
+                with self.lock:
+                    if self.generations.get(sid) is not generation:
+                        continue
+                    if queued_room:
+                        self._block_delivery(access, sid, generation, blocked_rooms)
+                    try:
+                        if exc.status == 401:
+                            self._revoke(sid, generation)
+                        elif not participants_only and self.room_intents.get(sid, {}).get(room) is intent:
+                            self.room_intents[sid][room] = object()
+                            self._leave_delivery_room(access.conversation_id, sid)
+                            self._leave_room(sid, room)
+                    except Exception:
+                        if not queued_room:
+                            raise
+                        current_app.logger.exception('Chat recipient cleanup failed; delivery remains blocked')
                 continue
             except psycopg2.Error:
                 current_app.logger.exception('Chat recipient authorization failed')
+                if queued_room:
+                    self._block_delivery(access, sid, generation, blocked_rooms)
                 continue
-            if recipient_access.room == access.room:
-                self.socketio.emit(event, payload, to=sid)
+            with self.lock:
+                if not self._live(sid, generation) or recipient_access.room != room:
+                    continue
+                if self.room_intents.get(sid, {}).get(room) is not intent:
+                    continue
+                if participants_only:
+                    # A support admin with read access but no Participants row is NOT
+                    # eligible for numeric sidebar invalidations.
+                    if recipient_access.actor.user_id is None or not recipient_access.role:
+                        continue
+                elif room not in self.joined.get(sid, set()) and not (
+                    access.conversation_id is None and recipient_access.actor.is_admin
+                ):
+                    continue
+                self.clients[sid] = recipient_access.actor
+                if not queued_room:
+                    self._emit_to_sid(event, payload, sid, generation)
+        if queued_room:
+            if access.conversation_id is None or participants_only:
+                raise RuntimeError('Queued room publication requires a numeric content scope')
+            try:
+                targets = ConversationService.get_publication_targets(access.conversation_id)
+            except psycopg2.Error:
+                current_app.logger.exception('Chat publication target query failed after mutation commit')
+                return
+            rooms = [
+                self._delivery_room(access.conversation_id, item['user_id'], item['auth_version']) for item in targets
+            ]
+            rooms = [destination for destination in rooms if destination not in blocked_rooms]
+            if rooms:
+                self.socketio.emit(event, payload, to=rooms, namespace='/')
+
+    def _publish_committed(self, event, payload, access, **options):
+        try:
+            self._broadcast(event, payload, access, **options)
+        except Exception:
+            current_app.logger.exception('Committed chat mutation could not be published (%s)', event)
+
+    def publish_conversation_updated(self, access):
+        """Post-commit numeric invalidation; no message, sender or participant data."""
+        if access.conversation_id is not None:
+            cid = positive_int(access.conversation_id, 'Cuộc trò chuyện', 2147483647)
+            self._publish_committed('conversation_updated', {'conversation_id': cid}, access, participants_only=True)
 
     def publish_message(self, result):
         if not result.get('success'):
             return
-        # Use a validated access for routing. Authorizing receivers remains mandatory in _broadcast.
         from app.services.conversation_service import ChatAccess, ChatIdentity
 
         access = ChatAccess(
             ChatIdentity(result.get('user_id')), result.get('conversation_id'), result.get('session_id')
         )
         payload = {key: value for key, value in result.items() if key not in {'success', 'message'}}
-        self._broadcast('new_message', payload, access)
+        self._publish_committed('new_message', payload, access, queued_room=access.conversation_id is not None)
+        self.publish_conversation_updated(access)
+
+    def publish_recall(self, message_id, access):
+        """Call after recall succeeds, with the message's authorized pre-delete scope."""
+        self._publish_committed(
+            'message_recalled',
+            {'message_id': message_id, 'conversation_id': access.conversation_id, 'session_id': access.session_id},
+            access,
+        )
+        self.publish_conversation_updated(access)
+
+    def publish_read_receipt(self, access):
+        """Call only after a participant read receipt was committed successfully."""
+        if access.conversation_id is None:
+            return
+        self._publish_committed(
+            'messages_read', {'conversation_id': access.conversation_id, 'user_id': access.actor.user_id}, access
+        )
+        self.publish_conversation_updated(access)
+
+    def _room_intent(self, data):
+        if not isinstance(data, dict):
+            return None, None
+        cid, session_id = data.get('conversation_id'), data.get('session_id')
+        with self.lock:
+            sid = socket_sid()
+            actor = self.clients.get(sid)
+            generation = self.generations.get(sid)
+            if actor is None or not self._live(sid, generation):
+                return None, None
+            if cid not in (None, '') and re.fullmatch(r'[0-9]+', str(cid)):
+                room = f'conv_{int(cid)}'
+            else:
+                room = f'support_{cid or session_id or actor.guest_id}'
+            intent = object()
+            self.room_intents[sid][room] = intent
+        return generation, intent
+
+    def handle_join_conversation(self, data=None):
+        # Record both joins and leaves before slow authentication; newest intent wins.
+        generation, intent = self._room_intent(data)
+        return self._join_conversation(data, generation=generation, intent=intent)
 
     @guarded_event
-    def handle_join_conversation(self, data):
+    def _join_conversation(self, data, *, generation=None, intent=None):
         access = self._access(data)
-        join_room(access.room)
-        self.joined[socket_sid()].add(access.room)
+        sid = socket_sid()
+        with self.lock:
+            self._enter_room(access.room, sid=sid, generation=generation, intent=intent)
+            try:
+                self._enter_delivery_room(access, sid=sid, generation=generation, intent=intent)
+                if intent is not None and self.room_intents.get(sid, {}).get(access.room) is not intent:
+                    raise ChatAccessError('Yêu cầu vào phòng đã được thay thế', 409)
+            except Exception:
+                if self.generations.get(sid) is generation and (
+                    intent is None or self.room_intents.get(sid, {}).get(access.room) is intent
+                ):
+                    self._leave_delivery_room(access.conversation_id, sid)
+                    self._leave_room(sid, access.room)
+                raise
         return {'success': True, 'conversation_id': access.conversation_id, 'session_id': access.session_id}
 
+    def handle_leave_conversation(self, data=None):
+        generation, intent = self._room_intent(data)
+        return self._leave_conversation(data, generation=generation, intent=intent)
+
     @guarded_event
-    def handle_leave_conversation(self, data):
+    def _leave_conversation(self, data, *, generation=None, intent=None):
         access = self._access(data)
-        leave_room(access.room)
-        self.joined[socket_sid()].discard(access.room)
+        sid = socket_sid()
+        with self.lock:
+            if not self._live(sid, generation):
+                raise ChatAccessError('Kết nối chat đã đóng', 401)
+            if self.room_intents.get(sid, {}).get(access.room) is not intent:
+                raise ChatAccessError('Yêu cầu rời phòng đã được thay thế', 409)
+            self._leave_delivery_room(access.conversation_id, sid)
+            if not self._leave_room(sid, access.room):
+                self._remove_client(sid, generation)
+                raise ChatAccessError('Kết nối chat đã đóng', 401)
         return {'success': True}
 
     @guarded_event
@@ -259,10 +554,13 @@ class ChatSocketHandlers:
             actor=actor,
         )
         if not result.get('success'):
-            emit('error', {'success': False, 'message': result.get('message'), 'status': 503})
+            self._emit_current('error', {'success': False, 'message': result.get('message'), 'status': 503})
             return result
         self.publish_message(result)
-        emit('message_sent', {'success': True, 'id': result['id']})
+        try:
+            self._emit_current('message_sent', {'success': True, 'id': result['id']})
+        except Exception:
+            current_app.logger.exception('Committed chat message acknowledgement notice could not be delivered')
         return result
 
     @guarded_event
@@ -340,11 +638,7 @@ class ChatSocketHandlers:
         )
         if not ChatService.recall_message(mid, actor=actor):
             raise ChatAccessError('Không thể thu hồi', 503)
-        self._broadcast(
-            'message_recalled',
-            {'message_id': mid, 'conversation_id': access.conversation_id, 'session_id': access.session_id},
-            access,
-        )
+        self.publish_recall(mid, access)
         return {'success': True}
 
     def _pin(self, data, remove=False):
@@ -377,9 +671,7 @@ class ChatSocketHandlers:
         access = self._access(data, 'read_receipt')
         if not ConversationService.mark_as_read(access.conversation_id, access.actor.user_id, actor=access.actor):
             raise ChatAccessError('Không thể cập nhật đã đọc', 503)
-        self._broadcast(
-            'messages_read', {'conversation_id': access.conversation_id, 'user_id': access.actor.user_id}, access
-        )
+        self.publish_read_receipt(access)
         return {'success': True}
 
     @guarded_event
@@ -411,7 +703,7 @@ class ChatSocketHandlers:
                 {'conversation_id': access.conversation_id, 'user_id': uid, 'settings': public},
                 access,
             )
-        emit(
+        self._emit_current(
             'participant_settings_updated',
             {'conversation_id': access.conversation_id, 'user_id': uid, 'settings': settings},
         )
@@ -449,6 +741,8 @@ class ChatSocketHandlers:
         for sid in call['sids']:
             try:
                 ConversationService.get_access(cid, actor=self._actor(sid), permission='call')
+                if not self._call_live(call):
+                    raise ChatAccessError('Kết nối cuộc gọi đã đóng', 409)
             except ChatAccessError as exc:
                 self._finish_call(call_id, 'call_ended', None, reason='access_revoked')
                 if exc.status == 401:
@@ -458,33 +752,46 @@ class ChatSocketHandlers:
                 raise ChatAccessError('Người tham gia đã mất quyền truy cập', 409) from exc
         return call_id, call
 
+    def _call_live(self, call):
+        return self.calls.get(call['id']) is call and all(
+            self._live(sid, generation) for sid, generation in zip(call['sids'], call['generations'], strict=True)
+        )
+
     def _signal(self, event, payload, call):
-        peer_sid = next(sid for sid in call['sids'] if sid != socket_sid())
-        actor = self._actor()
-        payload = {
-            **payload,
-            'conversation_id': call['conversation_id'],
-            'call_id': call['id'],
-            'sender_id': actor.user_id,
-            'user_id': actor.user_id,
-            'sender_name': actor.name,
-        }
-        self.socketio.emit(event, payload, to=peer_sid)
+        with self.lock:
+            actor = self._actor()
+            if not self._call_live(call):
+                self._finish_call(call['id'], 'call_ended', None, reason='disconnected')
+                raise ChatAccessError('Kết nối cuộc gọi đã đóng', 409)
+            peer_sid = next(sid for sid in call['sids'] if sid != socket_sid())
+            payload = {
+                **payload,
+                'conversation_id': call['conversation_id'],
+                'call_id': call['id'],
+                'sender_id': actor.user_id,
+                'user_id': actor.user_id,
+                'sender_name': actor.name,
+            }
+            self._emit_to_sid(event, payload, peer_sid, self.generations[peer_sid])
 
     def _finish_call(self, call_id, event, sender_sid, reason=None):
-        call = self.calls.pop(call_id, None)
-        if call is None:
-            return
-        timer = call.get('timer')
-        if timer is not None:
-            timer.cancel()
-        payload = {'call_id': call_id, 'conversation_id': call['conversation_id'], 'reason': reason}
-        for sid in call['sids']:
-            if sid != sender_sid and sid in self.clients:
-                self.socketio.emit(event, payload, to=sid)
+        with self.lock:
+            call = self.calls.pop(call_id, None)
+            if call is None:
+                return
+            timer = call.get('timer')
+            if timer is not None:
+                timer.cancel()
+            payload = {'call_id': call_id, 'conversation_id': call['conversation_id'], 'reason': reason}
+            for sid, generation in zip(call['sids'], call['generations'], strict=True):
+                if sid != sender_sid:
+                    self._emit_to_sid(event, payload, sid, generation)
 
     @guarded_event
     def handle_call_user(self, data):
+        caller_sid = socket_sid()
+        with self.lock:
+            caller_generation = self.generations.get(caller_sid)
         access = self._access(data, 'call')
         call_id = self._call_id(data)
         offer = self._description(data.get('offer'), 'offer')
@@ -516,7 +823,12 @@ class ChatSocketHandlers:
             ):
                 raise ChatAccessError()
             occupied = {uid for call in self.calls.values() for uid in call['user_ids']}
-            if access.actor.user_id in occupied or peer_uid in occupied:
+            if (
+                access.actor.user_id in occupied
+                or peer_uid in occupied
+                or self.mesh_calls.busy(access.actor.user_id)
+                or self.mesh_calls.busy(peer_uid)
+            ):
                 raise ChatAccessError('Một người tham gia đang bận', 409)
             peer_sid = None
             for sid, actor in list(self.clients.items()):
@@ -531,10 +843,14 @@ class ChatSocketHandlers:
                     break
             if peer_sid is None:
                 raise ChatAccessError('Người nhận chưa kết nối', 409)
+            peer_generation = self.generations.get(peer_sid)
+            if not self._live(caller_sid, caller_generation) or not self._live(peer_sid, peer_generation):
+                raise ChatAccessError('Kết nối cuộc gọi đã đóng', 409)
             call = {
                 'id': call_id,
                 'conversation_id': access.conversation_id,
-                'sids': (socket_sid(), peer_sid),
+                'sids': (caller_sid, peer_sid),
+                'generations': (caller_generation, peer_generation),
                 'user_ids': (access.actor.user_id, peer_uid),
                 'phase': 'ringing',
                 'created': self.clock(),
@@ -604,8 +920,37 @@ class ChatSocketHandlers:
             self._signal('call_resume', {}, call)
         return {'success': True}
 
+    def _mesh_context(self):
+        sid = socket_sid()
+        with self.lock:
+            generation = self.generations.get(sid)
+        return self._actor(sid), sid, generation
+
+    @guarded_event
+    def handle_group_call_start(self, data):
+        actor, sid, generation = self._mesh_context()
+        return self.mesh_calls.start(actor, sid, generation, data)
+
+    @guarded_event
+    def handle_group_call_join(self, data):
+        actor, sid, generation = self._mesh_context()
+        return self.mesh_calls.join(actor, sid, generation, data)
+
+    @guarded_event
+    def handle_group_call_leave(self, data):
+        actor, sid, generation = self._mesh_context()
+        return self.mesh_calls.leave(actor, sid, generation, data)
+
+    @guarded_event
+    def handle_group_call_signal(self, data):
+        actor, sid, generation = self._mesh_context()
+        return self.mesh_calls.signal(actor, sid, generation, data)
+
     @guarded_event
     def handle_stream_status(self, data):
+        if self.mesh_calls.contains(data.get('call_id')):
+            actor, sid, generation = self._mesh_context()
+            return self.mesh_calls.stream_status(actor, sid, generation, data)
         if not isinstance(data.get('is_streaming'), bool):
             raise ValidationError('Trạng thái chia sẻ không hợp lệ')
         with self.lock:
@@ -621,6 +966,9 @@ class ChatSocketHandlers:
 
     @guarded_event
     def handle_call_chat_message(self, data):
+        if self.mesh_calls.contains(data.get('call_id')):
+            actor, sid, generation = self._mesh_context()
+            return self.mesh_calls.call_chat_message(actor, sid, generation, data)
         text = required_text(data.get('text'), 'Tin nhắn cuộc gọi', 1000)
         with self.lock:
             _, call = self._lookup_call(data, active=True)
@@ -636,11 +984,20 @@ class ChatSocketHandlers:
 
     @guarded_event
     def handle_media_status(self, data):
+        if self.mesh_calls.contains(data.get('call_id')):
+            actor, sid, generation = self._mesh_context()
+            return self.mesh_calls.media_status(actor, sid, generation, data)
         if data.get('type') not in {'mic', 'cam'} or not isinstance(data.get('enabled'), bool):
             raise ValidationError('Trạng thái phương tiện không hợp lệ')
+        revision = data.get('revision')
+        if revision is not None and (type(revision) is not int or not 1 <= revision <= 2147483647):
+            raise ValidationError('Thứ tự trạng thái phương tiện không hợp lệ')
         with self.lock:
             _, call = self._lookup_call(data, active=True)
-            self._signal('media_status', {'type': data['type'], 'enabled': data['enabled']}, call)
+            payload = {'type': data['type'], 'enabled': data['enabled']}
+            if revision is not None:
+                payload['revision'] = revision
+            self._signal('media_status', payload, call)
         return {'success': True}
 
 

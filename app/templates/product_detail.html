@@ -1,6 +1,11 @@
 {% extends 'base.html' %}
 
 {% block title %}{{ product.ProductName }} - Fashion Store{% endblock %}
+{% block meta_description %}{{ seo.description }}{% endblock %}
+{% block og_title %}{{ seo.title }}{% endblock %}
+{% block structured_data %}
+{% if structured_data %}<script type="application/ld+json">{{ structured_data|tojson }}</script>{% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -15,7 +20,8 @@
     <div class="row g-4" style="min-height: 450px;">
         <div class="col-md-6 d-flex justify-content-center align-items-center" style="min-height: 100%;">
             <img id="mainImage" src="{{ product|image_url }}" class="img-fluid rounded"
-                alt="{{ product.ProductName }}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                alt="{{ product.ProductName }}" loading="eager" decoding="async" fetchpriority="high"
+                style="width: 100%; aspect-ratio: 1 / 1; max-height: 100%; max-width: 100%; object-fit: contain;">
         </div>
         <div class="col-md-6 d-flex flex-column justify-content-center">
             <div>
@@ -453,7 +459,7 @@
                     if (!Number.isSafeInteger(id) || id < 1) return;
                     const column = document.createElement('div');
                     column.className = 'col-md-3 mb-3';
-                    column.innerHTML = `<div class="card product-card h-100"><img class="card-img-top product-img"><div class="card-body"><h5 class="card-title">${escapeHtml(product.product_name)}</h5><p class="card-text text-muted">${escapeHtml(product.category_name)}</p><div class="d-flex justify-content-between align-items-center"><span class="text-danger fw-bold">${moneyText(product.price)}</span><a class="btn btn-sm btn-outline-primary" href="/product/${id}">Chi tiết</a></div></div></div>`;
+                    column.innerHTML = `<div class="card product-card h-100"><img class="card-img-top product-img" loading="lazy" decoding="async"><div class="card-body"><h5 class="card-title">${escapeHtml(product.product_name)}</h5><p class="card-text text-muted">${escapeHtml(product.category_name)}</p><div class="d-flex justify-content-between align-items-center"><span class="text-danger fw-bold">${moneyText(product.price)}</span><a class="btn btn-sm btn-outline-primary" href="/product/${id}">Chi tiết</a></div></div></div>`;
                     const image = column.querySelector('img');
                     const url = new URL(product.image_url || {{ url_for('static', filename='images/default.jpg')|tojson }}, window.location.origin);
                     image.src = ['http:', 'https:'].includes(url.protocol) ? url.href : {{ url_for('static', filename='images/default.jpg')|tojson }};

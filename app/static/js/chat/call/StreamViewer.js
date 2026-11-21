@@ -39,6 +39,7 @@ class ImageViewer {
         this.velocityX = 0;
         this.velocityY = 0;
         this.inertiaFrame = null;
+        this.returnFocus = null;
 
         this.initEvents();
     }
@@ -125,6 +126,13 @@ class ImageViewer {
         // Keyboard support
         window.addEventListener('keydown', (e) => {
             if (!this.modal.classList.contains('active')) return;
+            if (e.key === 'Tab') {
+                const controls = Array.from(this.modal.querySelectorAll('button')).filter(button => button.getClientRects().length);
+                const first = controls[0], last = controls[controls.length - 1];
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last?.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first?.focus(); }
+                return;
+            }
 
             switch (e.key) {
                 case 'Escape': this.close(); break;
@@ -166,26 +174,30 @@ class ImageViewer {
             this.currentIndex = 0;
         }
 
+        this.returnFocus = document.activeElement;
         this.showImage();
         this.modal.classList.add('active');
         this.reset();
+        this.closeBtn?.focus();
     }
 
     showImage() {
         if (this.currentIndex < 0 || this.currentIndex >= this.images.length) return;
 
         const url = this.images[this.currentIndex];
-        this.img.src = url;
-
-        if (this.info) {
-            this.info.textContent = `${this.currentIndex + 1} / ${this.images.length}`;
-        }
-
         this.img.onload = () => {
             this.reset();
             this.img.style.opacity = '1';
         };
+        this.img.onerror = () => {
+            this.img.style.opacity = '1';
+            if (this.info) this.info.textContent = 'Ảnh không còn khả dụng. Đóng cửa sổ để quay lại.';
+        };
         this.img.style.opacity = '0';
+        this.img.src = url;
+        if (this.img.complete && this.img.naturalWidth) this.img.style.opacity = '1';
+
+        if (this.info) this.info.textContent = `${this.currentIndex + 1} / ${this.images.length}`;
 
         // Update nav buttons visibility
         if (this.prevBtn) this.prevBtn.style.display = this.images.length > 1 ? 'flex' : 'none';
@@ -228,7 +240,13 @@ class ImageViewer {
         if (this.modal) {
             this.modal.classList.remove('active');
             cancelAnimationFrame(this.inertiaFrame);
+            if (this.returnFocus?.isConnected) this.returnFocus.focus();
         }
+    }
+
+    dispose() {
+        this.close();
+        if (this.img) { this.img.onload = null; this.img.onerror = null; }
     }
 
     zoom(delta) {

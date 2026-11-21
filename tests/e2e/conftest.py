@@ -23,6 +23,7 @@ def live_app(database_url, db_connection, tmp_path):
         'WTF_CSRF_ENABLED': True,
         'SESSION_COOKIE_SECURE': False,
         'TRUSTED_HOSTS': ['localhost', '127.0.0.1'],
+        'PUBLIC_BASE_URL': 'https://store.example.test',
         'MAIL_SUPPRESS_SEND': True,
         'MAIL_DEFAULT_SENDER': 'test-store@example.test',
         'MAIL_USE_SSL': False,

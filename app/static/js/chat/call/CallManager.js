@@ -1,5 +1,5 @@
 import CallState from './CallState.js';
-import { createNode } from '../utils/helpers.js';
+import { createNode, shouldSendOnEnter } from '../utils/helpers.js';
 
 /** One socket-bound peer, one immutable call scope, and cancellable async media work. */
 export class CallManager {
@@ -23,6 +23,18 @@ export class CallManager {
         this.newCallId = dependencies.newCallId || (() => crypto.randomUUID());
         this.setTimer = dependencies.setTimer || ((...args) => globalThis.setTimeout(...args));
         this.clearTimer = dependencies.clearTimer || (timer => globalThis.clearTimeout(timer));
+        this.now = dependencies.now || (() => globalThis.performance?.now() ?? Date.now());
+        this.uiListeners = [];
+        this.callUIListeners = [];
+        this.participantListeners = [];
+        this.mediaListeners = new Map();
+        this.durationTimer = null;
+        this.durationCall = null;
+        this.durationStartedAt = null;
+        this.focusedParticipant = 'remote';
+        this.browserOperations = new Map();
+        this.overlayOpen = false;
+        this.audioNeedsGesture = false;
         this.config = { iceServers: dependencies.iceServers ?? app.rtcIceServers ?? [{ urls: 'stun:stun.l.google.com:19302' }] };
     }
 
@@ -252,7 +264,6 @@ export class CallManager {
             }
             this.updatePrimaryVideo();
             this.addRemoteParticipant();
-            this.elements.remoteVideo?.play()?.catch(() => this.notify('Nhấn phát video để nghe cuộc gọi nếu trình duyệt chặn tự phát'));
         };
         peer.onconnectionstatechange = () => {
             if (!this.isCurrent(call) || this.peerConnection !== peer) return;
@@ -277,10 +288,21 @@ export class CallManager {
     }
 
     flushLocalIce(call) {
-        if (!this.isCurrent(call) || !call.signalReady || !call.localDescriptionReady) return;
-        while (call.localIce.length && this.isCurrent(call)) {
-            if (!this.socket?.emit('ice_candidate', { ...this.scope(call), candidate: call.localIce.shift() })) break;
-        }
+        if (!this.isCurrent(call) || !call.signalReady || !call.localDescriptionReady || call.awaitingAnswer || call.flushingIce) return;
+        call.flushingIce = true;
+        call.iceFlush = (async () => {
+            while (call.localIce.length && this.isCurrent(call)) {
+                if (!await this.requestSignal(call, 'ice_candidate', { candidate: call.localIce.shift() })) return false;
+            }
+            return this.isCurrent(call);
+        })().catch(error => {
+            if (this.isCurrent(call)) this.fail(call, error);
+            return false;
+        }).finally(() => {
+            call.flushingIce = false;
+            call.iceFlush = null;
+            if (this.isCurrent(call) && call.localIce.length) this.flushLocalIce(call);
+        });
     }
 
     async handleIceCandidate(data) {
@@ -340,6 +362,9 @@ export class CallManager {
             call.signalReady = true; // An authenticated answer also proves the server registered this call.
             call.remoteDescriptionReady = true;
             call.phase = 'connecting';
+            this.hideIncomingModal();
+            this.showActiveView();
+            this.setStatus('Đang kết nối...');
             this.flushLocalIce(call);
             await this.processQueuedCandidates(call);
             this.deadline(call, 20000, 'Không thể thiết lập kết nối cuộc gọi');
@@ -357,6 +382,8 @@ export class CallManager {
         this.hideIncomingModal();
         this.showActiveView();
         this.setStatus('Đã kết nối', false);
+        this.startDuration(call);
+        this.updateMediaUI();
         this.broadcastMediaStatus();
     }
 
@@ -414,8 +441,9 @@ export class CallManager {
     async startScreenShare() {
         const call = this.currentCall;
         if (!this.isCallActive || !call?.accepted || call.screenOperation || this.isSharingScreen) return false;
-        if (!this.mediaDevices?.getDisplayMedia) { this.notify('Trình duyệt không hỗ trợ chia sẻ màn hình'); return false; }
+        if (!this.mediaDevices?.getDisplayMedia) { this.setUIFeedback('Trình duyệt không hỗ trợ chia sẻ màn hình'); return false; }
         call.screenOperation = true;
+        this.updateMediaUI();
         let stream;
         try {
             stream = await this.mediaDevices.getDisplayMedia({ video: true, audio: false });
@@ -434,14 +462,19 @@ export class CallManager {
             return true;
         } catch (error) {
             stream?.getTracks().forEach(track => track.stop());
-            if (this.isCurrent(call) && error.name !== 'NotAllowedError') this.notify(error.message);
+            if (this.isCurrent(call)) this.reportUIError(error.name === 'NotAllowedError' ?
+                'Chưa chia sẻ màn hình. Hãy thử lại và cho phép chia sẻ' : 'Không thể chia sẻ màn hình', error);
             return false;
-        } finally { call.screenOperation = false; }
+        } finally {
+            call.screenOperation = false;
+            if (this.isCurrent(call)) this.updateMediaUI();
+        }
     }
     async stopScreenShare() {
         const call = this.currentCall;
         if (!call || !this.isSharingScreen || call.screenOperation) return false;
         call.screenOperation = true;
+        this.updateMediaUI();
         const stream = this.screenStream;
         try {
             await call.videoSender.replaceTrack(this.localStream?.getVideoTracks()[0] || null);
@@ -455,7 +488,10 @@ export class CallManager {
             this.socket.emit('stream_status', { ...this.scope(call), is_streaming: false });
             return true;
         } catch (error) { return this.fail(call, error); }
-        finally { call.screenOperation = false; }
+        finally {
+            call.screenOperation = false;
+            if (this.isCurrent(call)) this.updateMediaUI();
+        }
     }
     watchStream() {
         this.notify('Xem livestream/nhóm chưa được hỗ trợ. Chia sẻ màn hình chỉ trong cuộc gọi một-một.');
@@ -463,32 +499,32 @@ export class CallManager {
     }
     handleStreamRequest() { return this.watchStream(); }
     handleStreamStatus(data) {
-        if (!this.matches(data) || !this.currentCall.accepted) return;
-        if (this.elements.remoteNameTag) this.elements.remoteNameTag.textContent =
-            this.currentCall.peerName + (data.is_streaming ? ' (Chia sẻ màn hình)' : '');
+        if (!this.matches(data) || !this.currentCall.accepted || typeof data.is_streaming !== 'boolean') return;
+        this.currentCall.remoteSharingScreen = data.is_streaming;
+        this.updateMediaUI();
     }
 
     broadcastMediaStatus() {
         const call = this.currentCall;
         if (!call?.accepted || !this.localStream) return;
+        call.mediaRevision = (call.mediaRevision || 0) + 1;
         for (const [kind, type] of [['audio', 'mic'], ['video', 'cam']]) {
             const track = this.localStream.getTracks().find(item => item.kind === kind);
-            if (track) this.socket?.emit('media_status', { ...this.scope(call), type, enabled: track.enabled });
+            if (track) this.socket?.emit('media_status', { ...this.scope(call), type, enabled: track.enabled, revision: call.mediaRevision });
         }
     }
     handleMediaStatus(data) {
-        if (!this.matches(data) || !this.currentCall.accepted || typeof data.enabled !== 'boolean') return;
-        const participant = document.getElementById('remoteParticipant');
-        if (data.type === 'mic') {
-            participant?.querySelector('.participant-status')?.classList.toggle('muted', !data.enabled);
-            const icon = participant?.querySelector('.participant-status i');
-            if (icon) icon.className = data.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash';
-        } else if (data.type === 'cam') {
-            const video = participant?.querySelector('video');
-            const placeholder = participant?.querySelector('.participant-placeholder');
-            if (video) video.style.display = data.enabled ? 'block' : 'none';
-            if (placeholder) placeholder.style.display = data.enabled ? 'none' : 'flex';
-        }
+        if (!this.matches(data) || !this.currentCall.accepted || typeof data.enabled !== 'boolean' ||
+            !['mic', 'cam'].includes(data.type)) return;
+        const call = this.currentCall;
+        const revision = Number.isSafeInteger(data.revision) && data.revision > 0 ? data.revision : null;
+        call.remoteMediaRevisions ||= {};
+        const previous = call.remoteMediaRevisions[data.type];
+        if (revision === null && previous !== undefined) return;
+        if (revision !== null && revision <= (previous ?? -1)) return;
+        if (revision !== null) call.remoteMediaRevisions[data.type] = revision;
+        call.remoteMedia = { ...call.remoteMedia, [data.type]: data.enabled };
+        this.updateMediaUI();
     }
 
     async sendCallChatMessage() {
@@ -497,14 +533,18 @@ export class CallManager {
         const text = input?.value.trim();
         if (!this.isCallActive || !call?.accepted || call.sendingChat || !text) return false;
         call.sendingChat = true;
+        this.updateChatUI();
         const timestamp = Date.now();
         try {
             if (!await this.requestSignal(call, 'call_chat_message', { text, timestamp })) return false;
             if (input.value.trim() === text) input.value = '';
             this.addCallChatMessage({ sender_name: this.app.userName, text, timestamp, own: true });
             return true;
-        } catch (error) { if (this.isCurrent(call)) this.notify(error.message); return false; }
-        finally { call.sendingChat = false; }
+        } catch (error) { if (this.isCurrent(call)) this.reportUIError('Không thể gửi tin nhắn trong cuộc gọi', error); return false; }
+        finally {
+            call.sendingChat = false;
+            if (this.isCurrent(call)) this.updateChatUI();
+        }
     }
     handleCallChatMessage(data) {
         if (!this.matches(data) || !this.currentCall.accepted || String(data.sender_id) === String(this.app.userId)) return;
@@ -530,6 +570,15 @@ export class CallManager {
             call.remoteIce.length = 0;
             call.localIce.length = 0;
         }
+        this.stopDuration();
+        this.removeListeners(this.callUIListeners);
+        for (const remove of this.mediaListeners.values()) remove();
+        this.mediaListeners.clear();
+        this.browserOperations.clear();
+        const ownedVideo = this.elements.remoteVideo;
+        this.removeRemoteParticipant();
+        this.releaseRemoteAudio();
+        for (const video of [this.elements.localVideo, ownedVideo]) video?.pause?.();
         const peer = this.peerConnection;
         this.peerConnection = null;
         if (peer) {
@@ -557,147 +606,673 @@ export class CallManager {
         if (this.elements.remoteVideo) this.elements.remoteVideo.srcObject = null;
         this.elements.btnShare?.classList.remove('sharing');
         this.hideIncomingModal();
-        this.closeOverlay();
-        document.getElementById('remoteParticipant')?.remove();
+        this.toggleCallChat(false, false);
+        this.isGridView = false;
+        this.focusedParticipant = 'remote';
+        this.audioNeedsGesture = false;
+        this.elements.view?.classList.remove('grid-mode', 'chat-open');
         document.getElementById('callChatMessages')?.replaceChildren();
-        this.toggleCallChat(false);
+        const input = this.elements.chatInput || document.getElementById('callChatInput');
+        if (input) input.value = '';
+        this.setUIFeedback('');
+        this.setStatus('', false);
+        this.updateMediaUI();
+        this.closeOverlay();
     }
-    dispose() { this.endCall(); this.disposed = true; }
+    dispose() {
+        this.endCall();
+        this.disposed = true;
+        this.removeListeners(this.uiListeners);
+        this.uiInitialized = false;
+    }
 
     initUI() {
-        if (this.uiInitialized) return;
+        if (this.uiInitialized || this.disposed) return;
         this.uiInitialized = true;
         const ids = {
             btnShare: 'btnShareScreen', btnEnd: 'btnEndCall', localVideo: 'localVideo', remoteVideo: 'remoteVideo',
             overlay: 'callOverlay', view: 'activeCallView', status: 'callStatus', incomingModal: 'incomingCallModal',
-            incomingName: 'incomingName', incomingAvatar: 'incomingAvatar', channelName: 'callChannelName',
-            callerInfo: 'callerInfo', remoteNameTag: 'remoteNameTag', participantStrip: 'participantStrip',
+            incomingName: 'incomingName', incomingAvatar: 'incomingAvatar', incomingType: 'incomingCallType',
+            channelName: 'callChannelName', callerInfo: 'callerInfo', remoteNameTag: 'remoteNameTag',
+            participantStrip: 'participantStrip', localParticipant: 'localParticipant', localMicStatus: 'localMicStatus',
+            localPlaceholder: 'localPlaceholder', localMediaState: 'localMediaState',
+            remotePlaceholder: 'remotePlaceholder', remoteMediaState: 'remoteMediaState',
             btnAnswer: 'btnAcceptCall', btnReject: 'btnRejectCall', btnMic: 'btnToggleMic', btnCam: 'btnToggleCam',
-            btnGridView: 'btnGridView'
+            btnGridView: 'btnGridView', btnChat: 'btnToggleChat', btnCloseChat: 'btnCloseCallChat',
+            btnSendChat: 'btnSendCallChat', chatInput: 'callChatInput', chatPanel: 'callChatPanel',
+            btnFullscreen: 'btnFullscreen', btnPiP: 'btnPiP', btnPlayAudio: 'btnPlayCallAudio',
+            duration: 'callDuration', feedback: 'callUIFeedback', liveIndicator: 'liveIndicator', qualityBadge: 'qualityBadge'
         };
         for (const [key, id] of Object.entries(ids)) this.elements[key] = document.getElementById(id);
-        if (this.elements.btnAnswer) this.elements.btnAnswer.onclick = () => this.acceptCall();
-        if (this.elements.btnReject) this.elements.btnReject.onclick = () => this.rejectCall();
-        if (this.elements.btnEnd) this.elements.btnEnd.onclick = () => this.endCall();
-        if (this.elements.btnShare) this.elements.btnShare.onclick = () => this.toggleScreenShare();
-        if (this.elements.btnGridView) this.elements.btnGridView.onclick = () => this.toggleGridView();
-        for (const [key, kind] of [['btnMic', 'audio'], ['btnCam', 'video']]) {
-            if (this.elements[key]) this.elements[key].onclick = () => {
-                if (!this.currentCall?.accepted) return;
-                const track = this.localStream?.getTracks().find(item => item.kind === kind);
-                if (!track) return;
-                track.enabled = !track.enabled;
-                this.elements[key].classList.toggle('active', !track.enabled);
-                const icon = this.elements[key].querySelector('i');
-                if (icon) icon.className = kind === 'audio' ?
-                    (track.enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash') :
-                    (track.enabled ? 'fas fa-video' : 'fas fa-video-slash');
-                document.getElementById('localMicStatus')?.classList.toggle('muted', !this.localStream.getAudioTracks()[0]?.enabled);
-                this.broadcastMediaStatus();
-            };
-        }
-        const local = document.getElementById('localParticipant');
-        if (local) local.onclick = () => this.focusStream(this.screenStream || this.localStream, 'Bạn', true);
-        document.getElementById('btnToggleChat')?.addEventListener('click', () => this.toggleCallChat());
-        document.getElementById('btnCloseCallChat')?.addEventListener('click', () => this.toggleCallChat(false));
-        document.getElementById('btnSendCallChat')?.addEventListener('click', () => this.sendCallChatMessage());
-        document.getElementById('callChatInput')?.addEventListener('keydown', event => {
-            if (event.key === 'Enter') { event.preventDefault(); this.sendCallChatMessage(); }
+        const actions = {
+            btnAnswer: () => this.acceptCall(), btnReject: () => this.rejectCall(), btnEnd: () => this.endCall(),
+            btnShare: () => this.toggleScreenShare(), btnGridView: () => this.toggleGridView(),
+            btnMic: () => this.toggleMedia('audio'), btnCam: () => this.toggleMedia('video'),
+            btnChat: () => this.toggleCallChat(), btnCloseChat: () => this.toggleCallChat(false),
+            btnSendChat: () => this.sendCallChatMessage(), btnFullscreen: () => this.toggleFullscreen(),
+            btnPiP: () => this.togglePictureInPicture(), btnPlayAudio: () => this.playRemoteAudio()
+        };
+        for (const [key, action] of Object.entries(actions)) this.listen(this.elements[key], 'click', action);
+        this.listen(this.elements.chatInput, 'keydown', event => {
+            if (shouldSendOnEnter(event)) { event.preventDefault(); this.sendCallChatMessage(); }
         });
+        this.listen(this.elements.chatInput, 'input', () => this.updateChatUI());
+        const local = this.elements.localParticipant;
+        if (local) {
+            local.setAttribute('role', 'button');
+            local.setAttribute('aria-controls', 'primaryStream');
+            const focus = () => this.focusStream(this.screenStream || this.localStream, 'Bạn', true);
+            this.listen(local, 'click', focus);
+            this.listen(local, 'keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
+            });
+        }
+        this.elements.btnGridView?.setAttribute('aria-controls', 'participantStrip');
+        this.elements.btnChat?.setAttribute('aria-controls', 'callChatPanel');
+        this.elements.btnFullscreen?.setAttribute('aria-controls', 'callOverlay');
+        this.elements.overlay?.setAttribute('aria-hidden', 'true');
+        this.elements.chatPanel?.setAttribute('aria-hidden', 'true');
+        for (const id of ['btnPopout', 'btnMoreOptions']) {
+            const button = document.getElementById(id);
+            if (button) {
+                this.setControl(button, 'Chức năng chưa được hỗ trợ', { disabled: true, state: 'unavailable' });
+                button.hidden = true;
+            }
+        }
+        if (this.elements.duration) {
+            this.elements.duration.setAttribute('role', 'timer');
+            this.elements.duration.setAttribute('aria-live', 'off');
+        }
+        this.stopDuration();
+        this.updateMediaUI();
     }
-    toggleCallChat(force = null) {
-        const panel = document.getElementById('callChatPanel');
-        if (!panel) return;
-        const open = force ?? !panel.classList.contains('active');
-        panel.classList.toggle('active', open);
-        this.elements.view?.classList.toggle('chat-open', open);
-        document.getElementById('btnToggleChat')?.classList.toggle('active', open);
-        if (open) document.getElementById('callChatInput')?.focus();
+
+    listen(target, type, handler, group = this.uiListeners) {
+        if (!target?.addEventListener) return;
+        target.addEventListener(type, handler);
+        group.push(() => target.removeEventListener?.(type, handler));
     }
-    toggleGridView() {
-        this.isGridView = !this.isGridView;
-        this.elements.view?.classList.toggle('grid-mode', this.isGridView);
+    removeListeners(group) { for (const remove of group.splice(0)) remove(); }
+    setControl(button, label, { pressed, disabled = false, busy = false, state = '', description = '', icon } = {}) {
+        if (!button) return;
+        button.type = 'button';
+        button.disabled = disabled;
+        button.setAttribute?.('aria-label', label);
+        button.setAttribute?.('aria-disabled', String(disabled));
+        button.setAttribute?.('aria-busy', String(busy));
+        if (pressed !== undefined) button.setAttribute?.('aria-pressed', String(pressed));
+        if (description) button.setAttribute?.('aria-description', description);
+        else button.removeAttribute?.('aria-description');
+        if (button.dataset) button.dataset.state = state;
+        button.title = description ? `${label} — ${description}` : label;
+        const text = button.querySelector?.('.control-label');
+        if (text) text.textContent = label;
+        const symbol = button.querySelector?.('i');
+        if (symbol) {
+            if (icon) symbol.className = icon;
+            symbol.setAttribute('aria-hidden', 'true');
+        }
+    }
+    setUIFeedback(text) {
+        if (this.elements.feedback) {
+            this.elements.feedback.textContent = text;
+            this.elements.feedback.hidden = !text;
+        }
+    }
+    reportUIError(action, error) {
+        this.lastUIError = error;
+        const detail = error?.message || error?.name;
+        const message = detail ? `${action}: ${detail}` : action;
+        this.setUIFeedback(message);
+        this.notify(message);
+    }
+    liveTrack(stream, kind) { return stream?.getTracks().find(track => track.kind === kind && track.readyState !== 'ended'); }
+    hasVideo(stream) { return stream?.getVideoTracks().some(track => track.enabled && !track.muted && track.readyState !== 'ended') || false; }
+    remoteHasVideo() {
+        const call = this.currentCall;
+        return this.hasVideo(this.remoteStream) && !!(call?.remoteSharingScreen ||
+            (call?.isVideo && call.remoteMedia?.cam !== false));
+    }
+    mediaText(local = false) {
+        const call = this.currentCall;
+        if (!call) return 'Chưa có cuộc gọi';
+        const sharing = local ? this.isSharingScreen : call.remoteSharingScreen;
+        const stream = local ? this.screenStream || this.localStream : this.remoteStream;
+        const visible = local ? this.hasVideo(stream) : this.remoteHasVideo();
+        if (sharing) return visible ? 'Đang chia sẻ màn hình' : 'Đang chờ hình ảnh màn hình';
+        if (!call.isVideo) return 'Cuộc gọi thoại';
+        if (local && !this.localStream) return 'Đang chờ camera';
+        if (!local && !this.remoteStream) return 'Đang chờ người tham gia';
+        if (!local && call.remoteMedia?.cam === false) return 'Camera đã tắt';
+        if (visible) return 'Camera đang bật';
+        const track = this.liveTrack(stream, 'video');
+        return track?.enabled && track.muted ? 'Video đang tạm dừng' : 'Camera đã tắt';
+    }
+    updateMediaUI() {
+        const call = this.currentCall;
+        this.syncMediaListeners();
+        const mic = this.liveTrack(this.localStream, 'audio');
+        const cam = this.liveTrack(this.localStream, 'video');
+        const micOn = !!mic?.enabled;
+        const camOn = !!cam?.enabled;
+        this.setControl(this.elements.btnMic, micOn ? 'Tắt micro' : 'Bật micro', {
+            pressed: micOn, disabled: !call?.accepted || !mic, state: micOn ? 'on' : 'off',
+            description: !mic ? 'Micro chưa sẵn sàng' : mic.muted ? 'Micro đang tạm dừng' : micOn ? 'Nhấn để tắt micro' : 'Nhấn để bật micro',
+            icon: micOn ? 'fas fa-microphone' : 'fas fa-microphone-slash'
+        });
+        this.setControl(this.elements.btnCam, camOn ? 'Tắt camera' : 'Bật camera', {
+            pressed: camOn, disabled: !call?.accepted || !cam, state: camOn ? 'on' : 'off',
+            description: !cam ? (call?.isVideo ? 'Camera chưa sẵn sàng' : 'Cuộc gọi thoại không dùng camera') :
+                this.isSharingScreen ? 'Màn hình đang được gửi thay cho camera' : camOn ? 'Nhấn để tắt camera' : 'Nhấn để bật camera',
+            icon: camOn ? 'fas fa-video' : 'fas fa-video-slash'
+        });
+        this.elements.btnMic?.classList.toggle('active', !micOn);
+        this.elements.btnCam?.classList.toggle('active', !camOn);
+        const canShare = !!this.mediaDevices?.getDisplayMedia;
+        this.setControl(this.elements.btnShare, this.isSharingScreen ? 'Dừng chia sẻ' : 'Chia sẻ màn hình', {
+            pressed: this.isSharingScreen, disabled: !this.isCallActive || !call?.accepted || !canShare || !!call.screenOperation,
+            busy: !!call?.screenOperation, state: call?.screenOperation ? 'pending' : this.isSharingScreen ? 'on' : 'off',
+            description: !canShare ? 'Trình duyệt không hỗ trợ chia sẻ màn hình' : call?.screenOperation ? 'Đang xử lý chia sẻ màn hình' : ''
+        });
+        this.elements.btnShare?.classList.toggle('sharing', this.isSharingScreen);
+        this.setMicStatus(this.elements.localMicStatus, !!mic?.enabled && !mic.muted, !mic ? 'Micro chưa sẵn sàng' :
+            mic.muted ? 'Micro đang tạm dừng' : micOn ? 'Micro đang bật' : 'Micro đã tắt');
+        const localStream = this.screenStream || this.localStream;
+        this.presentVideo(this.elements.localVideo, localStream, this.hasVideo(localStream));
+        this.presentPlaceholder(this.elements.localPlaceholder, !this.hasVideo(localStream));
+        if (this.elements.localMediaState) this.elements.localMediaState.textContent = this.mediaText(true);
+        if (this.elements.localParticipant) {
+            const local = this.elements.localParticipant;
+            local.tabIndex = localStream ? 0 : -1;
+            local.setAttribute('aria-disabled', String(!localStream));
+            local.setAttribute('aria-label', `Xem Bạn — ${this.mediaText(true)}`);
+            local.setAttribute('aria-pressed', String(!this.isGridView && this.focusedParticipant === 'local'));
+        }
+        if (call?.accepted || this.remoteStream) this.addRemoteParticipant();
+        const localFocus = this.focusedParticipant === 'local';
+        const primaryStream = localFocus ? localStream : this.remoteStream;
+        const primaryVideo = localFocus ? this.hasVideo(localStream) : this.remoteHasVideo();
+        this.presentVideo(this.elements.remoteVideo, primaryStream, primaryVideo);
+        this.presentPlaceholder(this.elements.remotePlaceholder, !primaryVideo);
+        if (this.elements.remoteMediaState) this.elements.remoteMediaState.textContent = this.mediaText(localFocus);
+        if (this.elements.remoteNameTag) this.elements.remoteNameTag.textContent = localFocus ?
+            (this.isSharingScreen ? 'Màn hình của bạn' : 'Bạn') :
+            `${call?.peerName || 'Người tham gia'}${call?.remoteSharingScreen ? ' · Màn hình' : ''}`;
+        this.bindRemoteAudio();
+        this.setControl(this.elements.btnGridView, this.isGridView ? 'Xem tập trung' : 'Xem dạng lưới', {
+            pressed: this.isGridView, disabled: !call?.accepted, state: this.isGridView ? 'grid' : 'focus',
+            description: this.isGridView ? 'Hai người tham gia đang hiển thị trong lưới' : 'Nhấn để xem cả hai người tham gia'
+        });
         this.elements.btnGridView?.classList.toggle('active', this.isGridView);
+        this.updateChatUI();
+        this.updateBrowserControls();
+        this.updateHeader();
     }
-    focusStream(stream, name, local = false) {
-        const video = this.elements.remoteVideo;
-        if (!video || !stream) return;
-        if (this.isGridView) this.toggleGridView();
-        video.srcObject = stream;
-        video.muted = local;
-        const hasVideo = stream.getVideoTracks().some(track => track.enabled && track.readyState !== 'ended');
-        video.style.display = hasVideo ? 'block' : 'none';
-        const placeholder = document.getElementById('remotePlaceholder');
-        if (placeholder) placeholder.style.display = hasVideo ? 'none' : 'flex';
-        if (this.elements.remoteNameTag) this.elements.remoteNameTag.textContent = name;
-        video.controls = !local;
-        if (!local) video.muted = false;
-        video.play()?.catch(() => this.notify('Nhấn phát video để nghe cuộc gọi nếu trình duyệt chặn tự phát'));
+    setMicStatus(element, enabled, text) {
+        if (!element) return;
+        element.classList.toggle('muted', !enabled);
+        element.setAttribute('aria-label', text);
+        element.title = text;
+        const icon = element.querySelector('i');
+        if (icon) { icon.className = enabled ? 'fas fa-microphone' : 'fas fa-microphone-slash'; icon.setAttribute('aria-hidden', 'true'); }
     }
-    updatePrimaryVideo() {
-        if (this.remoteStream) this.focusStream(this.remoteStream, this.currentCall?.peerName || 'Người dùng');
-        else if (this.screenStream || this.localStream) this.focusStream(this.screenStream || this.localStream, 'Bạn', true);
+    syncMediaListeners() {
+        const call = this.currentCall;
+        const targets = new Map();
+        for (const stream of new Set([this.localStream, this.remoteStream, this.screenStream])) {
+            if (!stream) continue;
+            targets.set(stream, ['addtrack', 'removetrack']);
+            for (const track of stream.getTracks()) targets.set(track, ['mute', 'unmute', 'ended']);
+        }
+        for (const [target, remove] of this.mediaListeners) {
+            if (!targets.has(target) || !call) { remove(); this.mediaListeners.delete(target); }
+        }
+        if (!call) return;
+        for (const [target, events] of targets) {
+            if (this.mediaListeners.has(target) || !target.addEventListener) continue;
+            const listeners = [];
+            for (const type of events) this.listen(target, type, () => {
+                if (this.isCurrent(call)) this.updateMediaUI();
+            }, listeners);
+            this.mediaListeners.set(target, () => this.removeListeners(listeners));
+        }
     }
+    presentPlaceholder(element, visible) {
+        if (!element) return;
+        element.hidden = !visible;
+        element.style.display = visible ? 'flex' : 'none';
+    }
+    presentVideo(video, stream, visible) {
+        if (!video) return;
+        const changed = video.srcObject !== stream;
+        video.muted = true; // Exactly one separate remote audio sink survives primary/local/grid switches.
+        video.controls = false;
+        video.tabIndex = -1;
+        video.setAttribute?.('aria-hidden', 'true');
+        video.style.display = visible ? 'block' : 'none';
+        if (changed) {
+            video.srcObject = stream;
+            const call = this.currentCall;
+            if (stream && video.play) {
+                try {
+                    video.play()?.catch(error => {
+                        if (this.isCurrent(call) && video.srcObject === stream) this.reportUIError('Không thể phát video', error);
+                    });
+                } catch (error) { if (this.isCurrent(call)) this.reportUIError('Không thể phát video', error); }
+            }
+        }
+    }
+    bindRemoteAudio() {
+        const call = this.currentCall;
+        if (!call || !this.remoteStream || !this.liveTrack(this.remoteStream, 'audio')) return;
+        let audio = this.elements.remoteAudio;
+        if (!audio) {
+            if (!this.elements.overlay?.appendChild) return;
+            audio = createNode('audio');
+            audio.id = 'callRemoteAudio';
+            audio.autoplay = true;
+            audio.hidden = true;
+            audio.setAttribute('aria-hidden', 'true');
+            this.elements.overlay.appendChild(audio);
+            this.elements.remoteAudio = audio;
+        }
+        const signature = this.remoteStream.getAudioTracks().map(track => track.id).join(',');
+        if (audio.srcObject !== this.remoteStream || this.remoteAudioSignature !== signature) {
+            audio.srcObject = this.remoteStream;
+            audio.muted = false;
+            this.remoteAudioSignature = signature;
+            this.playRemoteAudio(call);
+        }
+    }
+    async playRemoteAudio(call = this.currentCall) {
+        const audio = this.elements.remoteAudio;
+        if (!this.isCurrent(call) || !audio?.srcObject || this.audioPlay) return false;
+        const operation = { call, audio };
+        this.audioPlay = operation;
+        this.updateBrowserControls();
+        try {
+            await audio.play();
+            if (!this.isCurrent(call) || this.elements.remoteAudio !== audio) return false;
+            this.audioNeedsGesture = false;
+            if (this.elements.feedback?.textContent.startsWith('Âm thanh chưa phát.')) this.setUIFeedback('');
+            return true;
+        } catch (error) {
+            if (this.isCurrent(call) && this.elements.remoteAudio === audio) {
+                this.audioNeedsGesture = true;
+                this.reportUIError('Âm thanh chưa phát. Nhấn “Bật âm thanh” để thử lại', error);
+            }
+            return false;
+        } finally {
+            if (this.audioPlay === operation) { this.audioPlay = null; this.updateBrowserControls(); }
+        }
+    }
+    releaseRemoteAudio() {
+        this.audioPlay = null;
+        const audio = this.elements.remoteAudio;
+        if (audio) { audio.pause(); audio.srcObject = null; audio.remove(); }
+        this.elements.remoteAudio = null;
+        this.remoteAudioSignature = null;
+    }
+    toggleMedia(kind) {
+        const track = this.liveTrack(this.localStream, kind);
+        if (!this.currentCall?.accepted || !track) return false;
+        track.enabled = !track.enabled;
+        this.updateMediaUI();
+        this.broadcastMediaStatus();
+        return true;
+    }
+    updateChatUI() {
+        const call = this.currentCall;
+        const open = this.elements.chatPanel?.classList.contains('active') || false;
+        this.setControl(this.elements.btnChat, open ? 'Đóng trò chuyện' : 'Trò chuyện', {
+            pressed: open, disabled: !call?.accepted, state: open ? 'open' : 'closed'
+        });
+        this.elements.btnChat?.setAttribute('aria-expanded', String(open));
+        this.elements.btnChat?.classList.toggle('active', open);
+        this.setControl(this.elements.btnCloseChat, 'Đóng trò chuyện');
+        this.setControl(this.elements.btnSendChat, call?.sendingChat ? 'Đang gửi' : 'Gửi tin nhắn', {
+            disabled: !this.isCallActive || !call?.accepted || !!call.sendingChat || !this.elements.chatInput?.value.trim(),
+            busy: !!call?.sendingChat, state: call?.sendingChat ? 'pending' : 'ready'
+        });
+        if (this.elements.chatInput) this.elements.chatInput.disabled = !this.isCallActive || !call?.accepted;
+    }
+    toggleCallChat(force = null, moveFocus = true) {
+        const panel = this.elements.chatPanel || document.getElementById('callChatPanel');
+        if (!panel) return false;
+        const open = force ?? !panel.classList.contains('active');
+        if (open && !this.currentCall?.accepted) return false;
+        if (open && this.isGridView) this.toggleGridView(false);
+        const restoreFocus = !open && panel.contains?.(document.activeElement);
+        panel.classList.toggle('active', open);
+        panel.hidden = !open;
+        panel.setAttribute?.('aria-hidden', String(!open));
+        this.elements.view?.classList.toggle('chat-open', open);
+        this.updateChatUI();
+        if (moveFocus && open) (this.elements.chatInput?.disabled ? this.elements.btnCloseChat : this.elements.chatInput)?.focus();
+        else if (moveFocus && restoreFocus && this.overlayOpen) this.elements.btnChat?.focus();
+        return open;
+    }
+    toggleGridView(force = null) {
+        if (force !== false && !this.currentCall?.accepted) return false;
+        this.isGridView = force ?? !this.isGridView;
+        if (this.isGridView) {
+            const chatFocused = this.elements.chatPanel?.contains(document.activeElement);
+            this.toggleCallChat(false, false);
+            if (chatFocused) this.elements.btnGridView?.focus();
+        }
+        this.elements.view?.classList.toggle('grid-mode', this.isGridView);
+        this.updateMediaUI();
+        return this.isGridView;
+    }
+    focusStream(stream, _name, local = false) {
+        if (!this.currentCall?.accepted || !stream) return false;
+        this.focusedParticipant = local ? 'local' : 'remote';
+        if (this.isGridView) this.toggleGridView(false);
+        else this.updateMediaUI();
+        return true;
+    }
+    updatePrimaryVideo() { this.updateMediaUI(); }
     addRemoteParticipant() {
         const strip = this.elements.participantStrip;
-        if (!strip || !this.remoteStream) return;
-        document.getElementById('remoteParticipant')?.remove();
-        const item = createNode('div', 'participant-item');
-        item.id = 'remoteParticipant';
-        const video = createNode('video');
-        video.autoplay = true;
-        video.playsInline = true;
-        video.muted = true; // Primary video is the only remote audio sink.
-        video.srcObject = this.remoteStream;
-        const placeholder = createNode('div', 'participant-placeholder');
-        placeholder.appendChild(createNode('i', 'fas fa-user'));
-        const hasVideo = this.remoteStream.getVideoTracks().some(track => track.enabled);
-        video.style.display = hasVideo ? 'block' : 'none';
-        placeholder.style.display = hasVideo ? 'none' : 'flex';
-        const status = createNode('div', 'participant-status');
-        status.appendChild(createNode('i', 'fas fa-microphone'));
-        item.append(video, placeholder, createNode('div', 'participant-name', this.currentCall?.peerName), status);
-        item.onclick = () => this.focusStream(this.remoteStream, this.currentCall?.peerName || 'Người dùng');
-        strip.appendChild(item);
+        if (!strip) return;
+        let item = this.elements.remoteParticipant;
+        if (!item) {
+            item = createNode('div', 'participant-item');
+            item.id = 'remoteParticipant';
+            item.setAttribute('role', 'button');
+            item.setAttribute('aria-controls', 'primaryStream');
+            const video = createNode('video');
+            video.id = 'remoteParticipantVideo';
+            video.autoplay = true;
+            video.playsInline = true;
+            const placeholder = createNode('div', 'participant-placeholder');
+            placeholder.id = 'remoteParticipantPlaceholder';
+            const icon = createNode('i', 'fas fa-user');
+            icon.setAttribute('aria-hidden', 'true');
+            const text = createNode('span', 'participant-media-state');
+            text.id = 'remoteParticipantMediaState';
+            placeholder.append(icon, text);
+            const status = createNode('div', 'participant-status');
+            status.id = 'remoteMicStatus';
+            status.appendChild(createNode('i', 'fas fa-microphone'));
+            item.append(video, placeholder, createNode('div', 'participant-name'), status);
+            strip.appendChild(item);
+            this.elements.remoteParticipant = item;
+            const focus = () => this.focusStream(this.remoteStream, this.currentCall?.peerName);
+            this.listen(item, 'click', focus, this.participantListeners);
+            this.listen(item, 'keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); focus(); }
+            }, this.participantListeners);
+        }
+        const call = this.currentCall;
+        const name = call?.peerName || 'Người tham gia';
+        const text = this.mediaText();
+        item.classList.toggle('connecting', !this.remoteStream);
+        item.tabIndex = this.remoteStream ? 0 : -1;
+        item.setAttribute('aria-disabled', String(!this.remoteStream));
+        item.setAttribute('aria-label', `Xem ${name} — ${text}`);
+        item.setAttribute('aria-pressed', String(!this.isGridView && this.focusedParticipant === 'remote'));
+        item.querySelector('.participant-name').textContent = name;
+        item.querySelector('.participant-media-state').textContent = text;
+        this.presentVideo(item.querySelector('video'), this.remoteStream, this.remoteHasVideo());
+        this.presentPlaceholder(item.querySelector('.participant-placeholder'), !this.remoteHasVideo());
+        const mic = this.liveTrack(this.remoteStream, 'audio');
+        const muted = call?.remoteMedia?.mic === false;
+        this.setMicStatus(item.querySelector('.participant-status'), !!mic?.enabled && !mic.muted && !muted,
+            muted ? 'Micro đã tắt' : !mic ? 'Đang chờ âm thanh' : mic.muted ? 'Âm thanh đang tạm dừng' : 'Đang nhận âm thanh');
     }
     addRemoteParticipantPlaceholder(text) {
-        const strip = this.elements.participantStrip;
-        if (!strip) return;
-        document.getElementById('remoteParticipant')?.remove();
-        const item = createNode('div', 'participant-item connecting');
-        item.id = 'remoteParticipant';
-        const placeholder = createNode('div', 'participant-placeholder');
-        placeholder.appendChild(createNode('i', 'fas fa-user'));
-        item.append(placeholder, createNode('div', 'participant-name', text));
-        strip.appendChild(item);
+        this.addRemoteParticipant();
+        const item = this.elements.remoteParticipant;
+        if (item && !this.remoteStream) item.querySelector('.participant-media-state').textContent = text;
     }
-    showOverlay() { this.elements.overlay?.classList.add('active'); }
+    removeRemoteParticipant() {
+        this.removeListeners(this.participantListeners);
+        const item = this.elements.remoteParticipant || document.getElementById('remoteParticipant');
+        const video = item?.querySelector('video');
+        if (video) { video.pause(); video.srcObject = null; }
+        item?.remove();
+        this.elements.remoteParticipant = null;
+    }
+
+    showOverlay() {
+        const overlay = this.elements.overlay;
+        if (!overlay || this.overlayOpen) return;
+        this.overlayOpen = true;
+        this.returnFocus = document.activeElement;
+        this.savedBodyOverflow = document.body?.style.overflow;
+        if (document.body) document.body.style.overflow = 'hidden';
+        overlay.classList.add('active');
+        overlay.hidden = false;
+        overlay.setAttribute('role', 'dialog');
+        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-hidden', 'false');
+        overlay.tabIndex = -1;
+        this.listen(overlay, 'keydown', event => this.manageCallFocus(event), this.callUIListeners);
+        this.listen(document, 'focusin', event => {
+            if (this.overlayOpen && !overlay.contains(event.target)) this.focusCallControl();
+        }, this.callUIListeners);
+        this.listen(document, 'fullscreenchange', () => this.updateBrowserControls(), this.callUIListeners);
+        for (const event of ['enterpictureinpicture', 'leavepictureinpicture', 'loadedmetadata', 'emptied']) {
+            this.listen(this.elements.remoteVideo, event, () => this.updateBrowserControls(), this.callUIListeners);
+        }
+        overlay.focus({ preventScroll: true });
+    }
+    focusCallControl() {
+        const incoming = this.elements.incomingModal?.classList.contains('active');
+        const button = incoming ? (this.elements.btnAnswer?.hidden ? this.elements.btnReject : this.elements.btnAnswer) : this.elements.btnEnd;
+        (button || this.elements.overlay)?.focus({ preventScroll: true });
+    }
+    manageCallFocus(event) {
+        if (!this.overlayOpen) return;
+        if (event.key === 'Escape' && this.elements.chatPanel?.classList.contains('active')) {
+            event.preventDefault();
+            event.stopPropagation();
+            this.toggleCallChat(false);
+            return;
+        }
+        if (event.key !== 'Tab') return;
+        const overlay = this.elements.overlay;
+        const focusable = Array.from(overlay.querySelectorAll('button, input, textarea, select, a[href], [tabindex]')).filter(node =>
+            !node.disabled && node.tabIndex >= 0 && !node.closest('[hidden], [aria-hidden="true"]') && node.getClientRects().length);
+        const active = document.activeElement;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        if (!first) { event.preventDefault(); overlay.focus(); }
+        else if (!focusable.includes(active) || (event.shiftKey ? active === first : active === last)) {
+            event.preventDefault();
+            (event.shiftKey ? last : first).focus();
+        }
+    }
     closeOverlay() {
+        const open = this.overlayOpen;
+        this.overlayOpen = false;
+        this.removeListeners(this.callUIListeners);
+        this.exitBrowserViews();
         this.elements.overlay?.classList.remove('active');
-        if (this.elements.view) { this.elements.view.style.display = 'none'; this.elements.view.classList.remove('active'); }
+        this.elements.overlay?.setAttribute?.('aria-hidden', 'true');
+        if (this.elements.view) {
+            this.elements.view.style.display = 'none';
+            this.elements.view.hidden = true;
+            this.elements.view.classList.remove('active');
+        }
+        if (!open) return;
+        if (document.body && this.savedBodyOverflow !== undefined) document.body.style.overflow = this.savedBodyOverflow;
+        const target = this.returnFocus?.isConnected && !this.returnFocus.disabled ? this.returnFocus : document.getElementById('messageInput');
+        this.returnFocus = null;
+        this.savedBodyOverflow = undefined;
+        if (target && !target.disabled) target.focus({ preventScroll: true });
     }
     setStatus(text, visible = true) {
-        if (this.elements.status) { this.elements.status.textContent = text; this.elements.status.style.display = visible ? 'flex' : 'none'; }
+        if (this.elements.status) {
+            this.elements.status.textContent = text;
+            this.elements.status.style.display = visible ? 'flex' : 'none';
+            this.elements.status.hidden = !visible;
+        }
+        this.updateMediaUI();
     }
-    showIncomingModal(data) { this.showRing(data.sender_name || 'Người dùng', true); }
+    updateHeader() {
+        const call = this.currentCall;
+        if (this.elements.channelName) this.elements.channelName.textContent = call?.peerName || 'Cuộc gọi riêng tư';
+        if (this.elements.callerInfo) this.elements.callerInfo.textContent = call ?
+            `${call.isVideo ? 'Cuộc gọi video' : 'Cuộc gọi thoại'} · Một-một` : 'Cuộc gọi một-một';
+        if (this.elements.qualityBadge) this.elements.qualityBadge.hidden = true; // No measured quality data.
+        if (this.elements.liveIndicator) {
+            this.elements.liveIndicator.textContent = this.isCallActive ? 'Đã kết nối' : call ? 'Đang kết nối' : 'Cuộc gọi';
+            this.elements.liveIndicator.dataset.state = this.isCallActive ? 'active' : call?.phase || 'idle';
+        }
+        if (this.elements.status?.dataset) this.elements.status.dataset.state = this.isCallActive ? 'active' : call?.phase || 'idle';
+        this.setControl(this.elements.btnEnd, 'Kết thúc cuộc gọi', { disabled: !call, state: call ? 'ready' : 'idle' });
+    }
+    showIncomingModal(data) { this.showRing(this.currentCall?.peerName || data.sender_name || 'Người dùng', true); }
     showOutgoingModal(name) { this.showRing(name, false); }
     showRing(name, incoming) {
         if (this.elements.incomingName) this.elements.incomingName.textContent = name;
-        if (this.elements.incomingAvatar) this.elements.incomingAvatar.textContent = String(name)[0] || '?';
-        const title = this.elements.incomingModal?.querySelector('p');
-        if (title) title.textContent = incoming ? 'Cuộc gọi đến...' : 'Đang gọi...';
-        if (this.elements.btnAnswer) this.elements.btnAnswer.style.display = incoming ? 'inline-flex' : 'none';
-        if (this.elements.incomingModal) { this.elements.incomingModal.classList.add('active'); this.elements.incomingModal.style.display = 'block'; }
-        if (this.elements.view) this.elements.view.style.display = 'none';
+        if (this.elements.incomingAvatar) this.elements.incomingAvatar.textContent = Array.from(String(name))[0] || '?';
+        const type = this.currentCall?.isVideo ? 'video' : 'thoại';
+        const title = this.elements.incomingType || this.elements.incomingModal?.querySelector('p');
+        if (title) title.textContent = incoming ? `Cuộc gọi ${type} đến` : `Đang gọi ${type}…`;
+        this.setControl(this.elements.btnAnswer, `Nhận cuộc gọi ${type}`, { disabled: !incoming });
+        this.setControl(this.elements.btnReject, incoming ? 'Từ chối cuộc gọi' : 'Hủy cuộc gọi');
+        if (this.elements.btnAnswer) { this.elements.btnAnswer.style.display = incoming ? 'inline-flex' : 'none'; this.elements.btnAnswer.hidden = !incoming; }
+        if (this.elements.incomingModal) {
+            this.elements.incomingModal.classList.add('active');
+            this.elements.incomingModal.style.display = 'block';
+            this.elements.incomingModal.hidden = false;
+            this.elements.incomingModal.setAttribute('aria-hidden', 'false');
+        }
+        if (this.elements.view) { this.elements.view.style.display = 'none'; this.elements.view.hidden = true; this.elements.view.classList.remove('active'); }
+        this.elements.overlay?.setAttribute('aria-labelledby', 'incomingName');
+        this.elements.overlay?.setAttribute('aria-describedby', 'incomingCallType');
         this.setStatus('', false);
+        (incoming ? this.elements.btnAnswer : this.elements.btnReject)?.focus({ preventScroll: true });
     }
     hideIncomingModal() {
         this.elements.incomingModal?.classList.remove('active');
-        if (this.elements.incomingModal) this.elements.incomingModal.style.display = 'none';
+        if (this.elements.incomingModal) {
+            this.elements.incomingModal.style.display = 'none';
+            this.elements.incomingModal.hidden = true;
+            this.elements.incomingModal.setAttribute('aria-hidden', 'true');
+        }
     }
     showActiveView() {
-        if (this.elements.view) { this.elements.view.style.display = 'flex'; this.elements.view.classList.add('active'); }
-        if (this.elements.channelName) this.elements.channelName.textContent = this.currentCall?.peerName || 'Cuộc gọi riêng tư';
-        if (this.elements.callerInfo) this.elements.callerInfo.textContent = 'Cuộc gọi một-một';
+        const opening = !this.elements.view?.classList.contains('active');
+        if (this.elements.view) {
+            this.elements.view.style.display = 'flex';
+            this.elements.view.hidden = false;
+            this.elements.view.classList.add('active');
+        }
+        this.elements.overlay?.setAttribute('aria-labelledby', 'callChannelName');
+        this.elements.overlay?.setAttribute('aria-describedby', 'callerInfo');
+        this.updateMediaUI();
+        if (opening) this.elements.btnEnd?.focus({ preventScroll: true });
+    }
+
+    startDuration(call) {
+        if (!this.isCurrent(call) || !this.isCallActive) return;
+        if (this.durationCall !== call) {
+            this.stopDuration();
+            this.durationCall = call;
+            this.durationStartedAt = this.now();
+        }
+        this.renderDuration();
+        if (this.durationTimer !== null) return;
+        const tick = () => {
+            if (!this.isCurrent(call) || this.durationCall !== call) return;
+            this.durationTimer = null;
+            this.renderDuration();
+            this.durationTimer = this.setTimer(tick, 1000);
+        };
+        this.durationTimer = this.setTimer(tick, 1000);
+    }
+    renderDuration() {
+        const element = this.elements.duration;
+        if (!element || !this.durationCall) return;
+        const elapsed = Math.max(0, Math.floor((this.now() - this.durationStartedAt) / 1000));
+        const seconds = String(elapsed % 60).padStart(2, '0');
+        const minutes = String(Math.floor(elapsed / 60) % 60).padStart(2, '0');
+        const hours = Math.floor(elapsed / 3600);
+        element.textContent = hours ? `${String(hours).padStart(2, '0')}:${minutes}:${seconds}` : `${minutes}:${seconds}`;
+        element.setAttribute('aria-label', `Thời lượng cuộc gọi ${element.textContent}`);
+        element.hidden = false;
+    }
+    stopDuration() {
+        this.clearTimer(this.durationTimer);
+        this.durationTimer = null;
+        this.durationCall = null;
+        this.durationStartedAt = null;
+        if (this.elements.duration) { this.elements.duration.hidden = true; this.elements.duration.textContent = '00:00'; }
+    }
+
+    ownsFullscreen() {
+        const overlay = this.elements.overlay;
+        const element = document.fullscreenElement;
+        return !!element && !!overlay && (element === overlay || !!overlay.contains?.(element));
+    }
+    updateBrowserControls() {
+        const fullscreen = this.ownsFullscreen();
+        const canFullscreen = !!this.elements.overlay?.requestFullscreen && !!document.exitFullscreen && document.fullscreenEnabled !== false;
+        this.setControl(this.elements.btnFullscreen, fullscreen ? 'Thoát toàn màn hình' : 'Toàn màn hình', {
+            pressed: fullscreen, disabled: !this.currentCall?.accepted || !canFullscreen || this.browserOperations.has('fullscreen'),
+            busy: this.browserOperations.has('fullscreen'), state: fullscreen ? 'on' : canFullscreen ? 'off' : 'unavailable',
+            description: !canFullscreen ? 'Trình duyệt không cho phép toàn màn hình' : '',
+            icon: fullscreen ? 'fas fa-compress' : 'fas fa-expand'
+        });
+        const video = this.elements.remoteVideo;
+        const pip = !!video && document.pictureInPictureElement === video;
+        const canPiP = !!document.pictureInPictureEnabled && !!video?.requestPictureInPicture && !!document.exitPictureInPicture;
+        const hasVideo = this.focusedParticipant === 'local' ? this.hasVideo(this.screenStream || this.localStream) : this.remoteHasVideo();
+        this.setControl(this.elements.btnPiP, pip ? 'Đóng cửa sổ nổi' : 'Cửa sổ nổi', {
+            pressed: pip, disabled: !this.currentCall?.accepted || !canPiP || (!pip && (!hasVideo || video.readyState < 1)) || this.browserOperations.has('pip'),
+            busy: this.browserOperations.has('pip'), state: pip ? 'on' : canPiP ? 'off' : 'unavailable',
+            description: !canPiP ? 'Trình duyệt không hỗ trợ cửa sổ video nổi' : !hasVideo ? 'Cần video hoặc màn hình đang phát' : video?.readyState < 1 ? 'Đang chờ video sẵn sàng' : ''
+        });
+        if (this.elements.btnPiP) this.elements.btnPiP.hidden = !canPiP;
+        this.setControl(this.elements.btnPlayAudio, 'Bật âm thanh', {
+            disabled: !this.currentCall || !this.elements.remoteAudio || !!this.audioPlay,
+            busy: !!this.audioPlay, state: this.audioNeedsGesture ? 'blocked' : 'playing'
+        });
+        if (this.elements.btnPlayAudio) this.elements.btnPlayAudio.hidden = !this.audioNeedsGesture;
+    }
+    async toggleFullscreen() {
+        const call = this.currentCall;
+        const overlay = this.elements.overlay;
+        if (!call?.accepted || !overlay?.requestFullscreen || !document.exitFullscreen || document.fullscreenEnabled === false || this.browserOperations.has('fullscreen')) return false;
+        return this.runBrowserAction('fullscreen', call, () => this.ownsFullscreen() ? document.exitFullscreen() : overlay.requestFullscreen(),
+            'Không thể đổi chế độ toàn màn hình. Hãy thử lại bằng nút toàn màn hình');
+    }
+    async togglePictureInPicture() {
+        const call = this.currentCall;
+        const video = this.elements.remoteVideo;
+        this.updateBrowserControls();
+        if (!call?.accepted || this.elements.btnPiP?.disabled || !video?.requestPictureInPicture || !document.pictureInPictureEnabled || this.browserOperations.has('pip')) return false;
+        return this.runBrowserAction('pip', call, () => document.pictureInPictureElement === video ? document.exitPictureInPicture() : video.requestPictureInPicture(),
+            'Không thể mở cửa sổ video nổi. Hãy thử lại khi video đang phát');
+    }
+    async runBrowserAction(kind, call, action, message) {
+        const operation = { call };
+        this.browserOperations.set(kind, operation);
+        this.updateBrowserControls();
+        try {
+            await action();
+            if (!this.isCurrent(call)) { if (!this.currentCall) await this.exitBrowserViews(); return false; }
+            this.setUIFeedback('');
+            return true;
+        } catch (error) {
+            if (this.isCurrent(call)) this.reportUIError(message, error);
+            return false;
+        } finally {
+            if (this.browserOperations.get(kind) === operation) { this.browserOperations.delete(kind); this.updateBrowserControls(); }
+        }
+    }
+    async exitBrowserViews() {
+        if (this.ownsFullscreen() && document.exitFullscreen) {
+            try { await document.exitFullscreen(); }
+            catch (error) { this.reportUIError('Không thể thoát toàn màn hình. Nhấn Esc để thoát', error); }
+        }
+        if (this.elements.remoteVideo && document.pictureInPictureElement === this.elements.remoteVideo && document.exitPictureInPicture) {
+            try { await document.exitPictureInPicture(); }
+            catch (error) { this.reportUIError('Không thể đóng cửa sổ video nổi. Hãy đóng cửa sổ đó', error); }
+        }
     }
 }

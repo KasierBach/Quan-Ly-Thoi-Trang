@@ -176,6 +176,7 @@
                             </form>
                         </div>
                     </div>
+                    {% include 'partials/oauth_link.html' %}
                 </div>
 
                 <!-- Orders Tab -->
@@ -260,8 +261,8 @@
                             <form action="{{ url_for('auth.update_address') }}" method="post">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <div class="mb-3">
-                                    <label for="address" class="form-label">Địa chỉ giao hàng mặc định</label>
-                                    <textarea class="form-control" id="address" name="address" rows="3"
+                                    <label for="shippingAddress" class="form-label">Địa chỉ giao hàng mặc định</label>
+                                    <textarea class="form-control" id="shippingAddress" name="address" rows="3"
                                         required>{{ customer.Address or '' }}</textarea>
                                 </div>
                                 <button type="submit" class="btn btn-primary">
@@ -351,7 +352,7 @@
 
 <script type="application/json" id="account-config">{{ {'toggleDarkModeUrl': url_for('auth.toggle_dark_mode'), 'avatarUrl': url_for('auth.upload_avatar')}|tojson }}</script>
 <script>
-(() => {
+document.addEventListener('DOMContentLoaded', () => {
     const config = JSON.parse(document.getElementById('account-config').textContent);
     const token = document.querySelector('meta[name="csrf-token"]').content;
     const hash = location.hash;
@@ -388,6 +389,6 @@
             status.textContent = 'Đã cập nhật ảnh đại diện';
         } catch (error) { status.textContent = error.message || 'Không thể cập nhật ảnh'; }
     });
-})();
+}, { once: true });
 </script>
 {% endblock %}

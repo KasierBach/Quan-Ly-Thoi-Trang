@@ -3,6 +3,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Leaflet-only mode avoids rewriting the already-vendored browser libraries.
+if (process.argv.includes('--leaflet-only')) {
+    await copyLeaflet();
+} else {
 const files = [
     ['bootstrap/dist/css/bootstrap.min.css', 'bootstrap/bootstrap.min.css'],
     ['bootstrap/dist/js/bootstrap.bundle.min.js', 'bootstrap/bootstrap.bundle.min.js'],
@@ -28,3 +32,20 @@ for (const [source, destination] of [
     }
 }
 console.log('Copied pinned browser libraries and Vietnamese-capable Inter fonts.');
+await copyLeaflet();
+}
+
+async function copyLeaflet() {
+    const directory = resolve(root, 'app/static/vendor/leaflet');
+    await mkdir(resolve(directory, 'images'), { recursive: true });
+    for (const filename of ['leaflet.js', 'leaflet.css']) {
+        await copyFile(resolve(root, 'node_modules/leaflet/dist', filename), resolve(directory, filename));
+    }
+    for (const filename of await readdir(resolve(root, 'node_modules/leaflet/dist/images'))) {
+        if (filename.endsWith('.png')) {
+            await copyFile(resolve(root, 'node_modules/leaflet/dist/images', filename), resolve(directory, 'images', filename));
+        }
+    }
+    await copyFile(resolve(root, 'node_modules/leaflet/LICENSE'), resolve(directory, 'LICENSE'));
+    console.log('Copied pinned Leaflet assets locally.');
+}

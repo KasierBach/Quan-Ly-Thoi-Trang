@@ -1,6 +1,8 @@
-{% extends 'base.html' %}
+{% extends 'admin/base.html' if request.endpoint == 'admin.admin_products' else 'base.html' %}
 
-{% block title %}Fashion Store - Sản phẩm{% endblock %}
+{% block title %}{{ seo.title }}{% endblock %}
+{% block meta_description %}{{ seo.description }}{% endblock %}
+{% block og_title %}{{ seo.title }}{% endblock %}
 
 {% block content %}
 <div class="container py-4">
@@ -196,7 +198,8 @@
                     <div class="card product-card h-100">
                         <div class="position-relative">
                             <img src="{{ product|image_url }}"
-                                class="card-img-top product-img" alt="{{ product.ProductName }}">
+                                class="card-img-top product-img" alt="{{ product.ProductName }}"
+                                loading="{{ 'eager' if loop.index <= 3 else 'lazy' }}" decoding="async"{% if loop.first %} fetchpriority="high"{% endif %}>
 
                             <!-- Product Badges -->
                             {% if loop.index <= 3 and paging.current_page==1 %} <div
@@ -329,6 +332,7 @@
 {% endblock %}
 
 {% block scripts %}
+{{ super() }}
 <script>
     (() => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;

@@ -1,6 +1,6 @@
 import ChatAPI from './ChatAPI.js';
 import ChatUI from '../ui/ChatUI.js';
-import { createNode } from '../utils/helpers.js';
+import { createNode, shouldSendOnEnter } from '../utils/helpers.js';
 
 export class ChatWidget {
     constructor(api, elements) {
@@ -8,6 +8,7 @@ export class ChatWidget {
         this.elements = elements;
         this.sessionId = null;
         this.isOpen = false;
+        this.returnFocus = null;
         this.sending = false;
         this.loading = false;
         this.closed = false;
@@ -32,15 +33,29 @@ export class ChatWidget {
     }
 
     toggle() {
+        if (!this.isOpen) this.returnFocus = document.activeElement;
         this.isOpen = !this.isOpen;
         this.elements.window.classList.toggle('active', this.isOpen);
-        if (this.isOpen) this.ready.then(ready => { if (ready) this.loadMessages(); });
+        this.elements.window.setAttribute('aria-hidden', String(!this.isOpen));
+        if (this.isOpen) this.ready.then(ready => {
+            if (!ready || !this.isOpen) return;
+            this.loadMessages();
+            this.elements.input.focus();
+        });
+        if (!this.isOpen && this.returnFocus?.isConnected) this.returnFocus.focus();
     }
 
     showError(message) {
         this.elements.body.querySelector('.chat-error')?.remove();
         const error = createNode('div', 'message admin chat-error', message || 'Chat tạm thời không khả dụng');
         error.setAttribute('role', 'status');
+        const retry = createNode('button', 'chat-retry', 'Thử lại');
+        retry.type = 'button';
+        retry.addEventListener('click', () => {
+            if (!this.sessionId) this.ready = this.initialize();
+            else this.loadMessages();
+        });
+        error.appendChild(retry);
         this.elements.body.appendChild(error);
     }
 
@@ -98,6 +113,7 @@ export class ChatWidget {
         this.closed = true;
         ++this.requestRevision;
         clearInterval(this.pollTimer);
+        this.ui.dispose();
     }
 }
 
@@ -110,13 +126,12 @@ if (windowElement) {
     });
     window.toggleLiveChat = () => widget.toggle();
     document.getElementById('chatClose')?.addEventListener('click', () => {
-        widget.isOpen = false;
-        windowElement.classList.remove('active');
+        if (widget.isOpen) widget.toggle();
     });
     widget.elements.send.addEventListener('click', () => widget.sendMessage());
     widget.elements.input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') { event.preventDefault(); widget.sendMessage(); }
+        if (shouldSendOnEnter(event)) { event.preventDefault(); widget.sendMessage(); }
     });
-    widget.pollTimer = setInterval(() => { if (widget.isOpen) widget.loadMessages(); }, 3000);
+    widget.pollTimer = setInterval(() => { if (widget.isOpen && !document.hidden) widget.loadMessages(); }, 3000);
     window.addEventListener('pagehide', () => widget.close(), { once: true });
 }

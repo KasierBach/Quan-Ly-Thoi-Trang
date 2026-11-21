@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock
 
 import app.config as app_config
+import app.extensions as app_extensions
 
 import psycopg2
 import pytest
@@ -218,6 +219,15 @@ def test_env_config_reads_only_explicit_worktree(monkeypatch):
     monkeypatch.setenv('APP_ENV', 'invalid')
     with pytest.raises(ValueError):
         Config.from_environment()
+
+
+def test_package_reexports_exact_extension_singletons():
+    from app import csrf, limiter, mail, socketio
+
+    assert socketio is app_extensions.socketio
+    assert limiter is app_extensions.limiter
+    assert mail is app_extensions.mail
+    assert csrf is app_extensions.csrf
 
 
 def test_json_decimal_exact(app):

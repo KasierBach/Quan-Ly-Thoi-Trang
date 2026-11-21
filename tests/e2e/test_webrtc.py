@@ -67,15 +67,51 @@ def test_webrtc_two_peers_exchange_synthetic_media_and_teardown(gui_context, bro
                 page.wait_for_function(
                     '() => window.chatApp.callManager.elements.remoteVideo.videoWidth > 0', timeout=10000
                 )
+        for page in (caller, recipient):
+            expect(page.locator('#callDuration')).to_be_visible()
+            expect(page.locator('#callDuration')).to_have_text(re.compile(r'\d{2}:\d{2}'))
+            expect(page.locator('#callOverlay')).to_have_attribute('aria-hidden', 'false')
+        caller.locator('#btnToggleMic').click()
+        expect(caller.locator('#btnToggleMic')).to_have_attribute('aria-pressed', 'false')
+        expect(recipient.locator('#remoteMicStatus')).to_have_attribute('aria-label', 'Micro đã tắt')
+        caller.locator('#btnToggleMic').click()
+        expect(caller.locator('#btnToggleMic')).to_have_attribute('aria-pressed', 'true')
+        caller.locator('#btnToggleChat').click()
+        caller.locator('#callChatInput').fill('Tin nhắn trong cuộc gọi có dấu')
+        caller.locator('#btnSendCallChat').click()
+        recipient.locator('#btnToggleChat').click()
+        expect(recipient.locator('#callChatMessages')).to_contain_text('Tin nhắn trong cuộc gọi có dấu')
+        caller.locator('#btnCloseCallChat').click()
+        recipient.locator('#btnCloseCallChat').click()
+        if video:
+            caller.locator('#btnToggleCam').click()
+            expect(caller.locator('#btnToggleCam')).to_have_attribute('aria-pressed', 'false')
+            expect(recipient.locator('#remoteMediaState')).to_have_text('Camera đã tắt')
+            caller.locator('#btnToggleCam').click()
+            expect(caller.locator('#btnToggleCam')).to_have_attribute('aria-pressed', 'true')
+            caller.wait_for_function('() => window.chatApp.callManager.elements.remoteVideo.videoWidth > 0')
+        caller.locator('#btnGridView').click()
+        expect(caller.locator('#activeCallView')).to_have_class(re.compile('grid-mode'))
+        expect(caller.locator('#remoteParticipant')).to_be_visible()
+        expect(caller.locator('#localParticipant')).to_be_visible()
+        assert caller.evaluate('document.getElementById("callRemoteAudio").srcObject.getAudioTracks().length > 0')
+        caller.screenshot(path=destination / f'webrtc-{video}-grid.png')
+        caller.set_viewport_size({'width': 390, 'height': 844})
+        caller.screenshot(path=destination / f'webrtc-{video}-mobile-grid.png')
+        assert not caller.evaluate('document.documentElement.scrollWidth > innerWidth')
+        caller.set_viewport_size({'width': 1280, 'height': 900})
+        caller.locator('#btnGridView').click()
         caller.screenshot(path=destination / f'webrtc-{video}-caller.png')
         recipient.screenshot(path=destination / f'webrtc-{video}-recipient.png')
         if video:
             caller.locator('#btnShareScreen').click()
             caller.wait_for_function('() => window.chatApp.callManager.isSharingScreen === true', timeout=10000)
             recipient.wait_for_function(
-                "() => window.chatApp.callManager.elements.remoteNameTag.textContent.includes('Chia sẻ màn hình')",
+                '() => window.chatApp.callManager.currentCall?.remoteSharingScreen === true',
                 timeout=10000,
             )
+            expect(recipient.locator('#remoteMediaState')).to_have_text('Đang chia sẻ màn hình')
+            recipient.wait_for_function('() => document.getElementById("remoteVideo").videoWidth > 0')
             caller.screenshot(path=destination / 'screen-share-caller.png')
             recipient.screenshot(path=destination / 'screen-share-recipient.png')
             caller.locator('#btnShareScreen').click()
@@ -84,6 +120,8 @@ def test_webrtc_two_peers_exchange_synthetic_media_and_teardown(gui_context, bro
         caller.wait_for_function('() => window.chatApp.callManager.currentCall === null')
         recipient.wait_for_function('() => window.chatApp.callManager.currentCall === null')
         for page in (caller, recipient):
+            expect(page.locator('#callOverlay')).to_have_attribute('aria-hidden', 'true')
+            assert page.evaluate('window.chatApp.callManager.durationTimer == null')
             assert page.evaluate(
                 'window.chatApp.callManager.localStream === null && window.chatApp.callManager.peerConnection === null'
             )
@@ -92,7 +130,7 @@ def test_webrtc_two_peers_exchange_synthetic_media_and_teardown(gui_context, bro
         for page, label in [(caller, 'caller'), (recipient, 'recipient')]:
             if not page.is_closed():
                 state = page.evaluate(
-                    '() => ({error: window.chatApp.callManager.lastError, state: window.chatApp.callManager.peerConnection?.connectionState, signaling: window.chatApp.callManager.peerConnection?.signalingState, local: !!window.chatApp.callManager.localStream, remote: !!window.chatApp.callManager.remoteStream, call: window.chatApp.callManager.currentCall && {id:window.chatApp.callManager.currentCall.call_id, phase:window.chatApp.callManager.currentCall.phase, accepted:window.chatApp.callManager.currentCall.accepted, localIce:window.chatApp.callManager.currentCall.localIce.length, remoteIce:window.chatApp.callManager.currentCall.remoteIce.length}})'
+                    '() => ({error: window.chatApp.callManager.lastError, state: window.chatApp.callManager.peerConnection?.connectionState, signaling: window.chatApp.callManager.peerConnection?.signalingState, local: !!window.chatApp.callManager.localStream, remote: !!window.chatApp.callManager.remoteStream, call: window.chatApp.callManager.currentCall && {id:window.chatApp.callManager.currentCall.call_id, phase:window.chatApp.callManager.currentCall.phase, accepted:window.chatApp.callManager.currentCall.accepted, localIce:window.chatApp.callManager.currentCall.localIce.length, remoteIce:window.chatApp.callManager.currentCall.remoteIce.length, remoteMedia:window.chatApp.callManager.currentCall.remoteMedia, sharing:window.chatApp.callManager.currentCall.remoteSharingScreen, localMedia:window.chatApp.callManager.localStream?.getTracks().map(t=>({kind:t.kind,enabled:t.enabled,muted:t.muted,readyState:t.readyState}))}})'
                 )
                 (destination / f'webrtc-{video}-{label}-state.txt').write_text(str(state), encoding='utf-8')
                 page.screenshot(path=destination / f'webrtc-{video}-{label}-last.png')

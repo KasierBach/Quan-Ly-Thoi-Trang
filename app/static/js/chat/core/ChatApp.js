@@ -3,8 +3,9 @@ import ChatUI from '../ui/ChatUI.js';
 import ChatSocket from './ChatSocket.js';
 import ImageViewer from '../call/StreamViewer.js';
 import ChatRecorder from '../media/MediaRecorder.js';
-import { createNode, findMessage, initEmojiPicker, renderStickers, renderGifs, stickerUrl } from '../utils/helpers.js';
+import { createNode, findMessage, initEmojiPicker, renderStickers, renderGifs, stickerUrl, shouldSendOnEnter } from '../utils/helpers.js';
 import { CallManager } from '../call/CallManager.js';
+import MeshCallManager from '../call/MeshCallManager.js';
 
 /** Page state is initialized only after server-issued credentials are available. */
 export class ChatApp {
@@ -19,6 +20,11 @@ export class ChatApp {
         this.selectionRevision = 0;
         this.historyRevision = 0;
         this.searchRevision = 0;
+        this.conversationRevision = 0;
+        this.hasSelectedConversation = false;
+        this.selectionPending = false;
+        this.drafts = new Map();
+        this.pendingReads = new Map();
         this.conversations = [];
         this.participants = [];
         this.messageRecords = new Map();
@@ -36,6 +42,9 @@ export class ChatApp {
         this.viewer = dependencies.viewer || new ImageViewer();
         this.recorder = dependencies.recorder || new ChatRecorder(blob => this.handleAudioRecorded(blob));
         this.callManager = dependencies.callManager || new CallManager(this);
+        this.meshCallManager = dependencies.meshCallManager || new MeshCallManager(this, {
+            isDirectCallBusy: () => !!this.callManager?.currentCall
+        });
         this.eventController = new AbortController();
         this.ready = this.initialize();
     }
@@ -47,17 +56,16 @@ export class ChatApp {
             this.sessionId = credentials.session_id;
             this.socket = this.socketFactory(credentials, this);
             this.callManager.initUI();
+            this.meshCallManager.initUI();
             this.initEventListeners();
-            initEmojiPicker();
+            initEmojiPicker(this.eventController.signal);
             await this.loadConversations();
-            await this.selectConversation(null, 'Hỗ trợ khách hàng');
             this.socket.connect();
             this.setSendBusy(false);
             return true;
         } catch (error) {
             if (!this.closed) {
-                const list = document.getElementById('conversationList');
-                list?.replaceChildren(createNode('div', 'p-4 text-danger', 'Không thể khởi tạo chat. Hãy tải lại trang.'));
+                this.ui.showConversationError(error.message, () => location.reload());
                 this.ui.showToast(error.message);
             }
             return false;
@@ -83,9 +91,31 @@ export class ChatApp {
 
     async loadConversations() {
         if (this.closed) return;
-        const data = this.userId ? await this.api.getConversations() : { conversations: [] };
-        if (this.closed) return;
-        this.conversations = data.conversations || [];
+        const list = document.getElementById('conversationList');
+        list?.setAttribute('aria-busy', 'true');
+        const revision = ++this.conversationRevision;
+        try {
+            const data = this.userId ? await this.api.getConversations() : { conversations: [] };
+            if (this.closed || revision !== this.conversationRevision) return;
+            this.conversations = data.conversations || [];
+            this.refreshConversationList();
+        } catch (error) {
+            if (!this.closed && revision === this.conversationRevision) {
+                list?.setAttribute('aria-busy', 'false');
+                this.ui.showConversationError(error.message, () => this.run(() => this.loadConversations()));
+            }
+            throw error;
+        }
+    }
+
+    scheduleConversationRefresh() {
+        if (this.closed || !this.userId) return;
+        ++this.conversationRevision;
+        clearTimeout(this.conversationTimer);
+        this.conversationTimer = setTimeout(() => this.run(() => this.loadConversations()), 100);
+    }
+
+    refreshConversationList() {
         this.ui.renderConversationList(this.conversations, this.currentConversationId,
             (id, name, online) => this.run(() => this.selectConversation(id, name, online)));
     }
@@ -93,11 +123,17 @@ export class ChatApp {
     async selectConversation(id, name, online = false) {
         if (this.closed) return;
         const previous = this.currentConversationId;
-        if (previous !== id) {
+        const input = document.getElementById('messageInput');
+        if (this.hasSelectedConversation && input) this.drafts.set(String(previous), input.value);
+        if (this.hasSelectedConversation && String(previous) !== String(id)) {
             this.updateTypingStatus(true);
+            this.meshCallManager.endCall();
             if (this.socket?.connected) this.socket.emit('leave_conversation', this.scope(previous));
         }
         this.currentConversationId = id == null || id === '' ? null : id;
+        this.hasSelectedConversation = true;
+        this.selectionPending = true;
+        if (input) input.value = this.drafts.get(String(this.currentConversationId)) || '';
         const revision = ++this.selectionRevision;
         this.cancelReply();
         this.currentConversationType = null;
@@ -107,23 +143,30 @@ export class ChatApp {
         document.getElementById('typingIndicator')?.classList.remove('active');
         document.getElementById('pinnedShelf')?.classList.remove('active');
         this.ui.switchChatUI(name, online, this.currentConversationId);
-        this.ui.renderSettings({ default_emoji: '👍' });
+        this.ui.renderSettings({ theme_color: '#2563eb', default_emoji: '👍' });
+        this.setSendBusy(this.isSending);
         await this.joinCurrentConversation();
+        if (revision !== this.selectionRevision || this.closed) return;
         await this.loadHistory();
         if (revision !== this.selectionRevision || this.closed) return;
         await this.loadSettings();
         if (revision !== this.selectionRevision || this.closed) return;
         await this.loadParticipants(this.currentConversationId);
+        const own = this.participants.find(person => String(person.id) === String(this.userId));
+        const text = document.getElementById('muteText');
+        if (text) text.textContent = own?.is_muted ? 'Bật thông báo' : 'Tắt thông báo';
         if (revision !== this.selectionRevision || this.closed) return;
         await this.loadPinnedMessages(this.currentConversationId);
         if (revision === this.selectionRevision && !this.closed) {
-            this.ui.renderConversationList(this.conversations, this.currentConversationId,
-                (nextId, nextName, nextOnline) => this.run(() => this.selectConversation(nextId, nextName, nextOnline)));
+            this.selectionPending = false;
+            this.ui.activeChatContainer?.setAttribute('aria-busy', 'false');
+            this.setSendBusy(this.isSending);
+            this.refreshConversationList();
         }
     }
 
     async joinCurrentConversation() {
-        if (!this.socket?.connected || !this.sessionId) return;
+        if (!this.hasSelectedConversation || !this.socket?.connected || !this.sessionId) return;
         const revision = this.selectionRevision;
         await this.socket.request('join_conversation', this.scope());
         if (this.closed || revision !== this.selectionRevision) return;
@@ -143,8 +186,13 @@ export class ChatApp {
             if (this.closed || selection !== this.selectionRevision || request !== this.historyRevision) return;
             this.messageRecords.clear();
             area?.replaceChildren();
-            for (const message of data.messages || []) this.renderMessage(message);
-            if (!data.messages?.length) area?.appendChild(createNode('div', 'chat-empty p-3 text-muted', 'Chưa có tin nhắn nào'));
+            const messages = data.messages || [];
+            for (const message of messages) this.renderMessage(message);
+            if (!messages.length) this.ui.showEmptyHistory();
+        } catch (error) {
+            if (!this.closed && selection === this.selectionRevision && request === this.historyRevision) {
+                this.ui.showHistoryError(error.message, () => this.run(() => this.loadHistory()));
+            }
         } finally {
             if (request === this.historyRevision) area?.setAttribute('aria-busy', 'false');
         }
@@ -157,6 +205,7 @@ export class ChatApp {
             content: message.content, time: this.ui.formatTime(message.timestamp || message.created_at),
             msgType: message.message_type, attachments: message.attachments, reactions: message.reactions,
             avatarText: String(message.sender_name || 'Khách')[0], senderName: message.sender_name,
+            is_pinned: message.is_pinned,
             reply_to_id: message.reply_to_id, parent_content: message.parent_content,
             parent_sender_type: message.parent_sender_type, parent_sender_name: message.parent_sender_name,
         });
@@ -164,22 +213,38 @@ export class ChatApp {
 
     handleNewMessage(data) {
         if (this.closed) return;
-        if (this.isCurrentScope(data)) {
+        if (this.hasSelectedConversation && this.isCurrentScope(data)) {
             this.renderMessage(data);
-            if (document.activeElement === document.getElementById('messageInput')) this.markRead();
+            if (document.activeElement === document.getElementById('messageInput')) this.run(() => this.markRead());
         }
-        this.run(() => this.loadConversations());
+        this.scheduleConversationRefresh();
     }
 
     setSendBusy(busy) {
-        for (const id of ['sendBtn', 'likeBtn', 'attachFileBtn', 'attachImageBtn']) {
+        const disabled = busy || this.selectionPending || !this.sessionId || !this.hasSelectedConversation || this.closed;
+        for (const id of ['likeBtn', 'attachFileBtn', 'attachImageBtn', 'stickerBtn', 'gifBtn', 'micBtn']) {
             const button = document.getElementById(id);
-            if (button) button.disabled = busy || !this.sessionId || this.closed;
+            if (button) button.disabled = disabled;
+        }
+        const input = document.getElementById('messageInput');
+        if (input) input.disabled = this.selectionPending || !this.sessionId || !this.hasSelectedConversation || this.closed;
+        document.querySelector('.chat-input-area')?.setAttribute('aria-busy', String(busy));
+        this.updateComposerState(busy);
+    }
+
+    updateComposerState(busy = this.isSending) {
+        const input = document.getElementById('messageInput');
+        const send = document.getElementById('sendBtn');
+        if (send) send.disabled = busy || this.selectionPending || !this.sessionId || !this.hasSelectedConversation || this.closed ||
+            !input?.value.trim() || input.value.length > 4000;
+        if (input) {
+            input.style.height = 'auto';
+            input.style.height = `${Math.min(input.scrollHeight || 44, 132)}px`;
         }
     }
 
     async sendMessage(content = null, messageType = 'text') {
-        if (this.isSending || this.closed) return false;
+        if (this.isSending || this.closed || !this.hasSelectedConversation) return false;
         const input = document.getElementById('messageInput');
         content = content == null ? input?.value.trim() : content;
         if (!content || content.length > 4000) return false;
@@ -197,7 +262,10 @@ export class ChatApp {
             if (this.closed) return false;
             if (selection === this.selectionRevision) {
                 this.renderMessage(result);
-                if (input?.value.trim() === content && messageType === 'text') input.value = '';
+                if (input?.value.trim() === content && messageType === 'text') {
+                    input.value = '';
+                    this.drafts.delete(String(target));
+                }
                 this.cancelReply();
                 this.updateTypingStatus(true);
             }
@@ -250,7 +318,7 @@ export class ChatApp {
             item.append(createNode('i', 'fas fa-user-circle'), createNode('span', '', person.nickname || person.name));
             return item;
         }));
-        if (section) section.style.display = 'block';
+        if (section) section.hidden = false;
         this.updateCallAvailability();
     }
 
@@ -266,16 +334,36 @@ export class ChatApp {
     }
 
     updateCallAvailability() {
-        const canCall = !!this.userId && this.socket?.connected && this.isNumericConversation() &&
-            this.currentConversationType === 'private' && this.participants.length === 2;
+        const numeric = !!this.userId && this.socket?.connected && this.isNumericConversation();
+        const direct = numeric && !this.meshCallManager.isBusy && this.currentConversationType === 'private' &&
+            this.participants.length === 2;
+        const mesh = numeric && !this.callManager.currentCall && !this.meshCallManager.isBusy &&
+            this.currentConversationType === 'group' && this.participants.length >= 2 && this.participants.length <= 4;
+        const canCall = direct || mesh;
+        const canCustomize = this.isNumericConversation() && !!this.userId;
+        for (const id of ['btnInfoTheme', 'btnInfoEmoji', 'btnInfoNickname', 'btnInfoMute', 'btnInfoMedia', 'btnInfoFiles']) {
+            const button = document.getElementById(id);
+            if (button) {
+                button.disabled = !canCustomize;
+                button.title = canCustomize ? '' : 'Tính năng này dành cho hội thoại của tài khoản đăng nhập';
+            }
+        }
         for (const id of ['btnCall', 'btnVideo']) {
             const button = document.getElementById(id);
             if (button) {
                 button.disabled = !canCall;
-                button.setAttribute('aria-label', id === 'btnCall' ? 'Gọi thoại' : 'Gọi video');
-                button.title = canCall ? (id === 'btnCall' ? 'Gọi thoại' : 'Gọi video') : 'Chỉ gọi trong cuộc trò chuyện riêng tư một-một';
+                const action = id === 'btnCall' ? 'Gọi thoại' : 'Gọi video';
+                button.setAttribute('aria-label', mesh ? `${action} nhóm` : action);
+                button.title = canCall ? (mesh ? `${action} nhóm nhỏ` : action) :
+                    'Chỉ gọi trong hội thoại riêng tư hai người hoặc nhóm từ hai đến bốn thành viên';
             }
         }
+    }
+
+    startCall(video) {
+        return this.currentConversationType === 'group'
+            ? this.meshCallManager.startCall(video)
+            : this.callManager.startCall(video);
     }
 
     handleReply(id, event) {
@@ -291,6 +379,7 @@ export class ChatApp {
 
     updateTypingStatus(forceStop = false) {
         const input = document.getElementById('messageInput');
+        if (!this.hasSelectedConversation) return;
         const typing = !forceStop && !!input?.value.trim() && document.activeElement === input;
         clearTimeout(this.typingTimer);
         if (typing !== !!this.isTyping && this.socket?.connected) {
@@ -299,11 +388,39 @@ export class ChatApp {
         }
         if (typing) this.typingTimer = setTimeout(() => this.updateTypingStatus(true), 3000);
     }
-    markRead() {
-        if (this.isNumericConversation() && this.userId && !document.hidden) this.socket?.emit('mark_read', this.scope());
+    async markRead(id = this.currentConversationId) {
+        if (this.closed || !this.hasSelectedConversation || !this.isNumericConversation(id) || !this.userId || document.hidden) return;
+        const key = String(id);
+        if (this.pendingReads.has(key)) return this.pendingReads.get(key);
+        const operation = (async () => {
+            if (this.socket?.connected) await this.socket.request('mark_read', this.scope(id));
+            else await this.api.markAsRead(id);
+            if (this.closed) return;
+            this.clearUnread(id);
+            this.scheduleConversationRefresh();
+        })();
+        this.pendingReads.set(key, operation);
+        try { return await operation; }
+        finally { this.pendingReads.delete(key); }
     }
+
+    clearUnread(id) {
+        const conversation = this.conversations.find(item => String(item.id) === String(id));
+        if (!conversation?.unread_count) return;
+        conversation.unread_count = 0;
+        ++this.conversationRevision;
+        this.refreshConversationList();
+    }
+
     handleMessagesRead(data) {
-        if (String(data.user_id) !== String(this.userId) && this.isCurrentScope(data)) this.ui.renderSeenStatus(data.user_id);
+        if (String(data.user_id) === String(this.userId)) this.clearUnread(data.conversation_id);
+        else if (this.isCurrentScope(data)) this.ui.renderSeenStatus(data.user_id);
+    }
+
+    showConversationOptions(id, event) {
+        event.preventDefault();
+        this.contextMenuConvId = id;
+        this.ui.showContextMenu('convContextMenu', event);
     }
 
     showMsgOptions(id, event) {
@@ -315,24 +432,36 @@ export class ChatApp {
         if (!menu) return;
         const canPin = this.isNumericConversation() && this.userId &&
             (this.currentConversationRole === 'admin' || this.conversations.find(conv => String(conv.id) === String(this.currentConversationId))?.created_by === this.userId);
-        document.getElementById('ctxPinBtn').style.display = canPin ? 'block' : 'none';
-        document.getElementById('ctxUnpinBtn').style.display = canPin ? 'block' : 'none';
-        menu.style.display = 'block';
-        menu.style.left = `${Math.min(event?.clientX || 0, innerWidth - menu.offsetWidth)}px`;
-        menu.style.top = `${Math.min(event?.clientY || 0, innerHeight - menu.offsetHeight)}px`;
+        const pinned = this.messageRecords.get(String(id)).is_pinned ||
+            String(this.currentPinnedMessageId) === String(id);
+        document.getElementById('ctxPinBtn').hidden = !canPin || pinned;
+        document.getElementById('ctxUnpinBtn').hidden = !canPin || !pinned;
+        document.getElementById('ctxRecallBtn').hidden = !this.isOwnMessage(this.messageRecords.get(String(id)));
+        this.ui.showContextMenu('msgContextMenu', event);
     }
     toggleReactionPopup(id, event) {
         event?.stopPropagation();
         if (!this.userId) { this.ui.showToast('Đăng nhập để thả cảm xúc'); return; }
         document.getElementById(`reactionBar-${id}`)?.classList.toggle('active');
     }
+    async reloadReactions(id) {
+        const selection = this.selectionRevision;
+        const result = await this.api.getHistory(this.sessionId, this.currentConversationId);
+        if (this.closed || selection !== this.selectionRevision) return;
+        const message = result.messages?.find(item => String(item.id) === String(id));
+        if (!message) return;
+        this.messageRecords.set(String(id), message);
+        this.ui.updateMessageReactions(id, message.reactions);
+    }
+
     async messageAction(event, id, extra = {}) {
         try {
             await this.socket.request(event, { ...this.scope(), message_id: Number(id), ...extra });
-            await Promise.all([this.loadHistory(), this.loadPinnedMessages(this.currentConversationId)]);
+            if (['add_reaction', 'remove_reaction'].includes(event)) await this.reloadReactions(id);
+            else await Promise.all([this.loadHistory(), this.loadPinnedMessages(this.currentConversationId)]);
             return true;
         } catch (error) { this.ui.showToast(error.message); return false; }
-        finally { document.getElementById('msgContextMenu').style.display = 'none'; }
+        finally { this.ui.hideContextMenu(); }
     }
     toggleReaction(id, emoji) {
         if (!this.userId) { this.ui.showToast('Đăng nhập để thả cảm xúc'); return; }
@@ -369,7 +498,7 @@ export class ChatApp {
         const list = document.getElementById('searchResults');
         if (!list) return;
         list.replaceChildren();
-        if (title) list.appendChild(createNode('div', 'p-2 text-muted', title));
+        if (title) list.appendChild(createNode('div', 'section-title', title));
         for (const person of users) {
             const item = createNode('button', 'search-user-item');
             item.type = 'button';
@@ -379,8 +508,11 @@ export class ChatApp {
             item.addEventListener('click', () => this.run(() => this.startDirectChat(person.id, person.name)));
             list.appendChild(item);
         }
-        if (!users.length) list.appendChild(createNode('div', 'p-3 text-muted', 'Không tìm thấy người dùng'));
-        list.classList.add('active');
+        if (!users.length) list.appendChild(createNode('div', 'section-title', 'Không tìm thấy người dùng'));
+        if (list) {
+            list.classList.add('active');
+            document.getElementById('sidebarSearchInput')?.setAttribute('aria-expanded', 'true');
+        }
     }
     async startDirectChat(id, name) {
         const result = await this.api.startDirectChat(id);
@@ -388,11 +520,45 @@ export class ChatApp {
         await this.loadConversations();
         await this.selectConversation(result.conversation.id, name || 'Người dùng');
     }
+    renderGroupUsers(users) {
+        const results = document.getElementById('groupMemberResults');
+        const selected = document.getElementById('groupSelectedUsers');
+        if (!results || !selected) return;
+        results.replaceChildren(...users.filter(person => String(person.id) !== String(this.userId)).map(person => {
+            const button = createNode('button', 'group-user-option');
+            button.type = 'button';
+            button.setAttribute('role', 'option');
+            const chosen = this.selectedGroupUsers.some(item => String(item.id) === String(person.id));
+            button.setAttribute('aria-selected', String(chosen));
+            button.append(createNode('span', 'search-user-avatar', String(person.name || '?')[0]),
+                createNode('span', '', person.name || 'Người dùng'));
+            button.addEventListener('click', () => {
+                const index = this.selectedGroupUsers.findIndex(item => String(item.id) === String(person.id));
+                if (index >= 0) this.selectedGroupUsers.splice(index, 1);
+                else if (this.selectedGroupUsers.length < 3) this.selectedGroupUsers.push(person);
+                this.renderGroupUsers(users);
+            });
+            return button;
+        }));
+        selected.replaceChildren(...this.selectedGroupUsers.map(person =>
+            createNode('span', 'group-selected-user', person.name || 'Người dùng')));
+    }
+
+    async loadGroupUsers(query = '') {
+        const result = query.trim().length >= 2
+            ? await this.api.searchUsers(query.trim())
+            : await this.api.getSuggestedUsers();
+        this.renderGroupUsers(result.users || []);
+    }
+
     async createGroup() {
         const input = document.getElementById('groupName');
-        if (!this.userId || !input.value.trim()) return;
+        if (!this.userId || !input.value.trim() || !this.selectedGroupUsers.length) {
+            this.ui.showToast('Nhập tên nhóm và chọn ít nhất một thành viên');
+            return;
+        }
         const result = await this.api.createGroup(input.value.trim(), this.selectedGroupUsers.map(person => person.id));
-        document.getElementById('groupModal').style.display = 'none';
+        this.ui.closeDialog();
         input.value = '';
         this.selectedGroupUsers = [];
         await this.loadConversations();
@@ -405,22 +571,25 @@ export class ChatApp {
         await this.loadConversations();
     }
     async handleMarkRead() {
-        if (this.isNumericConversation(this.contextMenuConvId)) await this.api.markAsRead(this.contextMenuConvId);
+        if (!this.isNumericConversation(this.contextMenuConvId)) return;
+        await this.api.markAsRead(this.contextMenuConvId);
+        this.clearUnread(this.contextMenuConvId);
+        this.ui.hideContextMenu();
     }
     handleEmojiChangeRequest() {
         if (!this.isNumericConversation()) return;
-        document.getElementById('emojiDefaultModal').style.display = 'block';
+        this.ui.openDialog('emojiDefaultModal');
     }
     async handleDefaultEmojiChange(emoji) {
         await this.socket.request('update_conversation_settings', { ...this.scope(), settings: { default_emoji: emoji } });
-        document.getElementById('emojiDefaultModal').style.display = 'none';
+        this.ui.closeDialog();
         await this.loadSettings();
     }
     async handleThemeChange(color) {
         if (!this.isNumericConversation()) return;
         await this.socket.request('update_conversation_settings', { ...this.scope(), settings: { theme_color: color } });
         this.ui.applyTheme(color);
-        document.getElementById('themeModal').style.display = 'none';
+        this.ui.closeDialog();
     }
     async handleNicknamePrompt() {
         if (!this.isNumericConversation()) return;
@@ -437,7 +606,7 @@ export class ChatApp {
             row.append(createNode('span', 'nickname-avatar', String(person.name)[0]), input, button);
             return row;
         }));
-        document.getElementById('nicknameModal').style.display = 'block';
+        this.ui.openDialog('nicknameModal');
     }
     async saveNickname(id, nickname) {
         await this.socket.request('update_participant_settings', { ...this.scope(), user_id: Number(id), settings: { nickname } });
@@ -488,15 +657,33 @@ export class ChatApp {
     initEventListeners() {
         const on = (id, event, action) => document.getElementById(id)?.addEventListener(event,
             data => this.run(() => action(data)), { signal: this.eventController.signal });
+        on('btnOpenSupport', 'click', () => this.selectConversation(null, 'Hỗ trợ khách hàng'));
+        on('ctxReadConversation', 'click', () => this.handleMarkRead());
+        on('ctxLeaveConversation', 'click', () => this.handleDeleteConv());
+        const actions = { heart: () => this.reactMsg('❤️'), laugh: () => this.reactMsg('😆'),
+            pin: () => this.handlePin(), unpin: () => this.handleUnpin(), recall: () => this.handleRecall() };
+        document.querySelectorAll('[data-message-action]').forEach(button => button.addEventListener('click', () => {
+            this.run(actions[button.dataset.messageAction]);
+        }, { signal: this.eventController.signal }));
+        document.querySelectorAll('.info-section-title').forEach(button => button.addEventListener('click', () => {
+            const open = button.closest('.info-section').classList.toggle('open');
+            button.setAttribute('aria-expanded', String(open));
+        }, { signal: this.eventController.signal }));
         on('sendBtn', 'click', () => this.sendMessage());
+        on('btnMobileBack', 'click', () => this.ui.showConversationList());
         on('messageInput', 'keydown', event => {
-            if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); return this.sendMessage(); }
+            if (!shouldSendOnEnter(event)) return;
+            event.preventDefault();
+            return this.sendMessage();
         });
-        on('messageInput', 'input', () => this.updateTypingStatus());
-        on('messageInput', 'focus', () => { this.updateTypingStatus(); this.markRead(); });
+        on('messageInput', 'input', () => { this.updateTypingStatus(); this.updateComposerState(); });
+        on('messageInput', 'focus', () => { this.updateTypingStatus(); return this.markRead(); });
         on('messageInput', 'blur', () => this.updateTypingStatus(true));
         on('likeBtn', 'click', () => this.sendMessage(document.getElementById('likeBtn').dataset.emoji || '👍'));
-        on('emojiBtn', 'click', () => document.getElementById('emojiPicker').classList.toggle('active'));
+        on('emojiBtn', 'click', () => {
+            const open = document.getElementById('emojiPicker').classList.toggle('active');
+            document.getElementById('emojiBtn').setAttribute('aria-expanded', String(open));
+        });
         for (const [id, type] of [['stickerBtn', 'sticker'], ['gifBtn', 'gif']]) on(id, 'click', () => {
             const picker = document.getElementById('stickerPicker');
             if (this.currentPickerMode !== type || !picker.classList.contains('active')) {
@@ -504,6 +691,7 @@ export class ChatApp {
                 picker.classList.add('active');
             } else picker.classList.remove('active');
             this.currentPickerMode = type;
+            document.getElementById(id).setAttribute('aria-expanded', String(picker.classList.contains('active')));
         });
         on('attachFileBtn', 'click', () => document.getElementById('fileInput').click());
         on('attachImageBtn', 'click', () => document.getElementById('imageInput').click());
@@ -512,31 +700,59 @@ export class ChatApp {
         on('closePinnedBtn', 'click', () => document.getElementById('pinnedShelf').classList.remove('active'));
         on('sidebarSearchInput', 'input', event => this.handleSearch(event.target.value.trim()));
         on('sidebarSearchInput', 'focus', () => this.loadSuggestedUsers());
-        on('btnCreateGroup', 'click', () => { if (this.userId) document.getElementById('groupModal').style.display = 'block'; });
-        document.querySelectorAll('[data-close-group]').forEach(button => button.addEventListener('click', () => {
-            document.getElementById('groupModal').style.display = 'none';
+        on('btnCreateGroup', 'click', () => {
+            if (!this.userId) return;
+            this.selectedGroupUsers = [];
+            document.getElementById('groupMemberSearch').value = '';
+            this.ui.openDialog('groupModal');
+            this.run(() => this.loadGroupUsers());
+        });
+        on('groupMemberSearch', 'input', event => this.loadGroupUsers(event.target.value));
+        document.querySelectorAll('[data-close-modal]').forEach(button => button.addEventListener('click', () => {
+            this.ui.closeDialog();
         }, { signal: this.eventController.signal }));
         on('btnSubmitGroup', 'click', () => this.createGroup());
-        on('toggleInfoBtn', 'click', () => document.getElementById('infoPanel').classList.toggle('hidden'));
+        on('toggleInfoBtn', 'click', () => this.ui.toggleInfoPanel());
+        on('closeInfoBtn', 'click', () => {
+            document.getElementById('infoPanel')?.classList.remove('panel-open');
+            document.getElementById('infoPanel')?.classList.add('hidden');
+            document.getElementById('toggleInfoBtn')?.setAttribute('aria-expanded', 'false');
+            document.getElementById('toggleInfoBtn')?.focus();
+        });
         on('btnInfoProfile', 'click', () => this.handleProfileClick());
         on('btnInfoMute', 'click', () => this.handleMuteToggle());
-        on('btnInfoSearch', 'click', () => document.getElementById('sidebarSearchInput').focus());
-        on('btnInfoTheme', 'click', () => { if (this.isNumericConversation()) document.getElementById('themeModal').style.display = 'block'; });
+        on('btnInfoSearch', 'click', () => {
+            this.ui.showConversationList();
+            document.getElementById('sidebarSearchInput')?.focus();
+        });
+        on('btnInfoTheme', 'click', () => { if (this.isNumericConversation()) this.ui.openDialog('themeModal'); });
         on('btnInfoEmoji', 'click', () => this.handleEmojiChangeRequest());
         on('btnInfoNickname', 'click', () => this.handleNicknamePrompt());
         on('btnInfoMedia', 'click', () => this.loadAttachments('image'));
         on('btnInfoFiles', 'click', () => this.loadAttachments('file'));
-        on('btnCall', 'click', () => this.callManager.startCall(false));
-        on('btnVideo', 'click', () => this.callManager.startCall(true));
+        on('btnCall', 'click', () => this.startCall(false));
+        on('btnVideo', 'click', () => this.startCall(true));
         on('micBtn', 'click', () => this.startRecording());
         on('cancelRecordBtn', 'click', () => this.cancelRecording());
         on('sendRecordBtn', 'click', () => this.stopRecording());
         document.querySelectorAll('.theme-option').forEach(choice => choice.addEventListener('click', () => this.run(() => this.handleThemeChange(choice.dataset.color))));
         document.querySelectorAll('.emoji-default-option').forEach(choice => choice.addEventListener('click', () => this.run(() => this.handleDefaultEmojiChange(choice.dataset.emoji))));
         document.addEventListener('click', event => {
-            if (!event.target.closest('.search-box')) document.getElementById('searchResults')?.classList.remove('active');
-            if (!event.target.closest('#msgContextMenu') && !event.target.closest('.message-bubble')) document.getElementById('msgContextMenu').style.display = 'none';
-            if (!event.target.closest('#emojiBtn') && !event.target.closest('#emojiPicker')) document.getElementById('emojiPicker').classList.remove('active');
+            if (!event.target.closest('.search-box')) {
+                document.getElementById('searchResults')?.classList.remove('active');
+                document.getElementById('sidebarSearchInput')?.setAttribute('aria-expanded', 'false');
+            }
+            if (!event.target.closest('.context-menu') && !event.target.closest('.message-bubble') && !event.target.closest('.conv-item')) this.ui.hideContextMenu();
+            if (!event.target.closest('#emojiBtn') && !event.target.closest('#emojiPicker')) {
+                document.getElementById('emojiPicker').classList.remove('active');
+                document.getElementById('emojiBtn').setAttribute('aria-expanded', 'false');
+            }
+        }, { signal: this.eventController.signal });
+        document.addEventListener('keydown', event => {
+            if (event.key !== 'Escape' || this.callManager.currentCall) return;
+            document.getElementById('emojiPicker')?.classList.remove('active');
+            document.getElementById('stickerPicker')?.classList.remove('active');
+            document.getElementById('emojiBtn')?.setAttribute('aria-expanded', 'false');
         }, { signal: this.eventController.signal });
         window.addEventListener('pagehide', () => this.dispose(), { once: true });
     }
@@ -546,10 +762,14 @@ export class ChatApp {
         this.closed = true;
         this.eventController.abort();
         clearTimeout(this.searchTimer);
+        clearTimeout(this.conversationTimer);
         clearTimeout(this.typingTimer);
         clearInterval(this.recordTimer);
+        this.ui.dispose?.();
         this.recorder.cancel();
+        this.viewer.dispose?.();
         this.callManager.dispose();
+        this.meshCallManager.dispose();
         this.socket?.close();
     }
 }
@@ -559,5 +779,7 @@ if (document.getElementById('conversationList')) {
     for (const method of ['reactMsg', 'handleRecall', 'handlePin', 'handleUnpin', 'handleDeleteConv', 'handleMarkRead', 'saveNickname']) {
         window[method] = (...args) => window.chatApp.run(() => window.chatApp[method](...args));
     }
-    window.endCall = () => window.chatApp.callManager.endCall();
+    window.endCall = () => window.chatApp.meshCallManager.isBusy
+        ? window.chatApp.meshCallManager.endCall()
+        : window.chatApp.callManager.endCall();
 }

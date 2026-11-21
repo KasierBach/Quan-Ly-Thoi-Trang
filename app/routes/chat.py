@@ -283,7 +283,14 @@ def pin_message():
 
 @chat_bp.route('/api/chat/messages/<int:mid>/recall', methods=['POST'])
 def recall_message(mid):
-    ok = ChatService.recall_message(mid, actor=get_identity())
+    actor = get_identity()
+    # Capture the persisted message scope before the recall makes it unreadable.
+    access = ChatService.get_message_access(mid, actor=actor, permission='recall')
+    ok = ChatService.recall_message(mid, actor=actor)
+    if ok:
+        handlers = current_app.extensions.get('chat_socket_handlers')
+        if handlers is not None:
+            handlers.publish_recall(mid, access)
     return (jsonify(status='success'), 200) if ok else (jsonify(error='Thao tác không thành công'), 503)
 
 
@@ -308,6 +315,10 @@ def mark_read(cid):
     if access.conversation_id is None:
         return jsonify(status='success')  # Guest support has no participant read-receipt record.
     ok = ConversationService.mark_as_read(access.conversation_id, actor.user_id, actor=actor)
+    if ok:
+        handlers = current_app.extensions.get('chat_socket_handlers')
+        if handlers is not None:
+            handlers.publish_read_receipt(access)
     return (jsonify(status='success'), 200) if ok else (jsonify(error='Thao tác không thành công'), 503)
 
 

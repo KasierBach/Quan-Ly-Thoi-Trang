@@ -1,13 +1,9 @@
-{% extends 'base.html' %}
+{% extends 'admin/base.html' %}
 
 {% block title %}Thêm sản phẩm mới - Fashion Store Admin{% endblock %}
 
-{% block styles %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-{% endblock %}
-
 {% block content %}
-<div class="d-flex">
+<div class="admin-layout d-flex">
     <!-- Sidebar -->
     <div class="col-md-3 col-lg-2 p-0">
         <div class="list-group admin-sidebar">

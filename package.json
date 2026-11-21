@@ -16,6 +16,7 @@
     "bootstrap": "5.3.9",
     "chart.js": "4.6.1",
     "jquery": "3.7.1",
+    "leaflet": "1.9.4",
     "socket.io-client": "4.8.4"
   }
 }

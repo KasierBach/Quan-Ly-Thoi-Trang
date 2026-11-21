@@ -96,13 +96,14 @@ class ChatHarness:
         self.operations = []
         self.next_id = 10
         self.app.config['SESSION_REVALIDATION_ENABLED'] = True
-        monkeypatch.setattr(AuthService, 'get_identity_state', lambda uid: self.states.get(int(uid)))
+        monkeypatch.setattr(AuthService, 'get_identity_state', lambda uid, **kwargs: self.states.get(int(uid)))
         monkeypatch.setattr(ConversationService, 'get_access', self.access)
         monkeypatch.setattr(ChatService, 'get_message_access', self.message_access)
         self.send = Mock(side_effect=self.send_message)
         monkeypatch.setattr(ChatService, 'send_message', self.send)
         monkeypatch.setattr(ChatService, 'get_messages', self.history)
         monkeypatch.setattr(ConversationService, 'get_conversation', self.get_conversation)
+        monkeypatch.setattr(ConversationService, 'get_publication_targets', self.publication_targets)
         monkeypatch.setattr(ConversationService, 'get_participants', self.participants)
         monkeypatch.setattr(ChatService, 'update_last_seen', lambda uid, **kwargs: True)
         monkeypatch.setattr(ChatService, 'get_reactions', self.reactions)
@@ -229,6 +230,17 @@ class ChatHarness:
     def get_conversation(self, cid, *, actor=None):
         access = self.access(cid, actor=actor)
         return {'id': access.conversation_id, 'type': access.conversation_type}
+
+    def publication_targets(self, cid):
+        conv = self.conversations[int(cid)]
+        user_ids = set(conv['members'])
+        if conv['type'] == 'support':
+            user_ids.update(uid for uid, state in self.states.items() if state.Role == 'admin')
+        return [
+            {'user_id': uid, 'auth_version': self.states[uid].AuthVersion}
+            for uid in sorted(user_ids)
+            if uid in self.states
+        ]
 
     def participants(self, cid, *, actor=None):
         self.access(cid, actor=actor)
@@ -984,6 +996,55 @@ def test_socket_mutations_are_authorized_and_broadcast_only_in_message_scope(cha
         assert delivered[0]['user_id'] == uid
     assert admin.get_received() == []
     assert chat.operations
+
+
+@pytest.mark.parametrize(
+    'event,payload,service,method',
+    [
+        ('add_reaction', {'message_id': 3, 'emoji': '\U0001f44d'}, ChatService, 'add_reaction'),
+        ('remove_reaction', {'message_id': 3, 'emoji': '\U0001f44d'}, ChatService, 'remove_reaction'),
+        ('recall_message', {'message_id': 3}, ChatService, 'recall_message'),
+        ('pin_message', {'message_id': 3}, ChatService, 'pin_message'),
+        ('unpin_message', {'message_id': 3}, ChatService, 'unpin_message'),
+        ('mark_read', {}, ConversationService, 'mark_as_read'),
+        (
+            'update_conversation_settings',
+            {'settings': {'name': 'No update'}},
+            ConversationService,
+            'update_conversation_settings',
+        ),
+        (
+            'update_participant_settings',
+            {'user_id': 3, 'settings': {'nickname': 'No update'}},
+            ConversationService,
+            'update_participant_settings',
+        ),
+    ],
+)
+def test_socket_mutation_false_result_returns_503_without_broadcast(chat, monkeypatch, event, payload, service, method):
+    actor_uid = 3 if event == 'recall_message' else 1
+    actor, peer = chat.connect(actor_uid), chat.connect(1 if actor_uid == 3 else 3)
+    chat.join(actor, 2)
+    chat.join(peer, 2)
+    monkeypatch.setattr(service, method, lambda *args, **kwargs: False)
+
+    result = actor.emit(event, {'conversation_id': 2, **payload}, callback=True)
+
+    assert result['success'] is False and result['status'] == 503
+    assert [packet['name'] for packet in actor.get_received()] == ['error']
+    assert peer.get_received() == []
+    assert actor.is_connected()
+
+
+def test_socket_owner_cannot_change_own_role_after_manage_authorization(chat):
+    owner = chat.connect(1)
+    result = owner.emit(
+        'update_participant_settings',
+        {'conversation_id': 2, 'user_id': 1, 'settings': {'role': 'member'}},
+        callback=True,
+    )
+    assert result['success'] is False and result['status'] == 403
+    assert chat.operations == []
 
 
 @pytest.mark.parametrize(

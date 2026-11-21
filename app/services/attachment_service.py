@@ -1,6 +1,4 @@
 from io import BytesIO
-from pathlib import Path
-import re
 import secrets
 from typing import Any
 from zipfile import BadZipFile, ZipFile
@@ -11,27 +9,16 @@ from werkzeug.utils import secure_filename
 
 from app.uploads import image_bytes
 from app.validation import ValidationError, positive_int, required_text
+from . import attachment_storage
 from .base_service import BaseService
+from .chat_service import ChatService
 from .conversation_service import ChatAccessError, ConversationService, get_identity
 
 
 class AttachmentService(BaseService):
     @staticmethod
     def storage_path(storage_name):
-        if not isinstance(storage_name, str) or not re.fullmatch(r'[0-9a-f]{32}\.[a-z0-9]{2,5}', storage_name):
-            raise ValidationError('Đường dẫn tệp không hợp lệ')
-        root = Path(current_app.config.get('UPLOAD_ROOT') or Path(current_app.instance_path) / 'uploads').resolve()
-        directory = root / 'chat'
-        path = directory / storage_name
-        # Refuse symlinks and any configured chat directory escaping the private upload root.
-        if (
-            directory.is_symlink()
-            or path.is_symlink()
-            or path.resolve().parent != directory.resolve()
-            or directory.resolve().parent != root
-        ):
-            raise ValidationError('Đường dẫn tệp không hợp lệ')
-        return path
+        return attachment_storage.storage_path(storage_name)
 
     @staticmethod
     def prepare_upload(file) -> dict[str, Any]:
@@ -133,34 +120,7 @@ class AttachmentService(BaseService):
 
     @staticmethod
     def insert_attachment(cursor, message_id, attachment):
-        name = attachment.get('storage_name')
-        AttachmentService.storage_path(name)
-        cursor.execute(
-            """
-            INSERT INTO Attachments (message_id, file_url, file_name, file_type, file_size, mime_type, storage_name)
-            VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id
-        """,
-            (
-                message_id,
-                '',
-                attachment['file_name'],
-                attachment['file_type'],
-                attachment['file_size'],
-                attachment['mime_type'],
-                name,
-            ),
-        )
-        aid = cursor.fetchone().id
-        url = f'/api/chat/attachments/{aid}'
-        cursor.execute('UPDATE Attachments SET file_url = %s WHERE id = %s', (url, aid))
-        return {
-            'id': aid,
-            'file_url': url,
-            'file_name': attachment['file_name'],
-            'file_type': attachment['file_type'],
-            'file_size': attachment['file_size'],
-            'mime_type': attachment['mime_type'],
-        }
+        return attachment_storage.insert_attachment(cursor, message_id, attachment)
 
     @staticmethod
     def get_attachment(attachment_id, *, actor=None):
@@ -188,8 +148,6 @@ class AttachmentService(BaseService):
 
     @staticmethod
     def get_message_attachments(message_id, *, actor=None) -> list[dict[str, Any]]:
-        from .chat_service import ChatService
-
         actor = actor or get_identity()
         conn = AttachmentService.get_connection()
         try:
@@ -206,8 +164,6 @@ class AttachmentService(BaseService):
     @staticmethod
     def delete_attachments_by_message_id(message_id, app_root=None, *, actor=None) -> bool:
         # Deletion and recall share one DB transaction; physical cleanup happens after commit.
-        from .chat_service import ChatService
-
         actor = actor or get_identity()
         conn = AttachmentService.get_connection()
         cleanup = []
@@ -230,16 +186,8 @@ class AttachmentService(BaseService):
 
     @staticmethod
     def delete_records(cursor, message_id):
-        cursor.execute('DELETE FROM Attachments WHERE message_id = %s RETURNING storage_name', (message_id,))
-        return [row.storage_name for row in cursor.fetchall()]
+        return attachment_storage.delete_records(cursor, message_id)
 
     @staticmethod
     def cleanup_files(storage_names):
-        for name in storage_names:
-            if not name:
-                continue
-            try:
-                AttachmentService.storage_path(name).unlink(missing_ok=True)
-            except (OSError, ValidationError):
-                # The committed recall/download guard remains effective even if filesystem cleanup fails.
-                current_app.logger.exception('Could not remove a private chat attachment')
+        return attachment_storage.cleanup_files(storage_names)

@@ -1,0 +1,60 @@
+<dialog id="meshCallOverlay" class="mesh-call" aria-labelledby="meshCallTitle" aria-describedby="meshCallStatus" aria-hidden="true">
+    <div class="mesh-call-shell">
+        <header class="mesh-call-header">
+            <div class="mesh-call-heading">
+                <h2 id="meshCallTitle">Cuộc gọi nhóm</h2>
+                <p id="meshCallStatus" role="status" aria-live="polite"></p>
+            </div>
+            <button id="meshCallEnd" class="mesh-call-button mesh-call-end" type="button" aria-label="Kết thúc cuộc gọi nhóm">
+                <i class="fas fa-phone-slash" aria-hidden="true"></i><span>Kết thúc</span>
+            </button>
+        </header>
+        <p id="meshCallFeedback" class="mesh-call-feedback" role="status" aria-live="polite" hidden></p>
+        <div id="meshCallInviteActions" class="mesh-call-invite-actions" hidden>
+            <p>Tham gia để bật micro và camera theo loại cuộc gọi. Bạn có thể tắt chúng bất cứ lúc nào.</p>
+            <div class="mesh-call-invite-buttons">
+                <button id="meshCallReject" class="mesh-call-button" type="button">Từ chối</button>
+                <button id="meshCallAccept" class="mesh-call-button mesh-call-primary" type="button">Tham gia</button>
+            </div>
+        </div>
+        <div class="mesh-call-content">
+            <div id="meshCallGrid" class="mesh-call-grid" aria-label="Thành viên cuộc gọi nhóm"></div>
+            <section id="meshCallChatPanel" class="mesh-call-chat" aria-labelledby="meshCallChatTitle" hidden>
+                <div class="mesh-call-chat-heading">
+                    <h3 id="meshCallChatTitle">Tin nhắn trong cuộc gọi</h3>
+                    <button id="meshCallChatClose" class="mesh-call-button" type="button" aria-label="Đóng tin nhắn trong cuộc gọi">
+                        <i class="fas fa-xmark" aria-hidden="true"></i>
+                    </button>
+                </div>
+                <p class="mesh-call-chat-note">Tin nhắn chỉ dành cho thành viên đang tham gia cuộc gọi này.</p>
+                <div id="meshCallChatList" class="mesh-call-chat-list" role="log" aria-live="polite" aria-relevant="additions text"></div>
+                <div class="mesh-call-chat-compose">
+                    <label for="meshCallChatInput">Tin nhắn</label>
+                    <textarea id="meshCallChatInput" rows="2" maxlength="1000" placeholder="Nhập tin nhắn…" aria-describedby="meshCallChatHint"></textarea>
+                    <div class="mesh-call-chat-send-row">
+                        <span id="meshCallChatHint">Enter để gửi · Shift + Enter để&nbsp;xuống&nbsp;dòng</span>
+                        <button id="meshCallChatSend" class="mesh-call-button mesh-call-primary" type="button">Gửi</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <footer class="mesh-call-controls" aria-label="Điều khiển cuộc gọi nhóm">
+            <button id="meshCallMic" class="mesh-call-button" type="button" aria-pressed="false" disabled>
+                <i class="fas fa-microphone" aria-hidden="true"></i><span class="mesh-call-control-label">Bật micro</span>
+            </button>
+            <button id="meshCallCamera" class="mesh-call-button" type="button" aria-pressed="false" disabled>
+                <i class="fas fa-video" aria-hidden="true"></i><span class="mesh-call-control-label">Bật camera</span>
+            </button>
+            <button id="meshCallShare" class="mesh-call-button" type="button" aria-pressed="false" disabled>
+                <i class="fas fa-display" aria-hidden="true"></i><span class="mesh-call-control-label">Chia sẻ màn hình</span>
+            </button>
+            <button id="meshCallChatToggle" class="mesh-call-button" type="button" aria-expanded="false" aria-controls="meshCallChatPanel" disabled>
+                <i class="fas fa-comment" aria-hidden="true"></i><span>Tin nhắn</span>
+            </button>
+            <button id="meshCallPlayAudio" class="mesh-call-button" type="button" hidden>
+                <i class="fas fa-volume-high" aria-hidden="true"></i><span>Nghe âm thanh</span>
+            </button>
+        </footer>
+        <div id="meshCallAudioSinks" hidden></div>
+    </div>
+</dialog>

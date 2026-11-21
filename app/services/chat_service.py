@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 import psycopg2
 
 from app.validation import ValidationError, positive_int, required_text
+from . import attachment_storage
 from .base_service import BaseService
 from .conversation_service import ChatAccessError, ConversationService, emoji_value, get_identity, refresh_identity
 
@@ -114,9 +115,7 @@ class ChatService(BaseService):
                 row = cursor.fetchone()
                 attachments = []
                 if attachment is not None:
-                    from .attachment_service import AttachmentService
-
-                    attachments.append(AttachmentService.insert_attachment(cursor, row.id, attachment))
+                    attachments.append(attachment_storage.insert_attachment(cursor, row.id, attachment))
             conn.commit()
             return ChatService.success(
                 {
@@ -245,8 +244,6 @@ class ChatService(BaseService):
 
     @staticmethod
     def recall_message(message_id, user_id=None, *, actor=None) -> bool:
-        from .attachment_service import AttachmentService
-
         actor = actor or get_identity()
         if user_id is not None and user_id != actor.user_id:
             raise ChatAccessError()
@@ -262,7 +259,7 @@ class ChatService(BaseService):
                 updated = cursor.fetchone() is not None
                 cursor.execute('DELETE FROM PinnedMessages WHERE message_id = %s', (message_id,))
                 cursor.execute('DELETE FROM Reactions WHERE message_id = %s', (message_id,))
-                cleanup = AttachmentService.delete_records(cursor, message_id)
+                cleanup = attachment_storage.delete_records(cursor, message_id)
             conn.commit()
         except (ChatAccessError, ValidationError):
             conn.rollback()
@@ -273,13 +270,11 @@ class ChatService(BaseService):
             return False
         finally:
             conn.close()
-        AttachmentService.cleanup_files(cleanup)
+        attachment_storage.cleanup_files(cleanup)
         return updated
 
     @staticmethod
     def delete_session_messages(session_id, *, actor=None) -> bool:
-        from .attachment_service import AttachmentService
-
         actor = refresh_identity(actor) if actor is not None else get_identity()
         if not actor.is_admin:
             raise ChatAccessError()
@@ -303,7 +298,7 @@ class ChatService(BaseService):
             return False
         finally:
             conn.close()
-        AttachmentService.cleanup_files(cleanup)
+        attachment_storage.cleanup_files(cleanup)
         return True
 
     @staticmethod

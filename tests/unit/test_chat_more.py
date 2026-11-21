@@ -11,6 +11,7 @@ import pytest
 from werkzeug.datastructures import FileStorage
 
 from app.database import CaseInsensitiveRecord
+from app.services import attachment_storage
 from app.services.attachment_service import AttachmentService
 from app.services.auth_service import AuthService
 from app.services.base_service import BaseService
@@ -83,7 +84,7 @@ def test_database_failures_roll_back_return_safe_failure_and_never_cleanup_commi
 ):
     fake_db.cursor.execute.side_effect = psycopg2.OperationalError('private connection detail')
     cleanup = Mock()
-    monkeypatch.setattr(AttachmentService, 'cleanup_files', cleanup)
+    monkeypatch.setattr(attachment_storage, 'cleanup_files', cleanup)
     with app.app_context():
         result = invoke_mutation(operation)
     if isinstance(result, dict):
@@ -127,6 +128,90 @@ def test_service_user_arguments_cannot_impersonate_before_any_database_connectio
         for action in actions:
             with pytest.raises(ChatAccessError):
                 action()
+
+
+def test_search_users_returns_public_records_with_actor_bound_search_parameters(app, fake_db):
+    expected = [
+        {'id': 1, 'name': "O'Connor", 'avatar': None},
+        {'id': 2, 'name': 'Test Admin', 'avatar': '/static/images/default.jpg'},
+    ]
+    fake_db.cursor.fetchall.return_value = [CaseInsensitiveRecord(**row) for row in expected]
+    with app.app_context():
+        result = ConversationService.search_users(3, "  O'Connor  ", limit='2', actor=actor(3))
+    assert result == expected
+    assert all(type(row) is dict for row in result)
+    fake_db.cursor.execute.assert_called_once()
+    sql, params = fake_db.cursor.execute.call_args.args
+    assert params == (3, "%O'Connor%", "%O'Connor%", 2)
+    assert "O'Connor" not in sql
+    assert 'CustomerID != %s AND (FullName ILIKE %s OR Email ILIKE %s)' in sql
+    assert 'ORDER BY CustomerID LIMIT %s' in sql
+    fake_db.cursor.fetchall.assert_called_once()
+    fake_db.conn.commit.assert_not_called()
+    fake_db.conn.close.assert_called_once()
+
+
+def test_suggested_users_returns_public_records_with_actor_bound_exclusion(app, fake_db):
+    expected = [
+        {'id': 1, 'name': 'Test Customer', 'avatar': None},
+        {'id': 2, 'name': 'Test Admin', 'avatar': '/static/images/default.jpg'},
+    ]
+    fake_db.cursor.fetchall.return_value = [CaseInsensitiveRecord(**row) for row in expected]
+    with app.app_context():
+        result = ConversationService.get_suggested_users(3, actor=actor(3))
+    assert result == expected
+    assert all(type(row) is dict for row in result)
+    fake_db.cursor.execute.assert_called_once()
+    sql, params = fake_db.cursor.execute.call_args.args
+    assert params == (3,)
+    assert 'CustomerID AS id, FullName AS name, avatar_url AS avatar' in sql
+    assert 'WHERE CustomerID != %s ORDER BY CustomerID LIMIT 10' in sql
+    fake_db.cursor.fetchall.assert_called_once()
+    fake_db.conn.commit.assert_not_called()
+    fake_db.conn.close.assert_called_once()
+
+
+def test_direct_lookup_returns_pair_record_with_actor_bound_parameterized_query(app, fake_db):
+    record = CaseInsensitiveRecord(id=41)
+    fake_db.cursor.fetchone.return_value = record
+    with app.app_context():
+        result = ConversationService.get_direct_conversation(2, '3', actor=actor(2, admin=True))
+    assert result is record
+    assert result.id == 41
+    fake_db.cursor.execute.assert_called_once()
+    sql, params = fake_db.cursor.execute.call_args.args
+    assert params == (2, 3)
+    assert "c.type = 'private' AND p1.user_id = %s AND p2.user_id = %s" in sql
+    assert '(SELECT COUNT(*) FROM Participants WHERE conversation_id = c.id) = 2' in sql
+    fake_db.cursor.fetchone.assert_called_once()
+    fake_db.conn.commit.assert_not_called()
+    fake_db.conn.close.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'operation,invalid_error,denied_status',
+    [
+        ('search_users', ValidationError, 401),
+        ('get_suggested_users', ChatAccessError, 401),
+        ('get_direct_conversation', ValidationError, 403),
+    ],
+)
+def test_discovery_rejects_invalid_foreign_and_guest_callers_before_database(
+    app, monkeypatch, operation, invalid_error, denied_status
+):
+    connection = Mock(side_effect=AssertionError('Denied discovery caller must not connect to the database'))
+    monkeypatch.setattr(BaseService, 'get_connection', staticmethod(connection))
+    method = getattr(ConversationService, operation)
+    extra_args = {'search_users': ('customer',), 'get_suggested_users': (), 'get_direct_conversation': (3,)}[operation]
+    guest_uid = None if operation == 'get_suggested_users' else 1
+    with app.app_context():
+        for uid, identity in [(1, actor(2, admin=True)), (guest_uid, actor(None, guest_id='guest-discovery'))]:
+            with pytest.raises(ChatAccessError) as denied:
+                method(uid, *extra_args, actor=identity)
+            assert denied.value.status == denied_status
+        with pytest.raises(invalid_error):
+            method('1 OR 1=1', *extra_args, actor=actor())
+    connection.assert_not_called()
 
 
 def test_group_creation_validates_omitted_and_untrusted_members_and_creator_before_database(app):
@@ -173,7 +258,7 @@ def test_support_purge_rechecks_current_admin_role_before_any_write(app, fake_db
         lambda uid: CaseInsensitiveRecord(CustomerID=2, FullName='Demoted User', AuthVersion=1, Role='customer'),
     )
     cleanup = Mock()
-    monkeypatch.setattr(AttachmentService, 'cleanup_files', cleanup)
+    monkeypatch.setattr(attachment_storage, 'cleanup_files', cleanup)
     fake_db.cursor.fetchall.return_value = []
     with app.app_context(), pytest.raises(ChatAccessError) as denied:
         ChatService.delete_session_messages('own-ticket', actor=actor(2, admin=True, guest_id='own-ticket'))

@@ -75,7 +75,13 @@ def main():
                     continue
                 soup = BeautifulSoup(response.data, 'html.parser')
                 for index, script in enumerate(soup.find_all('script')):
-                    if script.get('src') or script.get('type', '') in {'application/json', 'text/template'}:
+                    if script.get('src') or script.get('type', '') in {
+                        'application/json',
+                        'application/ld+json',
+                        'text/template',
+                    }:
+                        if script.get('type') == 'application/ld+json':
+                            json.loads(script.get_text())
                         continue
                     extension = 'mjs' if script.get('type') == 'module' else 'js'
                     (destination / f'{actor}-{number}-{index}.{extension}').write_text(

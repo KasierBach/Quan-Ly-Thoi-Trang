@@ -1,6 +1,7 @@
 from flask import Blueprint, abort, jsonify, render_template, request, session
 
 from app.decorators import handle_db_errors, login_required
+from app.seo import catalog_metadata, product_metadata
 from app.services.feedback_service import FeedbackService
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
@@ -95,6 +96,21 @@ def products():
         in_stock_only=in_stock_only,
         paging=paging_data,
         sort=sort,
+        seo=catalog_metadata(
+            category_id,
+            search_result['current_page'],
+            per_page,
+            filtered=bool(
+                search_term
+                or min_price is not None
+                or max_price is not None
+                or color_id
+                or size_id
+                or in_stock_only
+                or sort != 'newest'
+            ),
+            empty=not search_result['total_records'],
+        ),
     )
 
 
@@ -121,20 +137,24 @@ def product_detail(product_id):
     viewed = [product_id] + [pid for pid in recent if type(pid) is int and pid > 0 and pid != product_id][:9]
     if session.get('recently_viewed') != viewed:
         session['recently_viewed'] = viewed
+    variant_rows = ProductService.get_product_variants(product_id)
     colors, sizes, variants_map = {}, {}, {}
-    for variant in ProductService.get_product_variants(product_id):
+    for variant in variant_rows:
         colors.setdefault(variant.ColorID, {'id': variant.ColorID, 'name': variant.ColorName})
         sizes.setdefault(variant.SizeID, {'id': variant.SizeID, 'name': variant.SizeName})
         variants_map[f'{variant.ColorID}_{variant.SizeID}'] = {
             'variant_id': variant.VariantID,
             'quantity': variant.Quantity,
         }
+    seo, structured_data = product_metadata(product, variant_rows)
     return render_template(
         'product_detail.html',
         product=product,
         colors=list(colors.values()),
         sizes=list(sizes.values()),
         variants=variants_map,
+        seo=seo,
+        structured_data=structured_data,
     )
 
 

@@ -2,24 +2,15 @@ import decimal
 
 from flask import Flask, abort, jsonify, render_template, request, session, url_for
 from flask.json.provider import DefaultJSONProvider
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-from flask_mail import Mail
-from flask_socketio import SocketIO
-from flask_wtf.csrf import CSRFError, CSRFProtect
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config, database_urls, validate_config
 from .database import db, init_db_pool
+from .extensions import csrf, limiter, mail, socketio
 from .formatting import format_money
 from .utils import resolve_image
-
-
-socketio = SocketIO(async_mode='threading')
-limiter = Limiter(key_func=get_remote_address)
-mail = Mail()
-csrf = CSRFProtect()
 
 
 class CustomJSONProvider(DefaultJSONProvider):
@@ -45,6 +36,11 @@ def create_app(config_class=None):
     validate_config(app.config)
     app.json = CustomJSONProvider(app)
 
+    from .http_assets import init_http_assets
+
+    # after_request runs in reverse: private/security hooks must run first.
+    init_http_assets(app)
+
     proxy_count = app.config.get('TRUSTED_PROXY_COUNT', 0)
     if proxy_count:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_count, x_proto=proxy_count, x_host=proxy_count)
@@ -53,6 +49,8 @@ def create_app(config_class=None):
     mail.init_app(app)
     csrf.init_app(app)
     socket_options = {}
+    if app.config.get('SOCKETIO_MESSAGE_QUEUE'):
+        socket_options['message_queue'] = app.config['SOCKETIO_MESSAGE_QUEUE']
     if app.config.get('ALLOWED_ORIGINS') is not None:
         socket_options['cors_allowed_origins'] = app.config['ALLOWED_ORIGINS']
     socketio.init_app(app, **socket_options)
@@ -107,7 +105,7 @@ def create_app(config_class=None):
     def revalidate_session():
         if not session.get('user_id') or not app.config.get('SESSION_REVALIDATION_ENABLED', True):
             return None
-        if request.endpoint in {'static', 'main.health_live'}:
+        if request.endpoint in {'static', 'main.health_live', 'main.robots_txt', 'main.sitemap_xml'}:
             return None
         from app.services.auth_service import AuthService
 
@@ -181,9 +179,12 @@ def create_app(config_class=None):
     from .routes.cart import cart_bp
     from .routes.chat import chat_bp
     from .routes.main import main_bp
+    from .routes.oauth import init_oauth, oauth_bp
     from .routes.product import product_bp
+    from .routes.shipping import shipping_bp
 
-    for blueprint in (auth_bp, main_bp, product_bp, cart_bp, admin_bp, chat_bp):
+    init_oauth(app)
+    for blueprint in (auth_bp, main_bp, product_bp, cart_bp, admin_bp, chat_bp, oauth_bp, shipping_bp):
         app.register_blueprint(blueprint)
 
     @app.errorhandler(CSRFError)

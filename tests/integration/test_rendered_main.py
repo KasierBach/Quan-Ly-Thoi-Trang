@@ -199,7 +199,7 @@ def _scripts(app, client, soup, page, assets):
     for index, element in enumerate(soup.find_all('script')):
         kind = element.get('type', '').lower().strip()
         if kind not in CLASSIC_TYPES | {'module'}:
-            if kind == 'application/json' or element.get('id') == 'chart-data':
+            if kind in {'application/json', 'application/ld+json'} or element.get('id') == 'chart-data':
                 json.loads(element.get_text())
             continue
         source = element.get_text()

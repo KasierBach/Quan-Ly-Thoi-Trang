@@ -34,6 +34,33 @@ ALTER TABLE Customers ADD COLUMN IF NOT EXISTS last_seen TIMESTAMP;
 ALTER TABLE Customers ADD COLUMN IF NOT EXISTS role VARCHAR(50) DEFAULT 'customer';
 ALTER TABLE Customers ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 1;
 
+-- Phase 5 OAuth compatibility (schema only; no live application here).
+-- NULL explicitly disables password authentication; never a dummy password.
+ALTER TABLE Customers ALTER COLUMN Password DROP NOT NULL;
+CREATE TABLE IF NOT EXISTS OAuthIdentities (
+    identity_id BIGSERIAL PRIMARY KEY,
+    customer_id INTEGER NOT NULL REFERENCES Customers(CustomerID) ON DELETE CASCADE,
+    provider VARCHAR(20) NOT NULL CHECK (provider IN ('google', 'github')),
+    issuer VARCHAR(255) NOT NULL,
+    subject VARCHAR(255) NOT NULL CHECK (length(subject) > 0),
+    email VARCHAR(254) NOT NULL,
+    email_verified BOOLEAN NOT NULL CHECK (email_verified IS TRUE),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (provider, issuer, subject),
+    UNIQUE (customer_id, provider),
+    CHECK ((provider = 'google' AND issuer = 'https://accounts.google.com')
+        OR (provider = 'github' AND issuer = 'https://github.com'))
+);
+-- Server one-use state + temporary PKCE material, never provider tokens/secrets.
+CREATE TABLE IF NOT EXISTS OAuthStates (
+    state_digest CHAR(64) PRIMARY KEY CHECK (state_digest ~ '^[0-9a-f]{64}$'),
+    binding_digest CHAR(64) NOT NULL CHECK (binding_digest ~ '^[0-9a-f]{64}$'),
+    purpose VARCHAR(20) NOT NULL CHECK (purpose IN ('authorization', 'reauth')),
+    auth_data JSONB NOT NULL CHECK (jsonb_typeof(auth_data) = 'object'),
+    expires_at TIMESTAMPTZ NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_oauth_states_expiry ON OAuthStates (expires_at);
+
 CREATE TABLE IF NOT EXISTS Products (
     ProductID SERIAL PRIMARY KEY,
     ProductName VARCHAR(255) NOT NULL,

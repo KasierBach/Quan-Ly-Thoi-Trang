@@ -7,8 +7,9 @@
 - Catalog: tìm kiếm, gợi ý tìm kiếm, lọc/sắp xếp/phân trang, biến thể size–màu và tồn kho.
 - Giỏ hàng phiên, wishlist tài khoản, đặt đơn COD, thông tin người nhận, lịch sử và trạng thái đơn.
 - Admin: quản lý sản phẩm/biến thể, cập nhật đơn, xem khách hàng, phản hồi/ẩn bình luận, biểu đồ và CSV.
-- Chat: tin nhắn lưu DB, chat hỗ trợ với credential do server ký, cuộc trò chuyện tài khoản, file đính kèm riêng tư.
-- WebRTC một-một là phần thử nghiệm; không có group conferencing, livestream nhiều người hay bảo đảm kết nối trên mọi mạng.
+- Chat: tin nhắn lưu DB, chat hỗ trợ với credential do server ký, cuộc trò chuyện tài khoản, file đính kèm riêng tư và Redis room publication được kiểm chứng ở phạm vi hẹp.
+- WebRTC một-một và mesh nhóm nhỏ tối đa bốn người là tính năng thử nghiệm. Browser test dùng thiết bị giả/local ICE; không bảo đảm TURN, NAT hay kết nối trên mọi mạng. Không có livestream phát một-nhiều.
+- OAuth Google/GitHub login + liên kết tài khoản có triển khai disabled-safe, nhưng chưa smoke với provider thật do không có client credentials. Bản đồ đơn hàng là vị trí địa chỉ ước tính; network geocoding mặc định tắt và không phải carrier tracking.
 
 **Chưa tích hợp:** thanh toán online, mã giảm giá thực, hãng vận chuyển/tracking trực tiếp, gửi newsletter tự động, mobile app, AI recommendations. Biểu đồ “doanh thu đã giao” tính giá trị đơn `Delivered`, theo ngày đặt; không phải sổ kế toán hoặc bằng chứng thanh toán.
 
@@ -48,7 +49,7 @@ Compose tạo PostgreSQL local, chạy bootstrap khi volume còn trống và exp
 docker compose -p thua2-main-local up -d --build --wait
 ```
 
-Chuỗi mật khẩu dùng trong URI cần URL-encode nếu có ký tự đặc biệt. DB không publish ra mạng. Image chạy non-root, Gunicorn `gthread` một worker và có health check `/health/live`; `/health/ready` kiểm DB. Multi-worker Socket.IO cần shared message queue/session configuration riêng, chưa được tự động triển khai ở đây.
+Chuỗi mật khẩu dùng trong URI cần URL-encode nếu có ký tự đặc biệt. DB không publish ra mạng. Image chạy non-root, Gunicorn `gthread` một worker và có health check `/health/live`; `/health/ready` kiểm DB. Stack chính vẫn single-instance. `docker-compose.scale.yml` là topology kiểm thử local riêng với hai instance một-worker, Nginx sticky và Redis; chỉ persisted numeric-message delivery đã được chứng minh cross-worker. Call/presence/generation/cache invalidation và nhiều event family vẫn process-local hoặc chưa chứng nhận; xem `docs/LOAD_TESTING.md`.
 
 ## Bộ kiểm chứng
 
@@ -97,4 +98,4 @@ Seed additive chỉ chấp nhận DB test; tài khoản `customer@example.test`,
 - Cookie-based cart không được quảng cáo là giỏ multi-tab/server-side đồng bộ. Background reads không được ghi lại cookie cũ; sửa race có regression và E2E.
 - Render/Vercel config chỉ là cấu hình chưa deploy. Vercel serverless không đảm bảo Socket.IO long-lived; cần môi trường phù hợp trước khi nhận triển khai real-time.
 
-Kết quả audit, commands, số test/coverage và giới hạn E2E cập nhật trong `docs/MAIN_REMEDIATION.md`; không suy ra production readiness chỉ từ test xanh.
+Kết quả remediation đã push vẫn ở `docs/MAIN_REMEDIATION.md`. Phần mở rộng hiện tại, số aggregate mới, OAuth/map/mesh/Redis/load evidence và giới hạn nằm trong `docs/MAIN_EXPANSION.md`, `docs/LOAD_TESTING.md` và `docs/SECURITY_REVIEW.md`. Không suy ra production readiness chỉ từ test xanh; các thay đổi expansion vẫn local/uncommitted nếu chưa được commit/push riêng.

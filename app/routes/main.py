@@ -1,14 +1,56 @@
 from datetime import datetime
 
-from flask import Blueprint, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, Response, current_app, flash, jsonify, redirect, render_template, request, url_for
 
 from app.decorators import handle_db_errors
+from app.seo import (
+    PRIVATE_PATHS,
+    default_metadata,
+    metadata_response_headers,
+    public_base_url,
+    public_url,
+    sitemap_document,
+)
 from app.services.main_service import MainService
 from app.services.product_service import ProductService
 from app.validation import ValidationError, email_address
 
 
 main_bp = Blueprint('main', __name__)
+main_bp.app_context_processor(default_metadata)
+main_bp.after_app_request(metadata_response_headers)
+
+
+@main_bp.route('/robots.txt')
+def robots_txt():
+    # No templates, categories, or database reads are needed for this endpoint.
+    lines = ['User-agent: *', 'Allow: /'] + [f'Disallow: {path}' for path in PRIVATE_PATHS]
+    sitemap_url = public_url('main.sitemap_xml')
+    if sitemap_url:
+        lines.extend(['', f'Sitemap: {sitemap_url}'])
+    response = Response('\n'.join(lines) + '\n', content_type='text/plain; charset=utf-8')
+    response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
+
+
+@main_bp.route('/sitemap.xml')
+def sitemap_xml():
+    base = public_base_url()
+    try:
+        if not base:
+            raise ValueError('Public base URL is not configured')
+        if request.args:
+            return Response('Unsupported sitemap query.\n', status=400, content_type='text/plain; charset=utf-8')
+        body = sitemap_document(base, ProductService.get_sitemap_entries())
+    except Exception as exc:
+        current_app.logger.warning('Public sitemap unavailable (%s)', type(exc).__name__)
+        response = Response('Sitemap temporarily unavailable.\n', status=503, content_type='text/plain; charset=utf-8')
+        response.headers['Cache-Control'] = 'no-store'
+        response.headers['Retry-After'] = '300'
+        return response
+    response = Response(body, content_type='application/xml; charset=utf-8')
+    response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
 
 
 @main_bp.route('/')

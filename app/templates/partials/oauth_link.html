@@ -1,0 +1,37 @@
+<section id="oauth-identities" class="card shadow-sm border-0 mt-4" aria-labelledby="oauth-link-heading">
+    <div class="card-body">
+        <h5 id="oauth-link-heading">Liên kết đăng nhập</h5>
+        <p class="small text-muted">Liên kết chỉ được thêm sau khi bạn xác thực lại và xác nhận biểu mẫu. Email trùng nhau không tự liên kết tài khoản.</p>
+        {% if not oauth_links_available %}
+        <p class="small text-muted">Đăng nhập với nhà cung cấp chưa khả dụng. Bạn vẫn có thể dùng mật khẩu như bình thường.</p>
+        {% endif %}
+        {% set linked = oauth_identities|map(attribute='provider')|list %}
+        {% if 'google' in linked and oauth_links_available %}
+        <form action="{{ url_for('oauth.reauth', provider='google') }}" method="post" class="mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="auth_version" value="{{ session.get('auth_version') }}">
+            <button type="submit" class="btn btn-outline-secondary btn-sm">Xác thực lại với Google đã liên kết</button>
+            <p class="form-text">Nếu Google không trả về xác thực mới, dùng mật khẩu hiện tại. Xác thực lại chỉ có hiệu lực cho một biểu mẫu trong 5 phút.</p>
+        </form>
+        {% endif %}
+        {% for provider in oauth_providers %}
+        {% if provider.enabled and oauth_links_available %}
+        <form action="{{ url_for('oauth.unlink' if provider.name in linked else 'oauth.link', provider=provider.name) }}"
+              method="post" class="border rounded p-3 mb-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="auth_version" value="{{ session.get('auth_version') }}">
+            <p class="mb-2">{{ provider.label }} — {{ 'đã liên kết' if provider.name in linked else 'chưa liên kết' }}</p>
+            <label for="oauth-password-{{ provider.name }}" class="form-label">Mật khẩu hiện tại</label>
+            <input id="oauth-password-{{ provider.name }}" name="current_password" type="password" maxlength="128"
+                   autocomplete="current-password" class="form-control mb-2" aria-describedby="oauth-reauth-help">
+            <button type="submit" class="btn btn-outline-{{ 'danger' if provider.name in linked else 'primary' }} btn-sm">
+                {{ 'Xác nhận gỡ liên kết' if provider.name in linked else 'Xác nhận liên kết' }} {{ provider.label }}
+            </button>
+        </form>
+        {% else %}
+        <button type="button" class="btn btn-outline-secondary btn-sm mb-2" disabled aria-disabled="true">{{ provider.label }} — chưa khả dụng</button>
+        {% endif %}
+        {% endfor %}
+        <p id="oauth-reauth-help" class="small text-muted mb-0">Bạn có thể để trống mật khẩu chỉ sau khi xác thực lại với Google đã liên kết. Không thể gỡ cách đăng nhập cuối cùng nếu chưa có mật khẩu. Tài khoản chỉ có GitHub cần <a href="{{ url_for('auth.forgot_password') }}">thiết lập mật khẩu qua khôi phục tài khoản</a> trước khi thay đổi liên kết.</p>
+    </div>
+</section>

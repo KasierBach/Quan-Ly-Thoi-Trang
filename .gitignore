@@ -60,6 +60,7 @@ thua-2.0.rar
 
 # Local audit and test artifacts
 .gitnexus/
+.codegraph/
 node_modules/
 .coverage*
 htmlcov/
@@ -69,6 +70,12 @@ artifacts/
 instance/
 playwright-report/
 test-results/
+
+# Local agent tooling and resolver state (generated, never tracked)
+.claude/
+CLAUDE.md
+AGENTS.md
+uv.lock
 
 # Legacy uploaded blobs (runtime data, never tracked)
 app/static/uploads/

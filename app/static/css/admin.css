@@ -1,5 +1,5 @@
 /* Admin Styles */
-:root {
+.admin-page > .main-content {
     --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
     --warning-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
@@ -63,14 +63,7 @@
     border-radius: 0 10px 10px 0;
 }
 
-.admin-sidebar {
-    min-height: calc(100vh - 56px - 300px);
-}
-
-.main-content {
-    height: calc(100vh - 56px);
-    overflow-y: auto;
-}
+/* Layout and theme are supplied by admin-theme.css. */
 
 /* Stats Cards */
 .stats-card {
@@ -110,28 +103,6 @@
     overflow: hidden;
 }
 
-.page-header::before {
-    content: '';
-    position: absolute;
-    top: -50%;
-    right: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, transparent 70%);
-    animation: float 6s ease-in-out infinite;
-}
-
-@keyframes float {
-
-    0%,
-    100% {
-        transform: translateY(0px) rotate(0deg);
-    }
-
-    50% {
-        transform: translateY(-20px) rotate(180deg);
-    }
-}
 
 .date-filter-card {
     background: white;
@@ -216,13 +187,9 @@
     font-size: 1.8rem;
     font-weight: 700;
     margin-bottom: 10px;
-    background: linear-gradient(45deg, #667eea, #764ba2);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    color: var(--admin-text);
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
 }
 
 .trend-indicator {
@@ -500,162 +467,7 @@
     margin-bottom: 20px;
 }
 
-/* Chat Dashboard Styles */
-.admin-chat-container {
-    display: flex;
-    height: calc(100vh - 56px);
-    background: #f8f9fa;
-    overflow: hidden;
-}
-
-.chat-sidebar {
-    width: 350px;
-    background: white;
-    border-right: 1px solid #dee2e6;
-    display: flex;
-    flex-direction: column;
-}
-
-.chat-main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    background: #f0f2f5;
-}
-
-.sidebar-header {
-    padding: 15px;
-    border-bottom: 1px solid #dee2e6;
-    background: #fff;
-}
-
-.conversation-list {
-    flex: 1;
-    overflow-y: auto;
-}
-
-.conversation-item {
-    padding: 15px;
-    border-bottom: 1px solid #f1f1f1;
-    cursor: pointer;
-    transition: background-color 0.2s;
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.conversation-item:hover,
-.conversation-item.active {
-    background-color: #e9ecef;
-}
-
-.avatar {
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #FF6B6B 0%, #EE4D2D 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.2rem;
-}
-
-.conv-info {
-    flex: 1;
-    overflow: hidden;
-}
-
-.conv-name {
-    font-weight: 600;
-    margin-bottom: 2px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.conv-preview {
-    font-size: 0.85rem;
-    color: #6c757d;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.chat-header {
-    padding: 15px 20px;
-    background: white;
-    border-bottom: 1px solid #dee2e6;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.chat-messages {
-    flex: 1;
-    padding: 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.message {
-    max-width: 60%;
-    padding: 10px 15px;
-    border-radius: 15px;
-    position: relative;
-    word-wrap: break-word;
-}
-
-.message.user {
-    align-self: flex-start;
-    background: white;
-    border-bottom-left-radius: 2px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-}
-
-.message.admin {
-    align-self: flex-end;
-    background: #0084ff;
-    color: white;
-    border-bottom-right-radius: 2px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-}
-
-.message-time {
-    font-size: 0.7rem;
-    margin-top: 4px;
-    opacity: 0.7;
-    text-align: right;
-}
-
-.chat-input-area {
-    padding: 20px;
-    background: white;
-    border-top: 1px solid #dee2e6;
-    display: flex;
-    gap: 10px;
-}
-
-.empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    height: 100%;
-    color: #6c757d;
-}
-
-.status-dot {
-    width: 10px;
-    height: 10px;
-    background: #28a745;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 5px;
-}
+/* Messaging surfaces are owned by the chat stylesheets, not admin CSS. */
 
 .variants-table th,
 .variants-table td {

@@ -127,13 +127,17 @@ ON CONFLICT (SubscriberID) DO NOTHING;
 
 INSERT INTO Conversations (id, type, name, created_by, created_at, updated_at) VALUES
     (1, 'support', 'Synthetic Support', 1, TIMESTAMP '2026-04-05 10:00:00', TIMESTAMP '2026-04-05 10:00:00'),
-    (2, 'private', 'Synthetic Private', 1, TIMESTAMP '2026-04-05 10:00:00', TIMESTAMP '2026-04-05 10:00:00')
+    (2, 'private', 'Synthetic Private', 1, TIMESTAMP '2026-04-05 10:00:00', TIMESTAMP '2026-04-05 10:00:00'),
+    (3, 'group', 'Synthetic Small Group', 1, TIMESTAMP '2026-04-05 10:00:00', TIMESTAMP '2026-04-05 10:00:00')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO Participants (id, conversation_id, user_id, role, joined_at) VALUES
     (1, 1, 1, 'owner', TIMESTAMP '2026-04-05 10:00:00'),
     (2, 1, 2, 'admin', TIMESTAMP '2026-04-05 10:00:00'),
     (3, 2, 1, 'owner', TIMESTAMP '2026-04-05 10:00:00'),
-    (4, 2, 3, 'member', TIMESTAMP '2026-04-05 10:00:00')
+    (4, 2, 3, 'member', TIMESTAMP '2026-04-05 10:00:00'),
+    (5, 3, 1, 'admin', TIMESTAMP '2026-04-05 10:00:00'),
+    (6, 3, 2, 'member', TIMESTAMP '2026-04-05 10:00:00'),
+    (7, 3, 3, 'member', TIMESTAMP '2026-04-05 10:00:00')
 ON CONFLICT (id) DO NOTHING;
 INSERT INTO Messages
     (id, sender_type, content, session_id, user_id, conversation_id, created_at)
