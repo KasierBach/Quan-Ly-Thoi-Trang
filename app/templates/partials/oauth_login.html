@@ -1,17 +1,26 @@
-<section class="mt-4 border-top pt-3" aria-labelledby="oauth-login-heading">
-    <h4 id="oauth-login-heading" class="h6 text-center">Hoặc đăng nhập bằng</h4>
+<section class="mt-2" aria-labelledby="oauth-login-heading">
+    <h4 id="oauth-login-heading" class="auth-divider h6">Hoặc đăng nhập bằng</h4>
     <div class="d-grid gap-2">
         {% for provider in oauth_providers %}
         {% if provider.enabled %}
         <form action="{{ url_for('oauth.login', provider=provider.name) }}" method="post" class="d-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit" class="btn btn-outline-secondary">Đăng nhập với {{ provider.label }}</button>
+            <button type="submit" class="btn btn-outline-secondary">
+                <i class="{{ 'fab fa-google' if provider.name == 'google' else 'fab fa-github' }}"
+                   aria-hidden="true"></i>Đăng nhập với {{ provider.label }}
+            </button>
         </form>
         {% else %}
         <button type="button" class="btn btn-outline-secondary" disabled aria-disabled="true"
-                aria-describedby="oauth-unavailable">{{ provider.label }} — chưa được cấu hình</button>
+                aria-describedby="oauth-unavailable">
+            <i class="{{ 'fab fa-google' if provider.name == 'google' else 'fab fa-github' }}"
+               aria-hidden="true"></i>{{ provider.label }} — chưa được cấu hình
+        </button>
         {% endif %}
         {% endfor %}
     </div>
-    <p id="oauth-unavailable" class="small text-muted mt-2 mb-0">Nếu email đã có tài khoản, hãy đăng nhập bằng mật khẩu rồi liên kết trong trang tài khoản.</p>
+    <p id="oauth-unavailable" class="small text-muted mt-2 mb-0">
+        <i class="fas fa-circle-info me-1" aria-hidden="true"></i>Nếu email đã có tài khoản, hãy đăng nhập bằng mật
+        khẩu rồi liên kết trong trang tài khoản.
+    </p>
 </section>

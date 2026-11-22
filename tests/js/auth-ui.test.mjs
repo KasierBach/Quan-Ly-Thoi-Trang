@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { initConfirmMatch, initEyeToggles, initSubmitFeedback } from '../../app/static/js/auth/auth_ui.js';
+import { initConfirmMatch, initEyeToggles, initPasswordPattern, initSubmitFeedback } from '../../app/static/js/auth/auth_ui.js';
 
 class FakeElement {
     constructor(tag, attributes = {}) {
@@ -13,6 +13,7 @@ class FakeElement {
         this.type = '';
         this.disabled = false;
         this.textContent = '';
+        this.focusCalls = 0;
         this.parentElement = null;
         this.children = [];
         this.listeners = new Map();
@@ -34,6 +35,8 @@ class FakeElement {
 
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
 
+    focus() { this.focusCalls += 1; }
+
     setCustomValidity(message) {
         this.customMessage = message;
         this.validity = { customError: Boolean(message) };
@@ -50,6 +53,15 @@ class FakeElement {
 
     querySelectorAll(selector) {
         return [...this.descendants()].filter((el) => matchesSelector(el, selector));
+    }
+
+    closest(selector) {
+        let node = this.parentElement;
+        while (node) {
+            if (matchesSelector(node, selector)) return node;
+            node = node.parentElement;
+        }
+        return null;
     }
 
     addEventListener(type, listener) {
@@ -202,4 +214,57 @@ test('submit feedback ignores repeated submits while disabled', () => {
     form.dispatch('submit');
     assert.equal(button.disabled, true);
     assert.equal(icon.classes.size, 3); // fas + fa-spinner + fa-spin-pulse, original removed once
+});
+
+test('password pattern shows live hint and blocks weak submits', () => {
+    const shell = new FakeElement('div');
+    const icon = new FakeElement('i', { 'data-btn-icon': 'fa-key' });
+    icon.classes.add('fas', 'fa-key');
+    const button = new FakeElement('button', { type: 'submit' });
+    button.children.push(icon);
+    const password = new FakeElement('input', {
+        id: 'password', name: 'password', 'data-pattern-message': 'Mật khẩu yếu.',
+        'data-password-pattern': `^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}$`,
+    });
+    password.type = 'password';
+    const hint = new FakeElement('div', { 'data-pattern-hint': '' });
+    const form = new FakeElement('form', { 'data-auth-loading': '' });
+    form.children.push(password, hint, button);
+    password.parentElement = form;
+    hint.parentElement = form;
+    button.parentElement = form;
+    shell.children.push(form);
+
+    initPasswordPattern(shell);
+
+    password.value = 'weak';
+    password.dispatch('input');
+    assert.equal(hint.dataset.state, 'err');
+    assert.equal(hint.textContent, 'Mật khẩu yếu.');
+
+    password.value = 'StrongPass1';
+    password.dispatch('input');
+    assert.equal(hint.dataset.state, 'ok');
+    assert.equal(hint.textContent, 'Mật khẩu đạt yêu cầu.');
+
+    // Weak value again, then a submit attempt is prevented and refocused.
+    password.value = 'weakpass';
+    password.dispatch('input');
+    let prevented = false;
+    form.addEventListener('submit', () => {});
+    const submitListeners = form.listeners.get('submit');
+    // The pattern guard registered its listener first; invoke every listener with a cancellable event.
+    for (const listener of [...submitListeners]) {
+        listener({ preventDefault() { prevented = true; } });
+    }
+    assert.equal(prevented, true);
+    assert.equal(hint.dataset.state, 'err');
+
+    password.value = 'StrongPass1';
+    password.dispatch('input');
+    prevented = false;
+    for (const listener of [...submitListeners]) {
+        listener({ preventDefault() { prevented = true; } });
+    }
+    assert.equal(prevented, false);
 });

@@ -65,12 +65,41 @@ export function initConfirmMatch(shell) {
     password.addEventListener('input', sync);
 }
 
+// Client-side password rule (reset flow): live hint + submit guard, replacing
+// the former alert() with an inline hint near the field.
+export function initPasswordPattern(shell) {
+    const input = shell.querySelector('[data-password-pattern]');
+    if (!input) return;
+    const pattern = new RegExp(input.getAttribute('data-password-pattern'));
+    const message = input.getAttribute('data-pattern-message') || 'Mật khẩu chưa đạt yêu cầu.';
+    const form = input.closest('form');
+    const hint = shell.querySelector('[data-pattern-hint]');
+
+    const sync = () => {
+        const value = input.value;
+        const ok = pattern.test(value);
+        if (hint) {
+            hint.dataset.state = ok ? 'ok' : (value ? 'err' : '');
+            hint.textContent = ok ? 'Mật khẩu đạt yêu cầu.' : (value ? message : '');
+        }
+    };
+    input.addEventListener('input', sync);
+    form.addEventListener('submit', (event) => {
+        if (!pattern.test(input.value)) {
+            event.preventDefault();
+            sync();
+            input.focus();
+        }
+    });
+}
+
 function initAuthUi() {
     const shell = document.querySelector('.auth-shell');
     if (!shell) return;
     initEyeToggles(shell);
     initSubmitFeedback(shell, window);
     initConfirmMatch(shell);
+    initPasswordPattern(shell);
 }
 
 // Module scripts run after parsing; only auto-init inside a browser document.

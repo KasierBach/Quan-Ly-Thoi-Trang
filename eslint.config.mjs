@@ -9,5 +9,5 @@ export default [
         languageOptions: { globals: { ...globals.browser, bootstrap: 'readonly', Chart: 'readonly', io: 'readonly', $: 'readonly' } },
         rules: { 'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_', varsIgnorePattern: '^_' }] }
     },
-    { files: ['tools/*.mjs', 'tests/js/*.mjs'], languageOptions: { globals: globals.node } },
+    { files: ['tools/*.mjs', 'tests/js/*.mjs'], languageOptions: { globals: { ...globals.node, document: 'readonly' } } },
 ];

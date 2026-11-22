@@ -9,59 +9,67 @@
 {% endblock %}
 
 {% block content %}
-<div class="container py-5">
+<div class="container py-4 py-lg-5">
     <div class="row justify-content-center">
-        <div class="col-md-7 col-lg-5">
-            <div class="auth-card auth-shell">
-                <div class="auth-brand">
-                    <div class="auth-brand-mark"><i class="fas fa-bag-shopping" aria-hidden="true"></i></div>
-                    <div class="small fw-semibold opacity-75">Fashion Store</div>
-                    <h1>Đăng nhập</h1>
-                    <p>Chào mừng bạn trở lại cửa hàng thời trang của chúng tôi</p>
-                </div>
-                <div class="card-body p-4 p-md-4">
-                    <form action="{{ url_for('auth.login') }}" method="post" data-auth-loading>
-                        <input type="hidden" name="next" value="{{ next_page or '' }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email</label>
-                            <div class="input-group auth-input-group">
-                                <span class="input-group-text"><i class="fas fa-envelope" aria-hidden="true"></i></span>
-                                <input type="email" class="form-control" id="email" name="email" required
-                                       autocomplete="email" spellcheck="false">
-                            </div>
+        <div class="col-12 col-lg-10 col-xl-9">
+            <div class="auth-shell">
+                {% include 'partials/auth_aside.html' %}
+                <div class="auth-main">
+                    <div class="auth-main-inner">
+                        <div class="auth-heading">
+                            <span class="auth-eyebrow"><i class="fas fa-right-to-bracket" aria-hidden="true"></i>Khu
+                                vực thành viên</span>
+                            <h1>Đăng nhập</h1>
+                            <p>Đăng nhập để mua sắm, lưu sản phẩm yêu thích và theo dõi đơn hàng của bạn.</p>
                         </div>
-                        <div class="mb-2">
-                            <label for="password" class="form-label">Mật khẩu</label>
-                            <div class="input-group auth-input-group auth-has-eye">
-                                <span class="input-group-text"><i class="fas fa-lock" aria-hidden="true"></i></span>
-                                <input type="password" class="form-control" id="password" name="password" required
-                                       autocomplete="current-password">
-                                <button type="button" class="auth-eye" data-eye aria-pressed="false"
-                                        aria-label="Hiện mật khẩu">
-                                    <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
+                        <form action="{{ url_for('auth.login') }}" method="post" data-auth-loading>
+                            <input type="hidden" name="next" value="{{ next_page or '' }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <div class="auth-control">
+                                    <i class="fas fa-envelope auth-field-icon" aria-hidden="true"></i>
+                                    <input type="email" class="form-control" id="email" name="email" required
+                                           autocomplete="email" spellcheck="false">
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="password" class="form-label">Mật khẩu</label>
+                                <div class="auth-control has-eye">
+                                    <i class="fas fa-lock auth-field-icon" aria-hidden="true"></i>
+                                    <input type="password" class="form-control" id="password" name="password" required
+                                           autocomplete="current-password">
+                                    <button type="button" class="auth-eye" data-eye aria-pressed="false"
+                                            aria-label="Hiện mật khẩu">
+                                        <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <small class="form-text text-muted">
+                                    <i class="fas fa-clock" aria-hidden="true"></i>
+                                    Phiên đăng nhập có thời hạn 12 giờ.
+                                </small>
+                            </div>
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-auth-primary">
+                                    <i class="fas fa-right-to-bracket" aria-hidden="true"
+                                       data-btn-icon="fa-right-to-bracket"></i>
+                                    <span class="ms-1">Đăng nhập</span>
                                 </button>
                             </div>
+                        </form>
+                        {% include 'partials/oauth_login.html' %}
+                        <div class="auth-links mt-4">
+                            <p class="auth-link-muted mb-0">Chưa có tài khoản?
+                                <a href="{{ url_for('auth.register') }}">
+                                    <i class="fas fa-user-plus" aria-hidden="true"></i>Đăng ký ngay
+                                </a>
+                            </p>
+                            <a href="{{ url_for('auth.forgot_password') }}">
+                                <i class="fas fa-key" aria-hidden="true"></i>Quên mật khẩu?
+                            </a>
                         </div>
-                        <div class="mb-3">
-                            <small class="form-text text-muted">
-                                <i class="fas fa-clock" aria-hidden="true"></i>
-                                Phiên đăng nhập có thời hạn 12 giờ.
-                            </small>
-                        </div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-auth-primary">
-                                <i class="fas fa-sign-in-alt" aria-hidden="true" data-btn-icon="fa-sign-in-alt"></i>
-                                <span class="ms-1">Đăng nhập</span>
-                            </button>
-                        </div>
-                    </form>
-                    {% include 'partials/oauth_login.html' %}
-                    <div class="auth-links mt-4">
-                        <p class="mb-0">Chưa có tài khoản? <a href="{{ url_for('auth.register') }}">Đăng ký ngay</a></p>
-                        <a href="{{ url_for('auth.forgot_password') }}">
-                            <i class="fas fa-key me-1" aria-hidden="true"></i>Quên mật khẩu?
-                        </a>
                     </div>
                 </div>
             </div>
