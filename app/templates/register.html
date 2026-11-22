@@ -2,76 +2,119 @@
 
 {% block title %}Đăng ký - Fashion Store{% endblock %}
 
+{% block body_class %}auth-page{% endblock %}
+
+{% block styles %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-dark text-white text-center py-3">
-                    <h3 class="mb-0">Đăng ký tài khoản</h3>
+        <div class="col-md-10 col-lg-7">
+            <div class="auth-card auth-shell">
+                <div class="auth-brand">
+                    <div class="auth-brand-mark"><i class="fas fa-bag-shopping" aria-hidden="true"></i></div>
+                    <div class="small fw-semibold opacity-75">Fashion Store</div>
+                    <h1>Đăng ký tài khoản</h1>
+                    <p>Tạo tài khoản để mua sắm, lưu sản phẩm yêu thích và theo dõi đơn hàng</p>
                 </div>
                 <div class="card-body p-4">
-                    <form action="{{ url_for('auth.register') }}" method="post">
+                    <form action="{{ url_for('auth.register') }}" method="post" data-auth-loading>
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <div class="row">
                             <div class="col-md-6 mb-3">
                                 <label for="full_name" class="form-label">Họ và tên <span
-                                        class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="full_name" name="full_name" required>
+                                        class="required-mark">*</span></label>
+                                <div class="input-group auth-input-group">
+                                    <span class="input-group-text"><i class="fas fa-user"
+                                            aria-hidden="true"></i></span>
+                                    <input type="text" class="form-control" id="full_name" name="full_name" required
+                                           autocomplete="name">
+                                </div>
                             </div>
                             <div class="col-md-6 mb-3">
-                                <label for="email" class="form-label">Email <span class="text-danger">*</span></label>
-                                <input type="email" class="form-control" id="email" name="email" required>
+                                <label for="email" class="form-label">Email <span class="required-mark">*</span></label>
+                                <div class="input-group auth-input-group">
+                                    <span class="input-group-text"><i class="fas fa-envelope"
+                                            aria-hidden="true"></i></span>
+                                    <input type="email" class="form-control" id="email" name="email" required
+                                           autocomplete="email" spellcheck="false">
+                                </div>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-1">
                                 <label for="password" class="form-label">Mật khẩu <span
-                                        class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="password" name="password" required>
+                                        class="required-mark">*</span></label>
+                                <div class="input-group auth-input-group auth-has-eye">
+                                    <span class="input-group-text"><i class="fas fa-lock"
+                                            aria-hidden="true"></i></span>
+                                    <input type="password" class="form-control" id="password" name="password" required
+                                           autocomplete="new-password">
+                                    <button type="button" class="auth-eye" data-eye aria-pressed="false"
+                                            aria-label="Hiện mật khẩu">
+                                        <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="col-md-6 mb-3">
+                            <div class="col-md-6 mb-1">
                                 <label for="confirm_password" class="form-label">Xác nhận mật khẩu <span
-                                        class="text-danger">*</span></label>
-                                <input type="password" class="form-control" id="confirm_password"
-                                    name="confirm_password" required>
+                                        class="required-mark">*</span></label>
+                                <div class="input-group auth-input-group auth-has-eye">
+                                    <span class="input-group-text"><i class="fas fa-shield-halved"
+                                            aria-hidden="true"></i></span>
+                                    <input type="password" class="form-control" id="confirm_password"
+                                        name="confirm_password" required autocomplete="new-password">
+                                    <button type="button" class="auth-eye" data-eye aria-pressed="false"
+                                            aria-label="Hiện xác nhận mật khẩu">
+                                        <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
+                                    </button>
+                                </div>
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <small class="form-text text-muted">
+                                <i class="fas fa-circle-info" aria-hidden="true"></i>
+                                Nên dùng ít nhất 8 ký tự, có cả chữ và số để tài khoản an toàn hơn.
+                            </small>
+                            <div class="auth-hint" data-confirm-hint aria-live="polite"></div>
                         </div>
                         <div class="mb-3">
                             <label for="phone" class="form-label">Số điện thoại</label>
-                            <input type="tel" class="form-control" id="phone" name="phone">
+                            <div class="input-group auth-input-group">
+                                <span class="input-group-text"><i class="fas fa-phone" aria-hidden="true"></i></span>
+                                <input type="tel" class="form-control" id="phone" name="phone" autocomplete="tel">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label for="address" class="form-label">Địa chỉ</label>
-                            <textarea class="form-control" id="address" name="address" rows="3"></textarea>
+                            <div class="input-group auth-input-group">
+                                <span class="input-group-text align-items-start pt-3"><i class="fas fa-location-dot"
+                                        aria-hidden="true"></i></span>
+                                <textarea class="form-control" id="address" name="address" rows="3"
+                                          autocomplete="street-address"></textarea>
+                            </div>
                         </div>
-                        <p class="small text-muted">Đây là ứng dụng dự án cá nhân. Không sử dụng thông tin hoặc mật khẩu quan trọng của bạn để thử nghiệm.</p>
+                        <div class="auth-disclaimer">
+                            <i class="fas fa-circle-info mt-1" aria-hidden="true"></i>
+                            <p class="mb-0">Đây là ứng dụng dự án cá nhân. Không sử dụng thông tin hoặc mật khẩu quan
+                                trọng của bạn để thử nghiệm.</p>
+                        </div>
                         <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-user-plus me-2"></i>Đăng ký
+                            <button type="submit" class="btn btn-auth-primary">
+                                <i class="fas fa-user-plus" aria-hidden="true" data-btn-icon="fa-user-plus"></i>
+                                <span class="ms-1">Đăng ký</span>
                             </button>
                         </div>
                     </form>
-                    <div class="text-center mt-3">
-                        <p>Đã có tài khoản? <a href="{{ url_for('auth.login') }}">Đăng nhập</a></p>
+                    <div class="auth-links mt-4">
+                        <p class="mb-0">Đã có tài khoản? <a href="{{ url_for('auth.login') }}">Đăng nhập</a></p>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<script>
-    // Kiểm tra mật khẩu trùng khớp
-    document.getElementById('confirm_password').addEventListener('input', function () {
-        const password = document.getElementById('password').value;
-        const confirmPassword = this.value;
-
-        if (password !== confirmPassword) {
-            this.setCustomValidity('Mật khẩu không khớp');
-        } else {
-            this.setCustomValidity('');
-        }
-    });
-</script>
+<script type="module" src="{{ url_for('static', filename='js/auth/auth_ui.js') }}"></script>
 {% endblock %}
