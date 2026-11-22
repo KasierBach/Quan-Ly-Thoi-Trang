@@ -167,7 +167,11 @@ def create_app(config_class=None):
                 "style-src 'self' 'unsafe-inline'; "
                 "font-src 'self'; "
                 "img-src 'self' data: https:; media-src 'self' blob:; "
-                "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+                "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; "
+                # OAuth start forms redirect (302) to the provider's authorize page and the
+                # browser enforces form-action on redirect targets, so the two supported
+                # provider hosts must be listed here or the navigation is blocked client-side.
+                "form-action 'self' https://accounts.google.com https://github.com"
             ),
         )
         if request.endpoint != 'static' and (session.get('user_id') or request.path.startswith('/api/')):

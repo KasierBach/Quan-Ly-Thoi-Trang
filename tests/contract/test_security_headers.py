@@ -60,6 +60,15 @@ def test_headers_on_pages_and_api_success_or_denial(auth_client, path, status):
     assert 'Strict-Transport-Security' not in response.headers
 
 
+def test_form_action_allows_only_the_two_supported_oauth_provider_hosts(auth_client):
+    # The OAuth start forms 302 to the provider authorize page; the browser enforces
+    # form-action on redirect targets, so exactly these hosts must be allowed.
+    response = auth_client.get('/login')
+    policy = response.headers['Content-Security-Policy']
+    form_action = next(part for part in policy.split(';') if part.strip().startswith('form-action'))
+    assert form_action.split() == ['form-action', "'self'", 'https://accounts.google.com', 'https://github.com']
+
+
 @pytest.mark.parametrize(
     'path,body',
     [
