@@ -78,8 +78,13 @@ def handle_db_errors(func):
                 return jsonify(success=False, message=str(exc)), 400
             flash(str(exc), 'error')
             return redirect(url_for('main.home'))
-        except psycopg2.Error:
-            current_app.logger.error('Database operation failed in %s', func.__name__)
+        except psycopg2.Error as exc:
+            current_app.logger.error(
+                'Database operation failed in %s: %s [pgcode=%s]',
+                func.__name__,
+                repr(exc),
+                getattr(exc, 'pgcode', None),
+            )
             if api_request():
                 return jsonify(success=False, message='Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.'), 503
             return current_app.make_response(('Dịch vụ dữ liệu tạm thời không khả dụng', 503))
