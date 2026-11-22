@@ -145,9 +145,9 @@
 
 .auth-main-inner {
     width: 100%;
-    max-width: 480px;
+    max-width: 470px;
     margin: 0 auto;
-    padding: 2.5rem 2.25rem 2.25rem;
+    padding: 1.9rem 2.25rem 1.7rem;
     display: flex;
     flex-direction: column;
 }
@@ -161,23 +161,49 @@
     letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--primary-color);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
 }
 
 .auth-heading h1 {
-    font-size: 1.7rem;
+    font-size: 1.6rem;
     font-weight: 700;
     letter-spacing: -0.01em;
-    margin-bottom: 0.35rem;
+    margin-bottom: 0.25rem;
 }
 
 .auth-heading p {
     color: var(--gray-600);
     font-size: 0.94rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.2rem;
 }
 
 [data-bs-theme='dark'] .auth-heading p { color: var(--gray-400); }
+
+/* Label row with an inline trailing action (e.g. Quên mật khẩu?) */
+.auth-label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.auth-label-row .form-label { margin-bottom: 0.4rem; }
+
+.auth-label-row .auth-inline-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.auth-label-row .auth-inline-link:hover { text-decoration: underline; }
+
+.auth-label-row .auth-inline-link:focus-visible {
+    outline: none;
+    border-radius: 6px;
+    box-shadow: 0 0 0 3px rgba(238, 77, 45, 0.25);
+}
 
 /* Fields */
 .auth-shell .form-label {
@@ -335,7 +361,7 @@
     font-size: 0.8rem;
     font-weight: 600;
     letter-spacing: 0.05em;
-    margin: 1.4rem 0 1rem;
+    margin: 1.05rem 0 0.85rem;
 }
 
 .auth-divider::before, .auth-divider::after {
@@ -385,7 +411,7 @@
 [data-bs-theme='dark'] .auth-alert.alert-danger { color: var(--gray-200); }
 
 /* Links row */
-.auth-links { display: flex; flex-direction: column; gap: 0.4rem; text-align: center; }
+.auth-links { display: flex; flex-direction: column; gap: 0.3rem; text-align: center; }
 
 .auth-links a {
     color: var(--primary-color);
