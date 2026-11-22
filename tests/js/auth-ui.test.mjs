@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { initConfirmMatch, initEyeToggles, initPasswordPattern, initSubmitFeedback } from '../../app/static/js/auth/auth_ui.js';
+import { initAsideSlideshow, initConfirmMatch, initEyeToggles, initPasswordPattern, initSubmitFeedback } from '../../app/static/js/auth/auth_ui.js';
 
 class FakeElement {
     constructor(tag, attributes = {}) {
@@ -267,4 +267,40 @@ test('password pattern shows live hint and blocks weak submits', () => {
         listener({ preventDefault() { prevented = true; } });
     }
     assert.equal(prevented, false);
+});
+
+test('aside slideshow activates the first slide then rotates on interval', () => {
+    const mk = () => new FakeElement('span', { 'data-aside-slide': '' });
+    const slides = [mk(), mk(), mk(), mk()];
+    let intervalFn = null;
+    const scheduler = {
+        matchMedia: () => ({ matches: false }),
+        setInterval: (fn) => { intervalFn = fn; return 7; },
+    };
+
+    const handle = initAsideSlideshow({ querySelectorAll: (s) => (s === '[data-aside-slide]' ? slides : []) }, scheduler);
+
+    assert.equal(handle, 7);
+    assert.ok(slides[0].classes.has('is-active'));
+    intervalFn();
+    assert.ok(!slides[0].classes.has('is-active') && slides[1].classes.has('is-active'));
+    intervalFn();
+    intervalFn();
+    assert.ok(slides[3].classes.has('is-active'));
+    intervalFn();
+    assert.ok(slides[0].classes.has('is-active'), 'rotation wraps back to the first slide');
+});
+
+test('aside slideshow stays static under reduced motion', () => {
+    const slides = [new FakeElement('span', { 'data-aside-slide': '' }), new FakeElement('span', { 'data-aside-slide': '' })];
+    const scheduler = {
+        matchMedia: (query) => ({ matches: query.includes('reduce') }),
+        setInterval: () => { throw new Error('must not schedule rotation'); },
+    };
+
+    const handle = initAsideSlideshow({ querySelectorAll: (s) => (s === '[data-aside-slide]' ? slides : []) }, scheduler);
+
+    assert.equal(handle, null);
+    assert.ok(slides[0].classes.has('is-active'));
+    assert.ok(!slides[1].classes.has('is-active'));
 });

@@ -44,6 +44,7 @@
 @media (prefers-reduced-motion: reduce) {
     .auth-shell { animation: none; }
     .auth-shell .btn, .auth-shell .form-control, .auth-shell .auth-eye, .auth-shell a { transition: none; }
+    .auth-aside-slide { transition: none; }
 }
 
 /* ---- Image aside -------------------------------------------------------- */
@@ -57,15 +58,25 @@
     color: #fff;
     isolation: isolate;
     background: var(--gray-800);
+    overflow: hidden;
 }
 
-.auth-aside::before {
-    content: '';
+.auth-aside-slides { position: absolute; inset: 0; z-index: -2; background: var(--gray-800); }
+
+.auth-aside-slide {
     position: absolute;
     inset: 0;
-    z-index: -2;
-    background: url('../images/vay-dam.jpg') center 30% / cover no-repeat;
+    background: center 30% / cover no-repeat;
+    opacity: 0;
+    transition: opacity 0.9s ease-in-out;
 }
+
+.auth-aside-slide.is-active { opacity: 1; }
+
+.auth-slide-1 { background-image: url('../images/vay-dam.jpg'); }
+.auth-slide-2 { background-image: url('../images/quan-jean-nam-xanh.jpg'); }
+.auth-slide-3 { background-image: url('../images/ao-nu.jpg'); }
+.auth-slide-4 { background-image: url('../images/phu-kien.jpg'); }
 
 .auth-aside::after {
     content: '';

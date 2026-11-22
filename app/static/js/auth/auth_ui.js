@@ -93,6 +93,23 @@ export function initPasswordPattern(shell) {
     });
 }
 
+// Aside image slideshow: crossfades the brand panel's product photos. Both
+// layers transition simultaneously so opacity sums stay smooth; reduced-motion
+// users get the first image statically.
+export function initAsideSlideshow(scope = document, scheduler = globalThis) {
+    const slides = scope.querySelectorAll('[data-aside-slide]');
+    if (!slides.length) return null;
+    slides[0].classList.add('is-active');
+    if (slides.length < 2) return null;
+    if (scheduler.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+    let index = 0;
+    return scheduler.setInterval(() => {
+        slides[index].classList.remove('is-active');
+        index = (index + 1) % slides.length;
+        slides[index].classList.add('is-active');
+    }, 5000);
+}
+
 function initAuthUi() {
     const shell = document.querySelector('.auth-shell');
     if (!shell) return;
@@ -100,6 +117,7 @@ function initAuthUi() {
     initSubmitFeedback(shell, window);
     initConfirmMatch(shell);
     initPasswordPattern(shell);
+    initAsideSlideshow(document, window);
 }
 
 // Module scripts run after parsing; only auto-init inside a browser document.
