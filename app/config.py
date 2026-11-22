@@ -47,6 +47,11 @@ class Config:
     # None keeps the existing single-process Socket.IO manager.
     SOCKETIO_MESSAGE_QUEUE = None
     MAIL_SUPPRESS_SEND = False
+    # Brevo HTTP API transport: Render blocks outbound SMTP ports, so production
+    # email goes through the API instead of Flask-Mail's SMTP connection.
+    BREVO_API_KEY = None
+    BREVO_API_URL = 'https://api.brevo.com/v3/smtp/email'
+    EMAIL_HTTP_TIMEOUT = 10
     PIXABAY_ENDPOINT = 'https://pixabay.com/api/'
     # Scoped public-asset freshness; global send_file/private policies stay unchanged.
     HTTP_ASSET_CACHE_MAX_AGE = 300
@@ -103,6 +108,7 @@ class Config:
             'MAIL_USE_SSL': env_bool('MAIL_USE_SSL', True),
             'MAIL_DEFAULT_SENDER': os.environ.get('MAIL_DEFAULT_SENDER') or os.environ.get('MAIL_USERNAME'),
             'MAIL_SUPPRESS_SEND': env_bool('MAIL_SUPPRESS_SEND', False),
+            'BREVO_API_KEY': os.environ.get('BREVO_API_KEY'),
             'PIXABAY_API_KEY': os.environ.get('PIXABAY_API_KEY'),
             'CONTACT_EMAIL': os.environ.get('CONTACT_EMAIL'),
             'CONTACT_PHONE': os.environ.get('CONTACT_PHONE'),

@@ -24,6 +24,10 @@ services:
       - key: RATELIMIT_STORAGE_URI
         sync: false
       - key: MAIL_SUPPRESS_SEND
-        value: "true"
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_DEFAULT_SENDER
+        sync: false
       - key: PYTHON_VERSION
         value: "3.11.15"
