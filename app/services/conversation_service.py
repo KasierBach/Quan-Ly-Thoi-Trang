@@ -574,8 +574,8 @@ class ConversationService(BaseService):
         cleanup = []
         try:
             with conn.cursor() as cursor:
-                access = ConversationService.get_access(cid, actor=actor, permission='read_receipt', cursor=cursor)
                 cursor.execute('SELECT id FROM Conversations WHERE id = %s FOR UPDATE', (cid,))
+                access = ConversationService.get_access(cid, actor=actor, permission='read_receipt', cursor=cursor)
                 cursor.execute('DELETE FROM Participants WHERE conversation_id = %s AND user_id = %s', (cid, uid))
                 cursor.execute(
                     'SELECT user_id FROM Participants WHERE conversation_id = %s ORDER BY CASE WHEN role = %s THEN 0 ELSE 1 END, id LIMIT 1',

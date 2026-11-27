@@ -156,13 +156,32 @@ class MainService(BaseService):
 
     @staticmethod
     def check_health():
-        """A connection failure is an unhealthy result, not an uncaught exception."""
+        """Report readiness only once the database has the required schema."""
         conn = None
         try:
             conn = MainService.get_connection()
             with conn.cursor() as cursor:
-                cursor.execute('SELECT 1')
-                return cursor.fetchone()[0] == 1
+                cursor.execute("""SELECT
+                    to_regclass('customers') IS NOT NULL
+                    AND to_regclass('products') IS NOT NULL
+                    AND to_regclass('attachments') IS NOT NULL
+                    AND to_regclass('oauthidentities') IS NOT NULL
+                    AND to_regclass('oauthstates') IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM pg_index
+                        WHERE indrelid = to_regclass('orders')
+                          AND indexrelid = to_regclass('uq_orders_checkout_key')
+                          AND indisvalid AND indisunique
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        JOIN pg_attribute ON attrelid = conrelid AND attname = 'token' AND NOT attisdropped
+                        WHERE conrelid = to_regclass('passwordresettokens')
+                          AND conname = 'passwordresettokens_sha256'
+                          AND atttypid = 'varchar'::regtype
+                          AND convalidated
+                    )""")
+                return cursor.fetchone()[0] is True
         except Exception:
             return False
         finally:

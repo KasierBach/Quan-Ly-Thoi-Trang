@@ -4,7 +4,7 @@ import psycopg2
 
 from app.services.base_service import BaseService
 from app.services.product_service import ProductService
-from app.validation import ValidationError, email_address, phone_number, positive_int, required_text
+from app.validation import ValidationError, email_address, money, phone_number, positive_int, required_text
 
 
 class OrderService(BaseService):
@@ -28,6 +28,8 @@ class OrderService(BaseService):
         recipient_phone=None,
         recipient_email=None,
         notes='',
+        checkout_key=None,
+        reviewed_prices=None,
     ) -> dict[str, Any]:
         """Validate before writing and leave authoritative prices/stock to SQL atomics."""
         try:
@@ -49,11 +51,49 @@ class OrderService(BaseService):
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute(
-                    'SELECT sp_CreateOrder(%s, %s, %s) AS OrderID',
-                    (user_id, payment_method, shipping_address),
-                )
-                order_id = cursor.fetchone().OrderID
+                if checkout_key is None:
+                    cursor.execute(
+                        'SELECT sp_CreateOrder(%s, %s, %s) AS OrderID',
+                        (user_id, payment_method, shipping_address),
+                    )
+                    order_id = cursor.fetchone().OrderID
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO Orders (CustomerID, PaymentMethod, ShippingAddress, checkout_key)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (checkout_key) DO NOTHING
+                        RETURNING OrderID
+                        """,
+                        (user_id, payment_method, shipping_address, checkout_key),
+                    )
+                    order = cursor.fetchone()
+                    if order is None:
+                        existing_id = OrderService._find_checkout_order(cursor, user_id, checkout_key)
+                        if existing_id is None:
+                            raise ValidationError('Phiên đặt hàng không hợp lệ')
+                        return {'success': True, 'order_id': existing_id}
+                    order_id = order.OrderID
+                    variant_ids = [item['variant_id'] for item in items]
+                    # Hold the product price stable until the order details are written.
+                    cursor.execute(
+                        """
+                        SELECT pv.VariantID, p.Price
+                        FROM ProductVariants pv JOIN Products p ON p.ProductID = pv.ProductID
+                        WHERE pv.VariantID = ANY(%s)
+                        ORDER BY p.ProductID FOR SHARE OF p
+                        """,
+                        (variant_ids,),
+                    )
+                    prices = {row.VariantID: row.Price for row in cursor.fetchall()}
+                    expected = {
+                        variant_id: money(price, 'Giá sản phẩm')
+                        for variant_id, price in (reviewed_prices or {}).items()
+                    }
+                    if prices != expected or len(prices) != len(items):
+                        raise ValidationError(
+                            'Giá hoặc sản phẩm đã thay đổi. Vui lòng kiểm tra lại trước khi đặt hàng.'
+                        )
                 if recipient_name is not None or notes:
                     cursor.execute(
                         """
@@ -71,9 +111,12 @@ class OrderService(BaseService):
                     )
                 conn.commit()
                 return {'success': True, 'order_id': order_id}
+        except ValidationError as exc:
+            conn.rollback()
+            return {'success': False, 'message': str(exc), 'status_code': 409}
         except psycopg2.Error as exc:
             conn.rollback()
-            if exc.pgcode in ('23514', 'P0001'):
+            if exc.pgcode in ('23514', 'P0001') or (checkout_key is not None and exc.pgcode == '23503'):
                 return {
                     'success': False,
                     'message': 'Sản phẩm không đủ tồn kho hoặc giỏ hàng không hợp lệ',
@@ -87,6 +130,24 @@ class OrderService(BaseService):
             result = OrderService.handle_error(exc, 'Không thể tạo đơn hàng. Vui lòng thử lại sau.')
             result['status_code'] = 503
             return result
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _find_checkout_order(cursor, user_id, checkout_key):
+        cursor.execute(
+            'SELECT OrderID FROM Orders WHERE CustomerID = %s AND checkout_key = %s',
+            (user_id, checkout_key),
+        )
+        order = cursor.fetchone()
+        return order.OrderID if order else None
+
+    @staticmethod
+    def get_checkout_order(user_id, checkout_key):
+        conn = OrderService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                return OrderService._find_checkout_order(cursor, user_id, checkout_key)
         finally:
             conn.close()
 

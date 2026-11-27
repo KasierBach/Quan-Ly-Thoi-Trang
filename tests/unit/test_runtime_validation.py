@@ -75,7 +75,8 @@ def test_password_validation(value):
 
 
 @pytest.mark.parametrize(
-    'value', [None, 'https://evil.test', '//evil.test', '/\\evil.test', '/\nLocation:x', 'javascript:alert(1)', 'path']
+    'value',
+    [None, 'https://evil.test', '//evil.test', '//[', '/\\evil.test', '/\nLocation:x', 'javascript:alert(1)', 'path'],
 )
 def test_redirect_blocks_external_or_malformed(value):
     assert local_redirect(value) is None

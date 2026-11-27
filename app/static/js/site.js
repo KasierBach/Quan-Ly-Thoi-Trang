@@ -69,19 +69,24 @@
     if (!input || !results) return;
     let timer;
     let request;
-    const hide = () => { results.classList.remove('show'); input.setAttribute('aria-expanded', 'false'); };
-    input.addEventListener('input', () => {
+    const dismiss = () => {
         clearTimeout(timer);
         request?.abort();
+        results.replaceChildren();
+        results.classList.remove('show');
+        input.setAttribute('aria-expanded', 'false');
+    };
+    input.addEventListener('input', () => {
+        dismiss();
         const query = input.value.trim();
-        if (!query) { results.replaceChildren(); hide(); return; }
+        if (!query) return;
         timer = setTimeout(async () => {
             request = new AbortController();
+            const signal = request.signal;
             try {
-                const response = await fetch(`${config.searchUrl}?${new URLSearchParams({ q: query })}`, { signal: request.signal });
+                const response = await fetch(`${config.searchUrl}?${new URLSearchParams({ q: query })}`, { signal });
                 const data = await response.json();
-                if (query !== input.value.trim() || !response.ok || !data.success) return;
-                results.replaceChildren();
+                if (signal.aborted || query !== input.value.trim() || !response.ok || !data.success) return;
                 for (const product of data.products) {
                     const link = document.createElement('a');
                     link.href = `/product/${Number(product.id)}`;
@@ -117,17 +122,17 @@
                 }
                 results.classList.add('show');
                 input.setAttribute('aria-expanded', 'true');
-            } catch (error) {
-                if (error.name !== 'AbortError') hide();
+            } catch {
+                if (!signal.aborted) dismiss();
             }
         }, 250);
     });
-    document.addEventListener('click', event => { if (!event.target.closest('#searchForm')) hide(); });
+    document.addEventListener('click', event => { if (!event.target.closest('#searchForm')) dismiss(); });
     input.addEventListener('keydown', event => {
-        if (event.key === 'Escape') hide();
+        if (event.key === 'Escape') dismiss();
         if (event.key === 'ArrowDown') { event.preventDefault(); results.querySelector('a')?.focus(); }
     });
     results.addEventListener('keydown', event => {
-        if (event.key === 'Escape') { hide(); input.focus(); }
+        if (event.key === 'Escape') { dismiss(); input.focus(); }
     });
 })();

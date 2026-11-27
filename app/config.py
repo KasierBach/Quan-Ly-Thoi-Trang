@@ -110,6 +110,7 @@ class Config:
             'MAIL_SUPPRESS_SEND': env_bool('MAIL_SUPPRESS_SEND', False),
             'BREVO_API_KEY': os.environ.get('BREVO_API_KEY'),
             'PIXABAY_API_KEY': os.environ.get('PIXABAY_API_KEY'),
+            'UPLOAD_ROOT': os.environ.get('UPLOAD_ROOT') or None,
             'CONTACT_EMAIL': os.environ.get('CONTACT_EMAIL'),
             'CONTACT_PHONE': os.environ.get('CONTACT_PHONE'),
             'CONTACT_ADDRESS': os.environ.get('CONTACT_ADDRESS'),

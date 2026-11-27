@@ -65,7 +65,7 @@
                         {% include 'partials/oauth_login.html' %}
                         <div class="auth-links mt-3">
                             <p class="auth-link-muted mb-0">Chưa có tài khoản?
-                                <a href="{{ url_for('auth.register') }}">
+                                <a href="{{ url_for('auth.register', next=next_page) }}">
                                     <i class="fas fa-user-plus" aria-hidden="true"></i>Đăng ký ngay
                                 </a>
                             </p>

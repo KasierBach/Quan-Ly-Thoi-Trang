@@ -172,7 +172,7 @@ class ProviderRegistry:
         self.client(name)
         return f'{callback_base_url(self.config)}/oauth/{name}/callback'
 
-    def authorize(self, name, flow):
+    def authorize(self, name, flow, *, next_page=None):
         client = self.client(name)
         options = {'state': flow['state']}
         if name == 'google':
@@ -184,10 +184,12 @@ class ProviderRegistry:
         if result.get('state') != flow['state'] or not result.get('code_verifier'):
             raise OAuthFailure('Không thể khởi tạo phiên đăng nhập an toàn.')
         # Authlib's temporary data normally lives in a readable signed cookie.
-        # Save only what it needs to validate the callback, in the server ledger.
+        # Keep callback data and the optional return path in the server ledger.
         data = {'redirect_uri': self.callback_url(name), 'code_verifier': result['code_verifier']}
         if name == 'google':
             data['nonce'] = flow['nonce']
+        if next_page is not None:
+            data['next_page'] = next_page
         OAuthService.issue_ticket(flow['state'], flow['binding'], 'authorization', data)
         return result['url']
 

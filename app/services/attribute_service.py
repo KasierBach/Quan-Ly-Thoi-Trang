@@ -1,3 +1,4 @@
+from app.cache import invalidate_cache
 from app.validation import positive_int, required_text
 
 from .base_service import BaseService
@@ -36,6 +37,7 @@ class AttributeService(BaseService):
                     return {'success': False, 'message': f'{field} đã tồn tại', 'status_code': 409}
                 cursor.execute(f'INSERT INTO {table} ({column}) VALUES (%s)', (name,))
                 conn.commit()
+                invalidate_cache(f'{table.lower()}:')
                 return AttributeService.success(message=f'Đã thêm {field.lower()}')
         except Exception as exc:
             conn.rollback()
@@ -76,6 +78,7 @@ class AttributeService(BaseService):
                     conn.rollback()
                     return {'success': False, 'message': f'{field} không tồn tại', 'status_code': 404}
                 conn.commit()
+                invalidate_cache(f'{table.lower()}:')
                 return AttributeService.success(message=f'Đã xóa {field.lower()}')
         except Exception as exc:
             conn.rollback()

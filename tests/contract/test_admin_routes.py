@@ -218,6 +218,29 @@ def test_admin_routes_render_existing_templates(admin_client, monkeypatch, path)
         assert 'attachment' in response.headers['Content-Disposition']
 
 
+@pytest.mark.parametrize('alternate_recipient', [True, False])
+def test_admin_order_shows_delivery_contact_and_notes(admin_client, monkeypatch, alternate_recipient):
+    order = mock_admin_reads(monkeypatch).order
+    if alternate_recipient:
+        order['recipient_name'] = 'Delivery Recipient'
+        order['recipient_email'] = 'recipient@example.test'
+        order['recipient_phone'] = '0911111111'
+        order['notes'] = 'Call before delivery <leave at front desk>'
+
+    response = admin_client.get('/admin/orders/1')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    if alternate_recipient:
+        assert 'Delivery Recipient' in html
+        assert 'recipient@example.test' in html
+        assert '0911111111' in html
+        assert 'Call before delivery &lt;leave at front desk&gt;' in html
+    else:
+        assert 'Customer' in html
+        assert 'person@example.test' in html
+        assert '0900000000' in html
+
+
 def test_every_owned_template_parses(app):
     templates = [name for name in app.jinja_env.list_templates() if name.startswith('admin/') or name == 'contact.html']
     assert len(templates) >= 13

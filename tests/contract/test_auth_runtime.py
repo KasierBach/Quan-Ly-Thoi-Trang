@@ -2,6 +2,7 @@ from io import BytesIO
 from unittest.mock import MagicMock
 
 import pytest
+from bs4 import BeautifulSoup
 from PIL import Image
 from werkzeug.security import generate_password_hash
 
@@ -102,6 +103,38 @@ def test_register_uses_customer_role_and_preserves_cart(client, monkeypatch):
         assert session['role'] == 'customer'
         assert not session['is_admin']
         assert session['cart'][0]['quantity'] == 2
+
+
+def test_registration_preserves_checkout_destination_through_validation_error(client, monkeypatch):
+    monkeypatch.setattr(
+        AuthService,
+        'register_user',
+        lambda *_: {'success': True, 'customer_id': 8, 'full_name': 'Test', 'auth_version': 1},
+    )
+    next_page = '/checkout?buy_now=1&draft=example-signed-draft'
+    page = client.get('/login', query_string={'next': next_page})
+    soup = BeautifulSoup(page.text, 'html.parser')
+    form_link = soup.select_one('.auth-links a[href^="/register"]')
+    page = client.get(form_link['href'])
+    soup = BeautifulSoup(page.text, 'html.parser')
+    field = soup.select_one('form[action="/register"] input[name="next"]')
+    assert field['value'] == next_page
+
+    data = {
+        'full_name': 'Test',
+        'email': 'user@example.test',
+        'password': 'GoodPass123!',
+        'confirm_password': 'wrong',
+        'next': field['value'],
+    }
+    response = client.post('/register', data=data)
+    assert response.status_code == 400
+    soup = BeautifulSoup(response.text, 'html.parser')
+    assert soup.select_one('form[action="/register"] input[name="next"]')['value'] == next_page
+
+    response = client.post('/register', data={**data, 'confirm_password': data['password']})
+    assert response.status_code == 302
+    assert response.headers['Location'] == next_page
 
 
 def test_api_login_guard_returns_json(client):

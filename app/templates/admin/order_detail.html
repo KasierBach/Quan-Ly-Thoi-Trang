@@ -108,21 +108,21 @@
                     </div>
                 </div>
 
-                <!-- Customer & Status -->
                 <div class="col-md-4">
-                    <div class="card mb-4">
+                    <section class="card mb-4" aria-labelledby="order-delivery-title">
                         <div class="card-header bg-info text-white">
-                            <h5 class="mb-0">Thông tin khách hàng</h5>
+                            <h5 class="mb-0" id="order-delivery-title">Thông tin giao hàng</h5>
                         </div>
                         <div class="card-body">
-                            <p><strong>Họ tên:</strong> {{ order.CustomerName }}</p>
-                            <p><strong>Email:</strong> {{ order.CustomerEmail }}</p>
-                            <p><strong>Số điện thoại:</strong> {{ order.CustomerPhone or 'N/A' }}</p>
+                            <p><strong>Người nhận:</strong> {{ order.recipient_name or order.CustomerName }}</p>
+                            <p><strong>Email:</strong> {{ order.recipient_email or order.CustomerEmail }}</p>
+                            <p><strong>Số điện thoại:</strong> {{ order.recipient_phone or order.CustomerPhone or 'N/A' }}</p>
                             <p><strong>Địa chỉ:</strong> {{ order.ShippingAddress }}</p>
+                            {% if order.notes %}<p><strong>Ghi chú:</strong> {{ order.notes }}</p>{% endif %}
                             <p><strong>Ngày đặt:</strong> {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</p>
                             <p><strong>Phương thức:</strong> {{ order.PaymentMethod }}</p>
                         </div>
-                    </div>
+                    </section>
 
                     <div class="card mb-4">
                         <div class="card-header bg-warning text-dark">

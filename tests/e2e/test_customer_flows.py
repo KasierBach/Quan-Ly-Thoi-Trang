@@ -474,7 +474,7 @@ def test_password_reset_uses_actual_suppressed_mail_link_and_cannot_reuse_token(
     form = page.locator('form[action="/forgot_password"]')
     form.get_by_label('Email', exact=True).fill('customer@example.test')
     form.locator('button[type="submit"]').click()
-    expect(page.get_by_role('heading', name='Email đã được gửi!', exact=True)).to_be_visible()
+    expect(page.get_by_role('heading', name='Kiểm tra hộp thư', exact=True)).to_be_visible()
     assert len(suppressed_outbox) == 1
     message = suppressed_outbox[0]
     assert message.recipients == ['customer@example.test'] and message.subject == 'Đặt lại mật khẩu'
@@ -485,6 +485,12 @@ def test_password_reset_uses_actual_suppressed_mail_link_and_cannot_reuse_token(
     assert re.fullmatch(r'/reset_password/[A-Za-z0-9_-]{20,128}', link.path)
     page.goto(link.path)  # Map the captured canonical mail link to this fixture's loopback origin.
     form = page.locator('#resetPasswordForm')
+    form.get_by_label('Mật khẩu mới', exact=True).fill('weakpass')
+    form.get_by_label('Xác nhận mật khẩu mới', exact=True).fill('weakpass')
+    submit = form.locator('button[type="submit"]')
+    submit.click()
+    expect(form.locator('[data-pattern-hint]')).to_have_attribute('data-state', 'err')
+    expect(submit).to_be_enabled()
     form.get_by_label('Mật khẩu mới', exact=True).fill('RecoveredUser456!')
     form.get_by_label('Xác nhận mật khẩu mới', exact=True).fill('RecoveredUser456!')
     form.locator('button[type="submit"]').click()

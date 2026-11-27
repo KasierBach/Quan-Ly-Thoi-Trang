@@ -18,7 +18,7 @@ from app.services.oauth_service import (
     PROVIDERS,
     ProviderRegistry,
 )
-from app.validation import ValidationError
+from app.validation import ValidationError, local_redirect
 
 
 oauth_bp = Blueprint('oauth', __name__, url_prefix='/oauth')
@@ -111,7 +111,7 @@ def _reauthenticate(user_id, version):
     raise OAuthFailure('Cần mật khẩu hiện tại hoặc xác thực lại với Google đã liên kết.')
 
 
-def _start_flow(provider, intent, user_id=None, version=None):
+def _start_flow(provider, intent, user_id=None, version=None, *, next_page=None):
     registry = _registry(provider)
     flow = {
         'state': OAuthService.new_ticket(),
@@ -126,7 +126,7 @@ def _start_flow(provider, intent, user_id=None, version=None):
     }
     session[FLOW_KEY] = flow
     try:
-        destination = registry.authorize(provider, flow)
+        destination = registry.authorize(provider, flow, next_page=next_page)
     except Exception:
         session.pop(FLOW_KEY, None)
         raise
@@ -171,7 +171,7 @@ def login(provider):
     _registry(provider)
     if session.get('user_id'):
         raise OAuthFailure('Bạn đã đăng nhập. Hãy dùng liên kết nhà cung cấp trong trang tài khoản.')
-    return _start_flow(provider, 'login')
+    return _start_flow(provider, 'login', next_page=local_redirect(request.form.get('next')))
 
 
 @oauth_bp.route('/<provider>/link', methods=['POST'])
@@ -214,6 +214,7 @@ def unlink(provider):
 def callback(provider):
     registry = _registry(provider)
     flow, data = _consume_flow(provider)
+    next_page = data.pop('next_page', None)
     try:
         identity = registry.exchange(provider, flow, data)
     except (TypeError, KeyError, ValueError, RuntimeError):
@@ -237,4 +238,4 @@ def callback(provider):
     user = OAuthService.login_or_register(identity)
     establish_session(user.CustomerID, user.FullName, user.Role, user.AuthVersion, user.DarkModeEnabled)
     flash('Đăng nhập thành công!', 'success')
-    return redirect(url_for('admin.admin_dashboard' if user.Role == 'admin' else 'main.home'))
+    return redirect(next_page or url_for('admin.admin_dashboard' if user.Role == 'admin' else 'main.home'))

@@ -94,15 +94,26 @@ def test_wrong_password_does_not_mutate(fake_db):
     assert fake_db.cursor.execute.call_count == 1
 
 
-def test_reset_locks_hashed_token_and_revokes_all(fake_db):
-    fake_db.cursor.fetchone.return_value = CaseInsensitiveRecord(CustomerID=1, TokenID=4)
+def test_reset_locks_customer_then_claims_token_and_revokes_all(fake_db):
+    fake_db.cursor.fetchone.side_effect = [CaseInsensitiveRecord(CustomerID=1), CaseInsensitiveRecord(TokenID=4)]
     token = 'a' * 43
+    digest = hashlib.sha256(token.encode()).hexdigest()
     assert AuthService.reset_password(token, 'NewPass123!')['success']
-    query, params = fake_db.cursor.execute.call_args_list[0].args
-    assert 'FOR UPDATE' in query
-    assert params == (hashlib.sha256(token.encode()).hexdigest(),)
-    assert 'auth_version + 1' in fake_db.cursor.execute.call_args_list[1].args[0]
+    lock, claim, password, invalidate = [call.args for call in fake_db.cursor.execute.call_args_list]
+    assert 'FOR UPDATE OF c' in lock[0]
+    assert lock[1] == (digest,)
+    assert 'UPDATE PasswordResetTokens' in claim[0] and 'IsUsed = FALSE' in claim[0]
+    assert claim[1] == (1, digest)
+    assert 'auth_version + 1' in password[0]
+    assert 'UPDATE PasswordResetTokens' in invalidate[0] and invalidate[1] == (1,)
     fake_db.conn.commit.assert_called_once()
+
+
+def test_reset_rechecks_after_waiting_for_customer_lock(fake_db):
+    fake_db.cursor.fetchone.side_effect = [CaseInsensitiveRecord(CustomerID=1), None]
+    assert not AuthService.reset_password('a' * 43, 'NewPass123!')['success']
+    assert fake_db.cursor.execute.call_count == 2
+    fake_db.conn.commit.assert_not_called()
 
 
 def test_reset_missing_and_invalid_do_not_write(fake_db):

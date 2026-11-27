@@ -80,7 +80,9 @@ def password_value(value):
 def local_redirect(value):
     if not isinstance(value, str) or any(ord(char) < 32 for char in value) or '\\' in value:
         return None
+    if not value.startswith('/') or value.startswith('//'):
+        return None
     parsed = urlsplit(value)
-    if parsed.scheme or parsed.netloc or not value.startswith('/') or value.startswith('//'):
+    if parsed.scheme or parsed.netloc:
         return None
     return value

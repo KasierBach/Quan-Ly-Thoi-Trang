@@ -57,6 +57,7 @@ EXPECTED_COLUMNS = {
         'recipient_phone',
         'recipient_email',
         'notes',
+        'checkout_key',
     },
     'orderdetails': {'orderdetailid', 'orderid', 'variantid', 'quantity', 'price'},
     'wishlist': {'wishlistid', 'customerid', 'productid', 'addeddate'},
@@ -223,6 +224,54 @@ def test_bootstrap_adds_missing_january_customer_fields_without_changing_rows(db
         assert actual.Gender is None
         assert actual.DateOfBirth is None
     assert _columns(db_connection, schema_sandbox) == EXPECTED_COLUMNS
+
+
+@pytest.mark.parametrize('token_type', ['UUID NOT NULL DEFAULT gen_random_uuid()', 'VARCHAR(100) NOT NULL'])
+def test_password_reset_migration_retires_plaintext_and_preserves_digests(db_connection, schema_sandbox, token_type):
+    legacy = str(uuid4())
+    current = hashlib.sha256(b'existing-reset-link').hexdigest()
+    with db_connection.cursor() as cursor:
+        cursor.execute(sql.SQL('SET LOCAL search_path = {}, pg_catalog').format(sql.Identifier(schema_sandbox)))
+        cursor.execute(
+            sql.SQL(
+                'CREATE TABLE PasswordResetTokens (TokenID SERIAL PRIMARY KEY, CustomerID INT NOT NULL, '
+                'Token {}, ExpiryDate TIMESTAMP NOT NULL, IsUsed BOOLEAN DEFAULT FALSE, '
+                'CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP)'
+            ).format(sql.SQL(token_type))
+        )
+        cursor.execute(
+            'INSERT INTO PasswordResetTokens (CustomerID, Token, ExpiryDate) '
+            "VALUES (1, %s, CURRENT_TIMESTAMP + INTERVAL '1 hour')",
+            (legacy,),
+        )
+        if token_type.startswith('VARCHAR'):
+            cursor.execute(
+                'INSERT INTO PasswordResetTokens (CustomerID, Token, ExpiryDate) '
+                "VALUES (2, %s, CURRENT_TIMESTAMP + INTERVAL '1 hour')",
+                (current,),
+            )
+    _install(db_connection, schema_sandbox)
+    migration = _transactional_sql(ROOT / 'db/migrations/0005_password_reset_compat.sql', schema_sandbox)
+    with db_connection.cursor() as cursor:
+        cursor.execute(migration)
+        cursor.execute(migration)
+        cursor.execute('SELECT CustomerID, Token, IsUsed FROM PasswordResetTokens ORDER BY TokenID')
+        previous = [(row.CustomerID, row.Token, row.IsUsed) for row in cursor.fetchall()]
+        expected = [(1, hashlib.sha256(f'retired-reset-token:{legacy}'.encode()).hexdigest(), True)]
+        if token_type.startswith('VARCHAR'):
+            expected.append((2, current, False))
+        assert previous == expected
+        cursor.execute(
+            'SELECT convalidated FROM pg_constraint '
+            "WHERE conrelid = 'passwordresettokens'::regclass AND conname = 'passwordresettokens_sha256'"
+        )
+        assert cursor.fetchone().convalidated is True
+        cursor.execute(
+            'INSERT INTO PasswordResetTokens (CustomerID, Token, ExpiryDate) '
+            "VALUES (3, %s, CURRENT_TIMESTAMP + INTERVAL '1 hour') RETURNING Token",
+            ('a' * 64,),
+        )
+        assert cursor.fetchone().Token == 'a' * 64
 
 
 def test_bootstrap_replay_preserves_seeded_data_and_trigger_count(db_connection):

@@ -8,9 +8,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-thua2_db}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./db/bootstrap.sql:/docker-entrypoint-initdb.d/001-bootstrap.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 3s
       timeout: 3s
       retries: 20
@@ -23,8 +22,10 @@ services:
     environment:
       APP_ENV: development
       DISABLE_DOTENV: "1"
+      MIGRATE_ON_START: "1"
       SECRET_KEY: ${SECRET_KEY:?Set an independent SECRET_KEY}
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-thua2_db}
+      UPLOAD_ROOT: /app/instance/uploads
       TRUSTED_HOSTS: localhost,127.0.0.1
       MAIL_SUPPRESS_SEND: "true"
     depends_on:

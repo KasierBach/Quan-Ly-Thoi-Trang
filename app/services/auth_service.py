@@ -165,7 +165,7 @@ class AuthService(BaseService):
                     (generate_password_hash(new_password), user_id),
                 )
                 state = cursor.fetchone()
-                cursor.execute('UPDATE PasswordResetTokens SET IsUsed = TRUE WHERE CustomerID = %s', (user_id,))
+                AuthService._invalidate_reset_tokens(cursor, user_id)
                 conn.commit()
                 return {'success': True, 'auth_version': state.AuthVersion}
         except psycopg2.Error as exc:
@@ -173,6 +173,17 @@ class AuthService(BaseService):
             return AuthService.handle_error(exc, 'Không thể đổi mật khẩu')
         finally:
             conn.close()
+
+    @staticmethod
+    def _invalidate_reset_tokens(cursor, user_id):
+        # Legacy plaintext rows are unusable and 0005 retires their stored credentials.
+        cursor.execute(
+            """
+            UPDATE PasswordResetTokens SET IsUsed = TRUE
+            WHERE CustomerID = %s AND IsUsed IS DISTINCT FROM TRUE AND Token::text ~ '^[0-9a-f]{64}$'
+            """,
+            (user_id,),
+        )
 
     @staticmethod
     def create_password_reset_token(email):
@@ -188,7 +199,7 @@ class AuthService(BaseService):
                     return None
                 token = secrets.token_urlsafe(32)
                 digest = hashlib.sha256(token.encode()).hexdigest()
-                cursor.execute('UPDATE PasswordResetTokens SET IsUsed = TRUE WHERE CustomerID = %s', (user.CustomerID,))
+                # A new request must not invalidate a delivered link if its email fails.
                 cursor.execute(
                     """
                     INSERT INTO PasswordResetTokens (CustomerID, Token, ExpiryDate)
@@ -244,33 +255,44 @@ class AuthService(BaseService):
     @staticmethod
     def reset_password(token, new_password) -> dict[str, Any]:
         new_password = password_value(new_password)
+        invalid_token = {'success': False, 'message': 'Token không hợp lệ hoặc đã hết hạn'}
         if not isinstance(token, str) or not 20 <= len(token) <= 128:
-            return {'success': False, 'message': 'Token không hợp lệ hoặc đã hết hạn'}
+            return invalid_token
         digest = hashlib.sha256(token.encode()).hexdigest()
         conn = AuthService.get_connection()
         try:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT t.* FROM PasswordResetTokens t
-                    WHERE t.Token = %s AND t.ExpiryDate > CURRENT_TIMESTAMP AND t.IsUsed = FALSE
-                    FOR UPDATE
-                """,
+                    SELECT c.CustomerID FROM Customers c
+                    JOIN PasswordResetTokens t ON t.CustomerID = c.CustomerID
+                    WHERE t.Token::text = %s AND t.ExpiryDate > statement_timestamp() AND t.IsUsed = FALSE
+                    FOR UPDATE OF c
+                    """,
                     (digest,),
                 )
-                record = cursor.fetchone()
-                if not record:
-                    return {'success': False, 'message': 'Token không hợp lệ hoặc đã hết hạn'}
+                customer = cursor.fetchone()
+                if not customer:
+                    return invalid_token
+                # A password change or reset could have consumed the token while we waited on Customers.
+                cursor.execute(
+                    """
+                    UPDATE PasswordResetTokens SET IsUsed = TRUE
+                    WHERE CustomerID = %s AND Token::text = %s AND IsUsed = FALSE AND ExpiryDate > clock_timestamp()
+                    RETURNING TokenID
+                    """,
+                    (customer.CustomerID, digest),
+                )
+                if not cursor.fetchone():
+                    return invalid_token
                 cursor.execute(
                     """
                     UPDATE Customers SET Password = %s, auth_version = auth_version + 1
                     WHERE CustomerID = %s
-                """,
-                    (generate_password_hash(new_password), record.CustomerID),
+                    """,
+                    (generate_password_hash(new_password), customer.CustomerID),
                 )
-                cursor.execute(
-                    'UPDATE PasswordResetTokens SET IsUsed = TRUE WHERE CustomerID = %s', (record.CustomerID,)
-                )
+                AuthService._invalidate_reset_tokens(cursor, customer.CustomerID)
                 conn.commit()
                 return {'success': True}
         except psycopg2.Error as exc:

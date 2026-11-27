@@ -1,17 +1,17 @@
 """Private chat attachment storage primitives without conversation/message dependencies."""
 
-from pathlib import Path
 import re
 
 from flask import current_app
 
+from app.uploads import upload_root
 from app.validation import ValidationError
 
 
 def storage_path(storage_name):
     if not isinstance(storage_name, str) or not re.fullmatch(r'[0-9a-f]{32}\.[a-z0-9]{2,5}', storage_name):
         raise ValidationError('Đường dẫn tệp không hợp lệ')
-    root = Path(current_app.config.get('UPLOAD_ROOT') or Path(current_app.instance_path) / 'uploads').resolve()
+    root = upload_root()
     directory = root / 'chat'
     path = directory / storage_name
     if (

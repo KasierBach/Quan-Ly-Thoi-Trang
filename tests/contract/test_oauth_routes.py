@@ -192,6 +192,31 @@ def test_login_success_rotates_auth_and_preserves_cart(client, oauth):
     assert 'offline-code' not in response.text and 'ignored-token' not in response.text
 
 
+@pytest.mark.parametrize('provider', ['google', 'github'])
+def test_provider_login_preserves_local_next_without_sending_it_to_provider(client, oauth, provider):
+    next_page = '/checkout?buy_now=1&draft=example-signed-draft'
+    page = client.get('/login', query_string={'next': next_page})
+    soup = BeautifulSoup(page.text, 'html.parser')
+    field = soup.select_one(f'form[action="/oauth/{provider}/login"] input[name="next"]')
+    assert field['value'] == next_page
+
+    response = client.post(f'/oauth/{provider}/login', data={'next': field['value']})
+    assert response.status_code == 302
+    assert 'example-signed-draft' not in response.headers['Location']
+    with client.session_transaction() as browser_session:
+        flow = dict(browser_session[FLOW_KEY])
+        assert 'next_page' not in flow
+    response = finish(client, flow, {'next': '/wishlist'})
+    assert response.status_code == 302
+    assert response.headers['Location'] == next_page
+    assert 'next_page' not in oauth.exchange.call_args.args[2]
+
+
+def test_provider_login_ignores_external_next_from_login_form(client, oauth):
+    flow = start(client, data={'next': 'https://example.com/'})
+    assert finish(client, flow).headers['Location'] == '/'
+
+
 def test_logged_in_user_cannot_implicitly_link_via_login(client, oauth):
     signed_in(client)
     assert client.post('/oauth/google/login').status_code == 400

@@ -1,5 +1,4 @@
 from html import escape
-from pathlib import Path
 
 from flask import (
     Blueprint,
@@ -19,7 +18,7 @@ from app.decorators import handle_db_errors, login_required
 from app.extensions import limiter
 from app.services.auth_service import AuthService
 from app.services.order_service import OrderService
-from app.uploads import save_image
+from app.uploads import save_image, upload_root
 from app.utils import send_email
 from app.validation import ValidationError, email_address, local_redirect, password_value, required_text
 
@@ -29,6 +28,11 @@ auth_bp = Blueprint('auth', __name__)
 
 def establish_session(user_id, name, role, auth_version=1, dark_mode=False):
     cart = session.get('cart', [])
+    checkout_state = {}
+    if session.get('user_id') in (None, user_id):
+        checkout_state = {
+            key: session[key] for key in ('cart_revision', 'checkout_owner', 'temp_cart') if key in session
+        }
     session.clear()
     session.update(
         user_id=user_id,
@@ -39,6 +43,7 @@ def establish_session(user_id, name, role, auth_version=1, dark_mode=False):
         dark_mode=bool(dark_mode),
         cart=cart,
     )
+    session.update(checkout_state)
     session.permanent = True
 
 
@@ -71,8 +76,9 @@ def login():
 @limiter.limit('5 per hour')
 @handle_db_errors
 def register():
+    next_page = local_redirect(request.form.get('next') or request.args.get('next'))
     if request.method == 'GET':
-        return render_template('register.html')
+        return render_template('register.html', next_page=next_page)
     try:
         password = password_value(request.form.get('password'))
         if password != request.form.get('confirm_password'):
@@ -86,13 +92,13 @@ def register():
         )
     except ValidationError as exc:
         flash(str(exc), 'error')
-        return render_template('register.html'), 400
+        return render_template('register.html', next_page=next_page), 400
     if not result['success']:
         flash(result['message'], 'error')
-        return render_template('register.html'), 400
+        return render_template('register.html', next_page=next_page), 400
     establish_session(result['customer_id'], result['full_name'], 'customer', result['auth_version'])
     flash('Đăng ký thành công!', 'success')
-    return redirect(url_for('main.home'))
+    return redirect(next_page or url_for('main.home'))
 
 
 @auth_bp.route('/logout', methods=['POST'])
@@ -138,8 +144,7 @@ def upload_avatar():
 def avatar_file(filename):
     if not filename.endswith('.jpg') or len(filename) != 36:
         abort(404)
-    root = Path(current_app.config.get('UPLOAD_ROOT') or Path(current_app.instance_path) / 'uploads')
-    return send_from_directory(root / 'avatars', filename, mimetype='image/jpeg')
+    return send_from_directory(upload_root() / 'avatars', filename, mimetype='image/jpeg')
 
 
 @auth_bp.route('/update_profile', methods=['POST'])

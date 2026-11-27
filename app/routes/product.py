@@ -39,10 +39,6 @@ def products():
         color_id = _optional_id(args, 'color', 'Màu sắc')
         size_id = _optional_id(args, 'size', 'Kích thước')
         search_term = ProductService.optional_text(args.get('search', ''), 'Tìm kiếm', 200)
-        min_price = money(args['min_price'], 'Giá tối thiểu') if args.get('min_price') else None
-        max_price = money(args['max_price'], 'Giá tối đa') if args.get('max_price') else None
-        if min_price is not None and max_price is not None and min_price > max_price:
-            raise ValidationError('Giá tối thiểu không được lớn hơn giá tối đa')
         stock_filter = args.get('in_stock', '0')
         if stock_filter not in ('0', '1'):
             raise ValidationError('Bộ lọc tồn kho không hợp lệ')
@@ -62,18 +58,32 @@ def products():
     sort = args.get('sort', 'newest')
     if sort not in ProductService.SORTS:
         sort = 'newest'
-    search_result = ProductService.search_products(
-        search_term,
-        category_id,
-        min_price,
-        max_price,
-        color_id,
-        size_id,
-        in_stock_only,
-        page,
-        per_page,
-        sort,
-    )
+
+    min_price_input = args.get('min_price', '')
+    max_price_input = args.get('max_price', '')
+    try:
+        min_price = money(min_price_input, 'Giá tối thiểu') if min_price_input else None
+        max_price = money(max_price_input, 'Giá tối đa') if max_price_input else None
+        if min_price is not None and max_price is not None and min_price > max_price:
+            raise ValidationError('Giá tối thiểu không được lớn hơn giá tối đa')
+    except ValidationError as exc:
+        filter_error = str(exc)
+        min_price, max_price = min_price_input, max_price_input
+        search_result = {'products': [], 'total_records': 0, 'total_pages': 1, 'current_page': 1, 'offset': 0}
+    else:
+        filter_error = None
+        search_result = ProductService.search_products(
+            search_term,
+            category_id,
+            min_price,
+            max_price,
+            color_id,
+            size_id,
+            in_stock_only,
+            page,
+            per_page,
+            sort,
+        )
     paging_data = {
         'total_records': search_result['total_records'],
         'total_pages': search_result['total_pages'],
@@ -82,7 +92,7 @@ def products():
         'start_index': search_result['offset'] + 1 if search_result['total_records'] else 0,
         'end_index': min(search_result['offset'] + per_page, search_result['total_records']),
     }
-    return render_template(
+    page_html = render_template(
         'products.html',
         products=search_result['products'],
         colors=ProductService.get_all_colors(),
@@ -96,6 +106,7 @@ def products():
         in_stock_only=in_stock_only,
         paging=paging_data,
         sort=sort,
+        filter_error=filter_error,
         seo=catalog_metadata(
             category_id,
             search_result['current_page'],
@@ -112,6 +123,7 @@ def products():
             empty=not search_result['total_records'],
         ),
     )
+    return page_html, 400 if filter_error else 200
 
 
 @product_bp.route('/api/search_autocomplete')

@@ -17,9 +17,10 @@
         <a href="{{ url_for('product.products') }}" class="btn btn-primary">Tiếp tục mua sắm</a>
     </div></div>
     {% else %}
-    <form action="{{ url_for('cart.checkout', buy_now=1) if is_buy_now else url_for('cart.checkout') }}" method="post" id="checkoutForm">
+    <form action="{{ checkout_url }}" method="post" id="checkoutForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="buy_now" value="{{ '1' if is_buy_now else '0' }}">
+        <input type="hidden" name="checkout_review" value="{{ checkout_review }}">
         <input type="hidden" name="shipping_method" value="standard">
         <div class="row g-4">
             <div class="col-lg-8">

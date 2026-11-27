@@ -70,7 +70,12 @@ class FakeElement {
     }
 
     dispatch(type) {
-        for (const listener of [...(this.listeners.get(type) ?? [])]) listener({});
+        const event = {
+            defaultPrevented: false,
+            preventDefault() { this.defaultPrevented = true; },
+        };
+        for (const listener of [...(this.listeners.get(type) ?? [])]) listener(event);
+        return event;
     }
 }
 
@@ -216,10 +221,10 @@ test('submit feedback ignores repeated submits while disabled', () => {
     assert.equal(icon.classes.size, 3); // fas + fa-spinner + fa-spin-pulse, original removed once
 });
 
-test('password pattern shows live hint and blocks weak submits', () => {
+test('weak reset password leaves submit enabled so a corrected password can be sent', () => {
     const shell = new FakeElement('div');
     const icon = new FakeElement('i', { 'data-btn-icon': 'fa-key' });
-    icon.classes.add('fas', 'fa-key');
+    icon.classList.add('fas', 'fa-key');
     const button = new FakeElement('button', { type: 'submit' });
     button.children.push(icon);
     const password = new FakeElement('input', {
@@ -236,6 +241,7 @@ test('password pattern shows live hint and blocks weak submits', () => {
     shell.children.push(form);
 
     initPasswordPattern(shell);
+    initSubmitFeedback(shell, { addEventListener: () => {} });
 
     password.value = 'weak';
     password.dispatch('input');
@@ -250,23 +256,17 @@ test('password pattern shows live hint and blocks weak submits', () => {
     // Weak value again, then a submit attempt is prevented and refocused.
     password.value = 'weakpass';
     password.dispatch('input');
-    let prevented = false;
-    form.addEventListener('submit', () => {});
-    const submitListeners = form.listeners.get('submit');
-    // The pattern guard registered its listener first; invoke every listener with a cancellable event.
-    for (const listener of [...submitListeners]) {
-        listener({ preventDefault() { prevented = true; } });
-    }
-    assert.equal(prevented, true);
+    assert.equal(form.dispatch('submit').defaultPrevented, true);
     assert.equal(hint.dataset.state, 'err');
+    assert.equal(password.focusCalls, 1);
+    assert.equal(button.disabled, false);
+    assert.ok(icon.classes.has('fa-key') && !icon.classes.has('fa-spinner'));
 
     password.value = 'StrongPass1';
     password.dispatch('input');
-    prevented = false;
-    for (const listener of [...submitListeners]) {
-        listener({ preventDefault() { prevented = true; } });
-    }
-    assert.equal(prevented, false);
+    assert.equal(form.dispatch('submit').defaultPrevented, false);
+    assert.equal(button.disabled, true);
+    assert.ok(icon.classes.has('fa-spinner'));
 });
 
 test('aside slideshow activates the first slide then rotates on interval', () => {

@@ -4,7 +4,9 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
 import threading
+from uuid import uuid4
 
+from bs4 import BeautifulSoup
 import psycopg2
 import pytest
 
@@ -476,3 +478,83 @@ def test_application_order_failure_rolls_back_all_rows(db_app, db_connection):
     assert _stock(db_connection, 1) == before_one
     assert _stock(db_connection, 2) == before_two
     assert _scalar(db_connection, 'SELECT COUNT(*) FROM Orders') == order_count
+
+
+def test_separate_checkout_pages_and_concurrent_submits_share_one_order(db_app, db_client, db_connection, monkeypatch):
+    from app.services.order_service import OrderService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute('UPDATE ProductVariants SET Quantity = 1 WHERE VariantID = 1')
+    db_connection.commit()
+    creds = {'email': 'customer@example.test', 'password': 'TestUser123!'}
+    assert db_client.post('/login', data=creds).status_code == 302
+    assert db_client.post('/add_to_cart', json={'variant_id': 1, 'quantity': 1}).status_code == 200
+    second_tab = db_app.test_client()
+    second_tab.set_cookie('session', db_client.get_cookie('session').value)
+
+    def fields(client):
+        page = client.get('/checkout')
+        assert page.status_code == 200
+        soup = BeautifulSoup(page.data, 'html.parser')
+        return {
+            'checkout_review': soup.select_one('input[name=checkout_review]')['value'],
+            'full_name': 'Concurrent Buyer',
+            'phone': '0901234000',
+            'email': 'concurrent@example.test',
+            'shipping_address': 'One Synthetic Checkout Street',
+            'order_notes': 'Checkout repeat integration',
+            'payment_method': OrderService.PAYMENT_METHOD,
+        }
+
+    first_form, second_form = fields(db_client), fields(second_tab)
+    lookup = OrderService.get_checkout_order
+    both_looked_up = threading.Barrier(2)
+
+    def force_concurrent_lookup(user_id, key):
+        order_id = lookup(user_id, key)
+        if order_id is None:
+            both_looked_up.wait(timeout=5)
+        return order_id
+
+    monkeypatch.setattr(OrderService, 'get_checkout_order', force_concurrent_lookup)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        first = workers.submit(db_client.post, '/checkout', json=first_form)
+        second = workers.submit(second_tab.post, '/checkout', json=second_form)
+        results = [request.result(timeout=15) for request in (first, second)]
+    assert [response.status_code for response in results] == [200, 200]
+    assert results[0].json['order_id'] == results[1].json['order_id']
+    order_id = results[0].json['order_id']
+    assert db_client.post('/checkout', json=first_form).json['order_id'] == order_id
+    assert _scalar(db_connection, 'SELECT COUNT(*) FROM Orders WHERE notes = %s', ('Checkout repeat integration',)) == 1
+    assert _scalar(db_connection, 'SELECT SUM(Quantity) FROM OrderDetails WHERE OrderID = %s', (order_id,)) == 1
+    assert _stock(db_connection) == 0
+
+
+def test_checkout_transaction_rechecks_reviewed_price_and_keeps_retry_available(db_app, db_connection):
+    from app.services.order_service import OrderService
+
+    before = _stock(db_connection)
+    key = uuid4().hex
+    with db_connection.cursor() as cursor:
+        cursor.execute('UPDATE Products SET Price = 299000 WHERE ProductID = 1')
+    db_connection.commit()
+    args = (
+        1,
+        OrderService.PAYMENT_METHOD,
+        'Reviewed Price Test Street',
+        [{'variant_id': 1, 'quantity': 1}],
+    )
+    with db_app.app_context():
+        stale = OrderService.create_order(*args, checkout_key=key, reviewed_prices={1: '199000.00'})
+        assert not stale['success'] and stale['status_code'] == 409
+        assert OrderService.get_checkout_order(1, key) is None
+        assert _stock(db_connection) == before
+
+        refreshed = OrderService.create_order(*args, checkout_key=key, reviewed_prices={1: '299000.00'})
+        assert refreshed['success'] is True
+        assert OrderService.get_checkout_order(3, key) is None
+        other_customer = OrderService.create_order(3, *args[1:], checkout_key=key, reviewed_prices={1: '299000.00'})
+        assert not other_customer['success'] and other_customer['status_code'] == 409
+
+    assert _total(db_connection, refreshed['order_id']) == Decimal('299000.00')
+    assert _stock(db_connection) == before - 1

@@ -2,6 +2,14 @@
 
 `bootstrap.sql` targets PostgreSQL 14+ and initializes an empty database. Replay is additive: missing columns/constraints/indexes are added, views/functions/triggers are replaced without dropping objects, and existing rows are not updated or erased. Newly added legacy checks use `NOT VALID` so old rows are retained while future writes are checked. Existing duplicate case-insensitive emails/reset tokens or incompatible function return types cause a transactional failure, not silent deletion. This is not an instruction to migrate a live database.
 
+## Apply schema migrations
+
+Set `DATABASE_URL` in the shell and run `python -m tools.migrate_db` from the repository root. The tool uses `MIGRATION_DATABASE_URL` when set, which lets deployment use a separate role with schema permissions. It reads the process environment only. Use the direct PostgreSQL URL for the same database the app will connect to.
+
+The first run applies the additive bootstrap and the numbered scripts in `db/migrations`. A PostgreSQL advisory lock serializes runs and `public.thua2_schema_migrations` records completed scripts in the same transaction as the migration. Use a new numbered script for each subsequent schema change. Render runs the tool in `preDeployCommand` and local Compose runs it before Gunicorn. `/health/ready` verifies the required schema using the app's connection.
+
+Before applying to an existing database, take a database backup and verify the upgrade on a copy. Migration `0005` retires old plaintext reset credentials and preserves their history. Back up runtime uploads separately. When switching to the persistent mount, copy any existing `instance/uploads/avatars` and `instance/uploads/chat` into the corresponding subdirectories of `UPLOAD_ROOT`. Place any retained `app/static/images/pixabay-*.jpg` files in `UPLOAD_ROOT/products` with their original filenames.
+
 ## Provenance
 
 Reconstruction uses only the **ignored January 2026 files**, read from the original folder, and SQL contracts in the approved main worktree at `aa0f131e60d4489eea1b16b753d220cd87d34ce3` (2026-04-17). Neither ignored file has Git history for its path; filesystem timestamps are not commit provenance.

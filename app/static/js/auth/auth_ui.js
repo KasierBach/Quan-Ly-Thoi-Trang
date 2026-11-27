@@ -30,7 +30,8 @@ function restoreSubmitButton(form) {
 
 export function initSubmitFeedback(shell, eventTarget = globalThis) {
     for (const form of shell.querySelectorAll('form[data-auth-loading]')) {
-        form.addEventListener('submit', () => {
+        form.addEventListener('submit', (event) => {
+            if (event.defaultPrevented) return;
             const button = form.querySelector('button[type="submit"]');
             const icon = button?.querySelector('[data-btn-icon]');
             if (!button || button.disabled) return;
@@ -114,9 +115,9 @@ function initAuthUi() {
     const shell = document.querySelector('.auth-shell');
     if (!shell) return;
     initEyeToggles(shell);
-    initSubmitFeedback(shell, window);
     initConfirmMatch(shell);
     initPasswordPattern(shell);
+    initSubmitFeedback(shell, window);
     initAsideSlideshow(document, window);
 }
 

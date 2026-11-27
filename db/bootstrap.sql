@@ -100,6 +100,8 @@ ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_phone VARCHAR(20);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_email VARCHAR(254);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE Orders ADD COLUMN IF NOT EXISTS checkout_key UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_checkout_key ON Orders (checkout_key);
 CREATE TABLE IF NOT EXISTS OrderDetails (
     OrderDetailID SERIAL PRIMARY KEY,
     OrderID INT NOT NULL REFERENCES Orders(OrderID) ON DELETE CASCADE,
@@ -151,7 +153,7 @@ CREATE TABLE IF NOT EXISTS ProductComments (
 CREATE TABLE IF NOT EXISTS PasswordResetTokens (
     TokenID SERIAL PRIMARY KEY,
     CustomerID INT NOT NULL REFERENCES Customers(CustomerID),
-    Token VARCHAR(100) NOT NULL,
+    Token VARCHAR(100) NOT NULL CONSTRAINT passwordresettokens_sha256 CHECK (Token::text ~ '^[0-9a-f]{64}$'),
     ExpiryDate TIMESTAMP NOT NULL,
     IsUsed BOOLEAN DEFAULT FALSE,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -250,7 +252,7 @@ BEGIN
         ('orderdetails', 'orderdetails_nonnegative_price', 'Price >= 0'),
         ('orderdetails', 'orderdetails_finite_price', 'Price <> ''NaN''::NUMERIC'),
         ('orderdetails', 'orderdetails_references_required', 'OrderID IS NOT NULL AND VariantID IS NOT NULL'),
-        ('passwordresettokens', 'passwordresettokens_sha256', 'Token ~ ''^[0-9a-f]{64}$'''),
+        ('passwordresettokens', 'passwordresettokens_sha256', 'Token::text ~ ''^[0-9a-f]{64}$'''),
         ('conversations', 'conversations_valid_type', 'type IN (''private'', ''group'', ''support'')'),
         ('participants', 'participants_valid_role', 'role IS NOT NULL AND role IN (''member'', ''admin'', ''owner'')'),
         ('participants', 'participants_references_required', 'conversation_id IS NOT NULL AND user_id IS NOT NULL'),
