@@ -1391,18 +1391,17 @@ footer a:hover {
         text-underline-offset: 0.15em;
     }
 
-    .checkout-page:has(#checkoutForm) .floating-contact {
-        bottom: var(--checkout-bar-space);
-        right: 0.75rem;
+    .checkout-help {
+        min-height: 44px;
+        color: var(--primary-color);
+    }
+
+    .checkout-help:hover {
+        color: var(--primary-hover);
     }
 
     .checkout-page:has(#checkoutForm) .chat-window {
         bottom: calc(var(--checkout-bar-space) + 3.25rem);
         max-height: calc(100dvh - var(--checkout-bar-space) - 4rem);
-    }
-
-    .checkout-page .contact-btn-main {
-        width: 48px;
-        height: 48px;
     }
 }

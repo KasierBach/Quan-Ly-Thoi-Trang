@@ -71,6 +71,9 @@
                             <label class="form-check-label" for="cod">Thanh toán khi nhận hàng (COD)</label>
                         </div>
                         {{ field_feedback('cod') }}
+                        {% if not session.is_admin %}
+                        <button class="btn btn-link d-lg-none checkout-help px-0" type="button" onclick="toggleLiveChat()">Chat hỗ trợ</button>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="card border-0 shadow-sm">
@@ -115,6 +118,10 @@
     </form>
     {% endif %}
 </div>
+{% endblock %}
+
+{% block floating_contact_widget %}
+<div class="d-none d-lg-block">{{ super() }}</div>
 {% endblock %}
 
 {% block scripts %}
