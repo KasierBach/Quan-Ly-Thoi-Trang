@@ -118,6 +118,7 @@ def test_reset_rechecks_after_waiting_for_customer_lock(fake_db):
 
 def test_reset_missing_and_invalid_do_not_write(fake_db):
     assert not AuthService.reset_password('short', 'NewPass123!')['success']
+    assert not AuthService.reset_password('!' * 43, 'NewPass123!')['success']
     fake_db.conn.cursor.assert_not_called()
     fake_db.cursor.fetchone.return_value = None
     assert not AuthService.reset_password('a' * 43, 'NewPass123!')['success']
@@ -126,7 +127,7 @@ def test_reset_missing_and_invalid_do_not_write(fake_db):
 
 def test_reset_unknown_customer_does_not_create_token(fake_db):
     fake_db.cursor.fetchone.return_value = None
-    assert AuthService.create_password_reset_token('nobody@example.test') is None
+    assert AuthService.issue_account_recovery_token('nobody@example.test') is None
     fake_db.conn.commit.assert_not_called()
 
 

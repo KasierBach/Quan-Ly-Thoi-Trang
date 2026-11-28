@@ -46,8 +46,12 @@ class OrderService(BaseService):
                 recipient_phone = phone_number(recipient_phone)
                 recipient_email = email_address(recipient_email)
             notes = ProductService.optional_text(notes, 'Ghi chú', 2000)
-        except ValidationError as exc:
-            return {'success': False, 'message': str(exc), 'status_code': 400}
+        except ValidationError:
+            return {
+                'success': False,
+                'message': 'Thông tin đặt hàng chưa hợp lệ. Vui lòng kiểm tra lại.',
+                'status_code': 400,
+            }
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
@@ -111,9 +115,13 @@ class OrderService(BaseService):
                     )
                 conn.commit()
                 return {'success': True, 'order_id': order_id}
-        except ValidationError as exc:
+        except ValidationError:
             conn.rollback()
-            return {'success': False, 'message': str(exc), 'status_code': 409}
+            return {
+                'success': False,
+                'message': 'Không thể xác nhận phiên đặt hàng. Vui lòng kiểm tra lại sản phẩm và giá.',
+                'status_code': 409,
+            }
         except psycopg2.Error as exc:
             conn.rollback()
             if exc.pgcode in ('23514', 'P0001') or (checkout_key is not None and exc.pgcode == '23503'):

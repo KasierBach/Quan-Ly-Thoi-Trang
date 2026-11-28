@@ -17,6 +17,7 @@ from app.services.feedback_service import FeedbackService
 from app.services.order_service import OrderService
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
+from app.validation import ValidationError
 import app.routes.cart as cart_routes
 
 
@@ -786,6 +787,16 @@ def test_stock_rejected_checkout_keeps_cart(auth_client, catalog, monkeypatch):
     create.assert_called_once()
     with auth_client.session_transaction() as state:
         assert state['cart'][0]['quantity'] == 6
+
+
+def test_checkout_cart_error_uses_a_public_message(auth_client, catalog, monkeypatch):
+    set_cart(auth_client, [{'variant_id': 1, 'quantity': 1}])
+    failure = Mock(side_effect=ValidationError('Internal cart diagnostic'))
+    monkeypatch.setattr(ProductService, 'refresh_cart_items', failure)
+    response = auth_client.get('/checkout', headers={'Accept': 'application/json'})
+    assert response.status_code == 409
+    assert response.json['message'].startswith('Giỏ hàng đã thay đổi')
+    assert b'Internal cart diagnostic' not in response.data
 
 
 def test_cancel_order_failure_passes_service_http_status(auth_client, monkeypatch):

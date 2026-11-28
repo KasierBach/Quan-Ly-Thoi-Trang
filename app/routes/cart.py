@@ -14,6 +14,7 @@ from app.validation import ValidationError, local_redirect, money, positive_int
 
 cart_bp = Blueprint('cart', __name__)
 CHECKOUT_REVIEW_SECONDS = 30 * 60
+CART_CHANGED_MESSAGE = 'Giỏ hàng đã thay đổi. Vui lòng kiểm tra lại sản phẩm trước khi đặt hàng.'
 
 
 def _payload():
@@ -288,8 +289,8 @@ def checkout():
 
     try:
         cart = ProductService.refresh_cart_items(source)
-    except ValidationError as exc:
-        return _restart_checkout(str(exc), url_for('cart.view_cart'))
+    except ValidationError:
+        return _restart_checkout(CART_CHANGED_MESSAGE, url_for('cart.view_cart'))
     if not cart:
         if api_request():
             return jsonify(success=False, message='Giỏ hàng trống'), 400
@@ -348,8 +349,8 @@ def checkout():
             # Refresh the review after a transaction conflict, keeping the submitted delivery details.
             try:
                 current_cart = ProductService.refresh_cart_items(source)
-            except ValidationError as exc:
-                return _restart_checkout(str(exc), url_for('cart.view_cart'))
+            except ValidationError:
+                return _restart_checkout(CART_CHANGED_MESSAGE, url_for('cart.view_cart'))
             context.update(_checkout_preview(current_cart, checkout_key, user_id, is_buy_now))
     if api_request():
         return jsonify(success=False, message=message), status

@@ -1,4 +1,5 @@
 import hashlib
+import re
 import secrets
 from typing import Any
 from datetime import date
@@ -186,7 +187,7 @@ class AuthService(BaseService):
         )
 
     @staticmethod
-    def create_password_reset_token(email):
+    def issue_account_recovery_token(email):
         email = email_address(email)
         conn = AuthService.get_connection()
         try:
@@ -256,8 +257,9 @@ class AuthService(BaseService):
     def reset_password(token, new_password) -> dict[str, Any]:
         new_password = password_value(new_password)
         invalid_token = {'success': False, 'message': 'Token không hợp lệ hoặc đã hết hạn'}
-        if not isinstance(token, str) or not 20 <= len(token) <= 128:
+        if not isinstance(token, str) or not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
             return invalid_token
+        # Recovery tokens are random 256-bit values. Passwords use generate_password_hash below.
         digest = hashlib.sha256(token.encode()).hexdigest()
         conn = AuthService.get_connection()
         try:

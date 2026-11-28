@@ -232,7 +232,7 @@ def forgot_password():
     except ValidationError as exc:
         flash(str(exc), 'error')
         return render_template('forgot_password.html'), 400
-    result = AuthService.create_password_reset_token(email)
+    result = AuthService.issue_account_recovery_token(email)
     if result:
         path = url_for('auth.reset_password', token=result['token'])
         base = current_app.config.get('PUBLIC_BASE_URL') or request.host_url.rstrip('/')

@@ -1,7 +1,7 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 
 class ValidationError(ValueError):
@@ -85,4 +85,4 @@ def local_redirect(value):
     parsed = urlsplit(value)
     if parsed.scheme or parsed.netloc:
         return None
-    return value
+    return urlunsplit(('', '', parsed.path, parsed.query, parsed.fragment))

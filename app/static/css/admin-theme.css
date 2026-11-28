@@ -83,7 +83,7 @@
 }
 .admin-page > .main-content .form-section { padding: 20px; border-radius: 6px; margin-bottom: 30px; }
 .admin-page > .main-content .form-section h4 { margin-bottom: 15px; }
-#inventory-history { scroll-margin-top: 5rem; }
+.admin-page #inventory-history { scroll-margin-top: 5rem; }
 .admin-page > .main-content :is(.card-header, .input-group-text, .order-status-card, .premium-search) {
     background: var(--admin-subtle);
     color: var(--admin-text);

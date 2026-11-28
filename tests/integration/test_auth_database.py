@@ -54,7 +54,7 @@ def test_change_password_revokes_other_browser_session(db_app, db_client):
 def test_password_reset_token_hashed_single_use_and_revokes(db_app, db_client, db_connection):
     db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'})
     with db_app.app_context():
-        issued = AuthService.create_password_reset_token('customer@example.test')
+        issued = AuthService.issue_account_recovery_token('customer@example.test')
     with db_connection.cursor() as cursor:
         cursor.execute('SELECT Token FROM PasswordResetTokens WHERE CustomerID=1 AND IsUsed=FALSE')
         assert cursor.fetchone().Token == hashlib.sha256(issued['token'].encode()).hexdigest()
@@ -67,7 +67,7 @@ def test_password_reset_token_hashed_single_use_and_revokes(db_app, db_client, d
 
 def test_failed_email_keeps_already_delivered_reset_link(db_app, db_client, db_connection, monkeypatch):
     with db_app.app_context():
-        delivered = AuthService.create_password_reset_token('customer@example.test')
+        delivered = AuthService.issue_account_recovery_token('customer@example.test')
     monkeypatch.setattr('app.routes.auth.send_email', lambda *_: False)
     for email in ('customer@example.test', 'unknown@example.test'):
         response = db_client.post('/forgot_password', data={'email': email})
@@ -83,7 +83,7 @@ def test_failed_email_keeps_already_delivered_reset_link(db_app, db_client, db_c
 
 def test_parallel_resets_with_different_tokens_only_change_password_once(db_app, db_connection):
     with db_app.app_context():
-        tokens = [AuthService.create_password_reset_token('customer@example.test')['token'] for _ in range(2)]
+        tokens = [AuthService.issue_account_recovery_token('customer@example.test')['token'] for _ in range(2)]
     start = Barrier(2)
 
     def reset(token, password):
@@ -105,7 +105,7 @@ def test_parallel_resets_with_different_tokens_only_change_password_once(db_app,
 
 def test_expired_reset_rejected(db_app, db_connection):
     with db_app.app_context():
-        issued = AuthService.create_password_reset_token('customer@example.test')
+        issued = AuthService.issue_account_recovery_token('customer@example.test')
     with db_connection.cursor() as cursor:
         cursor.execute("UPDATE PasswordResetTokens SET ExpiryDate=CURRENT_TIMESTAMP - INTERVAL '1 second'")
     db_connection.commit()

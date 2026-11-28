@@ -236,7 +236,7 @@ def test_auth_hash_check_and_reset_digest(fake_db):
         CustomerID=1, FullName='Test', Password=generate_password_hash('GoodPass123!')
     )
     assert AuthService.login_user('user@example.test', 'wrong') is None
-    result = AuthService.create_password_reset_token('user@example.test')
+    result = AuthService.issue_account_recovery_token('user@example.test')
     assert len(result['token']) >= 32
     insert = fake_db.cursor.execute.call_args_list[-1]
     assert result['token'] not in str(insert)
