@@ -79,6 +79,26 @@ def test_register_mismatch_never_calls_service(client, monkeypatch):
     register.assert_not_called()
 
 
+def test_registration_keeps_entered_details_without_echoing_passwords(client):
+    data = {
+        'full_name': 'Synthetic & Sample',
+        'email': 'test@example.test',
+        'phone': '0900000011',
+        'address': 'Unit <B> & house 5',
+        'password': 'weakpassword',
+        'confirm_password': 'weakpassword',
+    }
+    response = client.post('/register', data=data)
+    assert response.status_code == 400
+    assert b'weakpassword' not in response.data
+    page = BeautifulSoup(response.data, 'html.parser')
+    for field in ('full_name', 'email', 'phone'):
+        assert page.select_one(f'input[name="{field}"]')['value'] == data[field]
+    assert page.select_one('textarea[name="address"]').text == data['address']
+    assert page.select_one('[data-new-password]')['aria-describedby'] == 'password-help password-status'
+    assert '8–128' in page.select_one('#password-help').text
+
+
 def test_register_uses_customer_role_and_preserves_cart(client, monkeypatch):
     monkeypatch.setattr(
         AuthService,

@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
 import threading
+from time import monotonic, sleep
 from uuid import uuid4
 
 from bs4 import BeautifulSoup
@@ -335,6 +336,41 @@ def test_conditional_stock_update_rechecks_after_competing_transaction(db_connec
     assert _stock(db_connection) == 0
     assert _total(db_connection, order_two) == 0
     assert _scalar(db_connection, 'SELECT COUNT(*) FROM OrderDetails WHERE OrderID = %s', (order_two,)) == 0
+
+
+def test_admin_stock_adjustment_applies_to_stock_after_concurrent_checkout(db_connection, database_url, monkeypatch):
+    from app.services.base_service import BaseService
+    from app.services.product_service import ProductService
+
+    before = _stock(db_connection)
+    checkout = _connect(database_url)
+    adjustment = _connect(database_url)
+    checkout_pid = checkout.get_backend_pid()
+    adjustment_pid = adjustment.get_backend_pid()
+    try:
+        order_id = _new_order(checkout)
+        _add(checkout, order_id, 1, 2)
+        monkeypatch.setattr(BaseService, 'get_connection', lambda: adjustment)
+
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            future = worker.submit(ProductService.adjust_variant_stock, 1, 1, '-3')
+            try:
+                deadline = monotonic() + 4
+                while not _scalar(
+                    db_connection, 'SELECT %s = ANY(pg_blocking_pids(%s))', (checkout_pid, adjustment_pid)
+                ):
+                    if monotonic() >= deadline:
+                        pytest.fail('Stock adjustment did not wait for the checkout transaction')
+                    sleep(0.01)
+                checkout.commit()
+            finally:
+                checkout.rollback()
+            assert future.result(timeout=5) == {'success': True, 'quantity': before - 5}
+    finally:
+        checkout.close()
+        adjustment.close()
+    assert _stock(db_connection) == before - 5
+    assert _total(db_connection, order_id) == Decimal('398000.00')
 
 
 def test_concurrent_repeat_cancellation_restores_inventory_exactly_once(db_connection, database_url):

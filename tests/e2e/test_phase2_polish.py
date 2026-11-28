@@ -39,6 +39,37 @@ def test_public_product_metadata_and_lazy_images(gui_page):
     assert not page.test_errors, page.test_errors
 
 
+def test_skip_link_focuses_the_single_main_landmark(gui_page):
+    page = gui_page
+    for path in ('/products', '/messages'):
+        page.goto(path)
+        main = page.get_by_role('main')
+        expect(main).to_have_count(1)
+        skip = page.get_by_role('link', name='Đến nội dung chính', exact=True)
+        page.keyboard.press('Tab')
+        expect(skip).to_be_focused()
+        page.keyboard.press('Enter')
+        expect(main).to_be_focused()
+
+
+def test_mobile_home_cta_and_catalog_put_products_above_fold(gui_page):
+    page = gui_page
+    page.set_viewport_size({'width': 390, 'height': 844})
+    page.goto('/')
+    page.locator('.storefront-hero').get_by_role('link', name='Xem sản phẩm', exact=True).click()
+    expect(page).to_have_url(re.compile(r'/products$'))
+
+    filters = page.locator('#catalogFilterPanel')
+    expect(filters.locator('summary')).to_be_visible()
+    assert filters.get_attribute('open') is None
+    product = page.locator('.product-card').first
+    expect(product).to_be_visible()
+    assert product.bounding_box()['y'] < 844
+
+    filters.locator('summary').press('Enter')
+    expect(filters.locator('form')).to_be_visible()
+
+
 def test_real_404_has_recovery_link_and_noindex(gui_page):
     page = gui_page
     response = page.goto('/not-a-real-product-page')

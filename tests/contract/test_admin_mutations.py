@@ -124,3 +124,33 @@ def test_admin_variant_zero_stock_is_supported(admin_client, monkeypatch):
     )
     assert response.status_code == 302
     add.assert_called_once_with(1, 1, 1, 0)
+
+
+def test_admin_variant_stock_adjustment_posts_for_one_product_variant(admin_client, monkeypatch):
+    adjust = MagicMock(return_value={'success': True, 'quantity': 4})
+    monkeypatch.setattr(ProductService, 'adjust_variant_stock', adjust)
+    path = '/admin/products/1/variants/9/stock'
+    assert admin_client.get(path).status_code == 405
+    response = admin_client.post(path, data={'delta': '-2'})
+    assert response.location == '/admin/products/edit/1'
+    adjust.assert_called_once_with(1, 9, '-2')
+    with admin_client.session_transaction() as state:
+        assert any(category == 'success' and '4' in message for category, message in state.get('_flashes', []))
+
+
+def test_variant_stock_adjustment_requires_admin(auth_client, monkeypatch):
+    adjust = MagicMock()
+    monkeypatch.setattr(ProductService, 'adjust_variant_stock', adjust)
+    response = auth_client.post(
+        '/admin/products/1/variants/9/stock', data={'delta': '-2'}, headers={'Accept': 'application/json'}
+    )
+    assert response.status_code == 403
+    adjust.assert_not_called()
+
+
+def test_variant_stock_adjustment_requires_csrf(app, admin_client, monkeypatch):
+    app.config['WTF_CSRF_ENABLED'] = True
+    adjust = MagicMock()
+    monkeypatch.setattr(ProductService, 'adjust_variant_stock', adjust)
+    assert admin_client.post('/admin/products/1/variants/9/stock', data={'delta': '-2'}).status_code == 400
+    adjust.assert_not_called()

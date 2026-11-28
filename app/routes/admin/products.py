@@ -126,6 +126,15 @@ def admin_add_variant():
     return redirect(url_for('admin.admin_edit_product', product_id=product_id))
 
 
+@admin_bp.route('/admin/products/<int:product_id>/variants/<int:variant_id>/stock', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_adjust_variant_stock(product_id, variant_id):
+    result = ProductService.adjust_variant_stock(product_id, variant_id, request.form.get('delta'))
+    _flash_result(result, f'Đã điều chỉnh tồn kho. Số lượng sau điều chỉnh là {result.get("quantity")}.')
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id))
+
+
 @admin_bp.route('/admin/products/manage', methods=['GET', 'POST'])
 @admin_required
 @handle_db_errors

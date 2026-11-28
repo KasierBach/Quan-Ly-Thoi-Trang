@@ -66,48 +66,69 @@ export function initConfirmMatch(shell) {
     password.addEventListener('input', sync);
 }
 
-// Client-side password rule (reset flow): live hint + submit guard, replacing
-// the former alert() with an inline hint near the field.
+// Match the server's code-point count and support Unicode decimal digits.
 export function initPasswordPattern(shell) {
-    const input = shell.querySelector('[data-password-pattern]');
+    const input = shell.querySelector('[data-new-password]');
     if (!input) return;
-    const pattern = new RegExp(input.getAttribute('data-password-pattern'));
-    const message = input.getAttribute('data-pattern-message') || 'Mật khẩu chưa đạt yêu cầu.';
+    const valid = (value) => {
+        const length = Array.from(value).length;
+        return length >= 8 && length <= 128 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /\p{Nd}/u.test(value);
+    };
     const form = input.closest('form');
     const hint = shell.querySelector('[data-pattern-hint]');
 
     const sync = () => {
         const value = input.value;
-        const ok = pattern.test(value);
+        const ok = valid(value);
+        if (ok) input.removeAttribute('aria-invalid');
         if (hint) {
             hint.dataset.state = ok ? 'ok' : (value ? 'err' : '');
-            hint.textContent = ok ? 'Mật khẩu đạt yêu cầu.' : (value ? message : '');
+            hint.textContent = ok ? 'Mật khẩu đạt yêu cầu.' : (value ? 'Mật khẩu chưa đạt yêu cầu.' : '');
         }
     };
     input.addEventListener('input', sync);
     form.addEventListener('submit', (event) => {
-        if (!pattern.test(input.value)) {
+        if (!valid(input.value)) {
             event.preventDefault();
+            input.setAttribute('aria-invalid', 'true');
             sync();
             input.focus();
         }
     });
 }
 
-// Aside image slideshow: crossfades the brand panel's product photos. Both
-// layers transition simultaneously so opacity sums stay smooth; reduced-motion
-// users get the first image statically.
+// Keep one brand photo on small screens and when motion is reduced.
 export function initAsideSlideshow(scope = document, scheduler = globalThis) {
     const slides = scope.querySelectorAll('[data-aside-slide]');
-    if (!slides.length) return null;
-    slides[0].classList.add('is-active');
     if (slides.length < 2) return null;
-    if (scheduler.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return null;
+    const rotation = scheduler.matchMedia?.('(min-width: 768px) and (prefers-reduced-motion: no-preference)');
+    if (!rotation?.matches) return null;
+
     let index = 0;
-    return scheduler.setInterval(() => {
-        slides[index].classList.remove('is-active');
-        index = (index + 1) % slides.length;
-        slides[index].classList.add('is-active');
+    let loading = false;
+    return scheduler.setInterval(async () => {
+        if (!rotation.matches || scope.hidden || loading) return;
+        const nextIndex = (index + 1) % slides.length;
+        const next = slides[nextIndex];
+        const source = next.dataset.asideSrc;
+
+        loading = true;
+        try {
+            if (source && !next.style.backgroundImage) {
+                const photo = new scheduler.Image();
+                photo.src = source;
+                await photo.decode();
+                next.style.backgroundImage = `url("${source}")`;
+            }
+            if (!rotation.matches || scope.hidden) return;
+            slides[index].classList.remove('is-active');
+            next.classList.add('is-active');
+            index = nextIndex;
+        } catch {
+            // Keep the visible photo if the upcoming one could not load.
+        } finally {
+            loading = false;
+        }
     }, 5000);
 }
 

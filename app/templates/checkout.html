@@ -10,7 +10,7 @@
             <li class="breadcrumb-item active" aria-current="page">Thanh toán</li>
         </ol>
     </nav>
-    <h2 class="mb-4 fw-bold"><i class="fas fa-credit-card me-2 text-primary"></i>Thanh toán</h2>
+    <h1 class="h2 mb-4 fw-bold"><i class="fas fa-credit-card me-2 text-primary"></i>Thanh toán</h1>
     {% if not cart %}
     <div class="card border-0 shadow-sm"><div class="card-body text-center py-5">
         <h4>Giỏ hàng trống</h4>
@@ -25,7 +25,7 @@
         <div class="row g-4">
             <div class="col-lg-8">
                 <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white border-bottom"><h5 class="mb-0 fw-bold"><i class="fas fa-shipping-fast me-2 text-primary"></i>Thông tin giao hàng</h5></div>
+                    <div class="card-header border-bottom"><h5 class="mb-0 fw-bold"><i class="fas fa-shipping-fast me-2 text-primary"></i>Thông tin giao hàng</h5></div>
                     <div class="card-body"><div class="row g-3">
                         <div class="col-md-6">
                             <label for="full_name" class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
@@ -46,14 +46,14 @@
                     </div></div>
                 </div>
                 <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white"><h5 class="mb-0 fw-bold"><i class="fas fa-truck me-2 text-primary"></i>Phương thức giao hàng</h5></div>
+                    <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-truck me-2 text-primary"></i>Phương thức giao hàng</h5></div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between"><span>Giao hàng tiêu chuẩn</span><span class="text-success fw-bold">0 ₫</span></div>
                         <p class="small text-muted mt-2 mb-0">Ứng dụng chưa tích hợp hãng vận chuyển hoặc tính phí giao hàng.</p>
                     </div>
                 </div>
                 <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header bg-white"><h5 class="mb-0 fw-bold"><i class="fas fa-money-bill-wave me-2 text-success"></i>Phương thức thanh toán</h5></div>
+                    <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-money-bill-wave me-2 text-success"></i>Phương thức thanh toán</h5></div>
                     <div class="card-body">
                         <div class="form-check payment-option p-3 border rounded">
                             <input class="form-check-input" type="radio" name="payment_method" id="cod" value="Thanh toán khi nhận hàng" checked required>
@@ -63,7 +63,7 @@
                     </div>
                 </div>
                 <div class="card border-0 shadow-sm">
-                    <div class="card-header bg-white"><h5 class="mb-0 fw-bold"><i class="fas fa-sticky-note me-2 text-primary"></i>Ghi chú đơn hàng</h5></div>
+                    <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-sticky-note me-2 text-primary"></i>Ghi chú đơn hàng</h5></div>
                     <div class="card-body">
                         <label for="order_notes" class="form-label">Ghi chú cho đơn hàng</label>
                         <textarea class="form-control" id="order_notes" name="order_notes" rows="3" maxlength="2000">{{ order_notes or '' }}</textarea>

@@ -394,6 +394,33 @@ def test_zero_stock_variant_is_valid(fake_db):
     assert fake_db.cursor.execute.call_args.args[1] == (1, 1, 1, 0)
 
 
+@pytest.mark.parametrize('delta', [None, '0', '+0', '--1', '1.5', '1e2', '-2147483648'])
+def test_stock_adjustment_validates_before_db_connection(fake_db, delta):
+    assert ProductService.adjust_variant_stock(1, 9, delta)['status_code'] == 400
+    fake_db.connection.cursor.assert_not_called()
+
+
+@pytest.mark.parametrize('delta,expected', [('-5', 0), ('+3', 8)])
+def test_stock_adjustment_locks_variant_and_keeps_adjusted_count(fake_db, delta, expected):
+    fake_db.cursor.fetchone.return_value = record(Quantity=5)
+    assert ProductService.adjust_variant_stock(1, 9, delta) == {'success': True, 'quantity': expected}
+    lock, update = fake_db.cursor.execute.call_args_list
+    assert 'FOR UPDATE' in lock.args[0] and lock.args[1] == (1, 9)
+    assert update.args[1] == (expected, 1, 9)
+    fake_db.connection.commit.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    'variant,delta,status',
+    [(None, '-1', 404), (record(Quantity=0), '-1', 409), (record(Quantity=2_147_483_647), '+1', 409)],
+)
+def test_stock_adjustment_does_not_write_missing_or_out_of_range_variant(fake_db, variant, delta, status):
+    fake_db.cursor.fetchone.return_value = variant
+    assert ProductService.adjust_variant_stock(1, 9, delta)['status_code'] == status
+    fake_db.cursor.execute.assert_called_once()
+    fake_db.connection.commit.assert_not_called()
+
+
 @pytest.mark.parametrize('method,args', [(ProductService.delete_product, (1,)), (ProductService.delete_variant, (1,))])
 def test_order_referenced_catalog_entities_are_not_deleted(fake_db, method, args):
     fake_db.cursor.fetchone.side_effect = [record(ProductID=1, VariantID=1), (1,)]

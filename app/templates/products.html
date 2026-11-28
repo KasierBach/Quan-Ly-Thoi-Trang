@@ -29,12 +29,17 @@
     <div class="row">
         <!-- Sidebar Filters -->
         <div class="col-lg-3 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">
-                        <i class="fas fa-filter me-2"></i>Bộ lọc sản phẩm
-                    </h5>
-                </div>
+            {% set price_filter_active = (min_price is defined and min_price is not none) or (max_price is defined and max_price is not none) %}
+            {% set active_filter_count = [current_category, color_id, size_id, in_stock_only, price_filter_active]|select|list|length %}
+            <details class="card catalog-filter-panel" id="catalogFilterPanel"{% if filter_error %} open{% endif %}>
+                <summary class="card-header d-flex align-items-center gap-2">
+                    <i class="fas fa-filter" aria-hidden="true"></i>
+                    <span>Bộ lọc sản phẩm</span>
+                    {% if active_filter_count and not filter_error %}
+                    <span class="badge bg-primary">{{ active_filter_count }}<span class="visually-hidden"> bộ lọc đang áp dụng</span></span>
+                    {% endif %}
+                    <i class="fas fa-chevron-down catalog-filter-chevron ms-auto" aria-hidden="true"></i>
+                </summary>
                 <div class="card-body">
                     <form action="{{ url_for('product.products') }}" method="get" id="filterForm">
                         <input type="hidden" name="sort" value="{{ sort }}">
@@ -134,10 +139,10 @@
                         </div>
                     </form>
                 </div>
-            </div>
+            </details>
 
             <!-- Popular Categories -->
-            <div class="card mt-3">
+            <div class="card mt-3 d-none d-lg-block">
                 <div class="card-header">
                     <h6 class="mb-0">
                         <i class="fas fa-fire me-2 text-warning"></i>Danh mục phổ biến
@@ -155,14 +160,16 @@
         </div>
 
         <!-- Product List -->
-        {% if not filter_error %}
+        {% if filter_error %}
+        <h1 class="visually-hidden">Sửa bộ lọc sản phẩm</h1>
+        {% else %}
         <div class="col-lg-9">
             <!-- Results Info -->
             <!-- Results Info -->
             <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-4" id="product-list-top"
                 style="scroll-margin-top: 100px;">
                 <div>
-                    <h4 class="mb-1">
+                    <h1 class="h4 mb-1">
                         {% if search_term %}
                         Kết quả tìm kiếm: "{{ search_term }}"
                         {% elif current_category %}
@@ -174,7 +181,7 @@
                         {% else %}
                         Tất cả sản phẩm
                         {% endif %}
-                    </h4>
+                    </h1>
                     <p class="text-muted mb-0">
                         <span class="badge bg-primary">{{ paging.total_records }}</span>
                         sản phẩm được tìm thấy
@@ -196,7 +203,7 @@
                         <input type="hidden" name="{{ key }}" value="{{ value }}">
                         {% endif %}
                         {% endfor %}
-                        <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap">Sắp xếp</button>
+                        <button type="submit" class="btn btn-outline-primary btn-sm text-nowrap flex-shrink-0">Sắp xếp</button>
                     </form>
                 </div>
             </div>
@@ -347,6 +354,9 @@
 <script>
     (() => {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+        if (window.matchMedia('(min-width: 992px)').matches) {
+            document.getElementById('catalogFilterPanel').open = true;
+        }
         document.addEventListener('click', async event => {
             const button = event.target.closest('.wishlist-add-btn');
             if (!button || button.disabled) return;

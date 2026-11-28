@@ -235,7 +235,12 @@ def test_json_decimal_exact(app):
         assert app.json.loads(app.json.dumps({'amount': Decimal('0.10')})) == {'amount': '0.10'}
 
 
-def test_decorator_keeps_http_errors_and_safe_validation(app):
+def test_decorator_keeps_http_errors_and_logs_safe_database_diagnostics(app, caplog):
+    class ConnectionLost(psycopg2.OperationalError):
+        @property
+        def pgcode(self):
+            return '08006'
+
     @app.route('/api/test-http')
     @handle_db_errors
     def test_http():
@@ -244,13 +249,16 @@ def test_decorator_keeps_http_errors_and_safe_validation(app):
     @app.route('/api/test-db')
     @handle_db_errors
     def test_db():
-        raise psycopg2.OperationalError('secret database URI')
+        raise ConnectionLost('secret database URI and private row values')
 
     client = app.test_client()
     assert client.get('/api/test-http').status_code == 409
     response = client.get('/api/test-db')
     assert response.status_code == 503
     assert b'secret' not in response.data
+    assert 'test_db [ConnectionLost, SQLSTATE=08006]' in caplog.text
+    assert 'secret database URI' not in caplog.text
+    assert 'private row values' not in caplog.text
 
 
 def test_session_role_revalidation_refresh(app, auth_client, monkeypatch):

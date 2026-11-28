@@ -9,6 +9,7 @@ class FakeElement {
         this.attributes = new Map(Object.entries(attributes));
         this.classes = new Set();
         this.dataset = {};
+        this.style = {};
         this.value = '';
         this.type = '';
         this.disabled = false;
@@ -34,6 +35,8 @@ class FakeElement {
     getAttribute(name) { return this.attributes.get(name) ?? null; }
 
     setAttribute(name, value) { this.attributes.set(name, String(value)); }
+
+    removeAttribute(name) { this.attributes.delete(name); }
 
     focus() { this.focusCalls += 1; }
 
@@ -228,8 +231,7 @@ test('weak reset password leaves submit enabled so a corrected password can be s
     const button = new FakeElement('button', { type: 'submit' });
     button.children.push(icon);
     const password = new FakeElement('input', {
-        id: 'password', name: 'password', 'data-pattern-message': 'Mật khẩu yếu.',
-        'data-password-pattern': `^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}$`,
+        id: 'password', name: 'password', 'data-new-password': '',
     });
     password.type = 'password';
     const hint = new FakeElement('div', { 'data-pattern-hint': '' });
@@ -246,7 +248,7 @@ test('weak reset password leaves submit enabled so a corrected password can be s
     password.value = 'weak';
     password.dispatch('input');
     assert.equal(hint.dataset.state, 'err');
-    assert.equal(hint.textContent, 'Mật khẩu yếu.');
+    assert.equal(hint.textContent, 'Mật khẩu chưa đạt yêu cầu.');
 
     password.value = 'StrongPass1';
     password.dispatch('input');
@@ -259,48 +261,76 @@ test('weak reset password leaves submit enabled so a corrected password can be s
     assert.equal(form.dispatch('submit').defaultPrevented, true);
     assert.equal(hint.dataset.state, 'err');
     assert.equal(password.focusCalls, 1);
+    assert.equal(password.getAttribute('aria-invalid'), 'true');
     assert.equal(button.disabled, false);
     assert.ok(icon.classes.has('fa-key') && !icon.classes.has('fa-spinner'));
 
-    password.value = 'StrongPass1';
+    password.value = 'Aa٠' + '👗'.repeat(126);
     password.dispatch('input');
+    assert.equal(form.dispatch('submit').defaultPrevented, true);
+
+    password.value = 'Aa٠' + '👗'.repeat(125);
+    password.dispatch('input');
+    assert.equal(password.getAttribute('aria-invalid'), null);
     assert.equal(form.dispatch('submit').defaultPrevented, false);
     assert.equal(button.disabled, true);
     assert.ok(icon.classes.has('fa-spinner'));
 });
 
-test('aside slideshow activates the first slide then rotates on interval', () => {
-    const mk = () => new FakeElement('span', { 'data-aside-slide': '' });
-    const slides = [mk(), mk(), mk(), mk()];
-    let intervalFn = null;
+function slideshowFixture(matches = true) {
+    const slides = Array.from({ length: 4 }, () => new FakeElement('span', { 'data-aside-slide': '' }));
+    slides[0].classList.add('is-active');
+    slides.slice(1).forEach((slide, index) => { slide.dataset.asideSrc = `/static/photo-${index + 2}.jpg`; });
+    const loads = [];
+    let interval;
+    const media = { matches };
     const scheduler = {
-        matchMedia: () => ({ matches: false }),
-        setInterval: (fn) => { intervalFn = fn; return 7; },
+        matchMedia: (query) => {
+            assert.equal(query, '(min-width: 768px) and (prefers-reduced-motion: no-preference)');
+            return media;
+        },
+        setInterval: (fn) => { interval = fn; return 7; },
+        Image: class {
+            async decode() { loads.push(this.src); }
+        },
     };
+    const scope = { querySelectorAll: () => slides, hidden: false };
+    const handle = initAsideSlideshow(scope, scheduler);
+    return { slides, handle, loads, media, scope, tick: () => interval() };
+}
 
-    const handle = initAsideSlideshow({ querySelectorAll: (s) => (s === '[data-aside-slide]' ? slides : []) }, scheduler);
-
+test('none of the other brand photos loads until its turn', async () => {
+    const { slides, handle, loads, tick } = slideshowFixture();
     assert.equal(handle, 7);
     assert.ok(slides[0].classes.has('is-active'));
-    intervalFn();
+    assert.deepEqual(loads, []);
+
+    await tick();
     assert.ok(!slides[0].classes.has('is-active') && slides[1].classes.has('is-active'));
-    intervalFn();
-    intervalFn();
+    assert.deepEqual(loads, ['/static/photo-2.jpg']);
+
+    await tick();
+    await tick();
     assert.ok(slides[3].classes.has('is-active'));
-    intervalFn();
-    assert.ok(slides[0].classes.has('is-active'), 'rotation wraps back to the first slide');
+    assert.equal(loads.length, 3);
+    await tick();
+    await tick();
+    assert.ok(slides[1].classes.has('is-active'));
+    assert.equal(loads.length, 3, 'rotate through the previously decoded background');
 });
 
-test('aside slideshow stays static under reduced motion', () => {
-    const slides = [new FakeElement('span', { 'data-aside-slide': '' }), new FakeElement('span', { 'data-aside-slide': '' })];
-    const scheduler = {
-        matchMedia: (query) => ({ matches: query.includes('reduce') }),
-        setInterval: () => { throw new Error('must not schedule rotation'); },
-    };
+test('brand rotation skips mobile, reduced motion, and hidden pages', async () => {
+    const staticView = slideshowFixture(false);
+    assert.equal(staticView.handle, null);
+    assert.ok(staticView.slides[0].classes.has('is-active'));
+    assert.deepEqual(staticView.loads, []);
 
-    const handle = initAsideSlideshow({ querySelectorAll: (s) => (s === '[data-aside-slide]' ? slides : []) }, scheduler);
-
-    assert.equal(handle, null);
-    assert.ok(slides[0].classes.has('is-active'));
-    assert.ok(!slides[1].classes.has('is-active'));
+    const desktop = slideshowFixture();
+    desktop.scope.hidden = true;
+    await desktop.tick();
+    desktop.scope.hidden = false;
+    desktop.media.matches = false;
+    await desktop.tick();
+    assert.deepEqual(desktop.loads, []);
+    assert.ok(desktop.slides[0].classes.has('is-active'));
 });

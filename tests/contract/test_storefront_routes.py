@@ -552,7 +552,8 @@ def test_products_filters_pagination_and_sort_controls_preserve_state(client, ca
     assert not sort_field.has_attr('onchange')
     assert soup.select_one('#sortForm button[type=submit]')
     assert soup.select_one('.wishlist-add-btn')['data-product-id'] == '1'
-    assert '49' in soup.select_one('.badge.bg-primary').get_text()
+    assert soup.select_one('#product-list-top .badge.bg-primary').get_text(strip=True) == '49'
+    assert soup.select_one('#catalogFilterPanel summary .badge').get_text(strip=True).startswith('5')
 
 
 def test_invalid_catalog_price_range_renders_filter_correction(app, client, catalog, monkeypatch):

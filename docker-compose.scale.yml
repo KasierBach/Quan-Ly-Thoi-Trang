@@ -41,7 +41,7 @@ x-web: &web
 
 services:
   postgres-test:
-    image: postgres:15.12-alpine
+    image: postgres:15.20-alpine
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${SCALE_POSTGRES_PASSWORD:?Set a local-only URL-safe SCALE_POSTGRES_PASSWORD}
@@ -60,7 +60,7 @@ services:
     networks: [backplane]
 
   redis:
-    image: redis:7.4.2-alpine
+    image: redis:7.4.12-alpine
     command: [redis-server, --save, "", --appendonly, "no"]
     read_only: true
     tmpfs: [/data]
@@ -77,7 +77,7 @@ services:
     <<: *web
 
   proxy:
-    image: nginx:1.28.0-alpine
+    image: nginx:1.30.8-alpine
     ports: ["127.0.0.1:4011:80"]
     read_only: true
     tmpfs: [/var/cache/nginx, /var/run, /tmp]

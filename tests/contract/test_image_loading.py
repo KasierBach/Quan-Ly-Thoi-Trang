@@ -112,36 +112,22 @@ def storefront(app, monkeypatch):
     network.assert_not_called()
 
 
-def test_home_hero_dimensions_match_local_assets_and_carousel_stays_eager(client, storefront):
+def test_home_hero_has_one_local_image_and_an_actual_catalog_link(client, storefront):
     page = render(client, '/')
-    carousel = page.select_one('#heroCarousel')
-    assert carousel['data-bs-ride'] == 'carousel'
-    assert carousel['data-bs-interval'] == '5000'
-    slides = carousel.select('.carousel-item')
-    assert len(slides) == 3
-    assert ['active' in slide['class'] for slide in slides] == [True, False, False]
-    assert [button['data-bs-slide-to'] for button in carousel.select('.carousel-indicators button')] == ['0', '1', '2']
-    assert [
-        button['data-bs-slide'] for button in carousel.select('.carousel-control-prev, .carousel-control-next')
-    ] == ['prev', 'next']
-    for index, (slide, filename) in enumerate(
-        zip(slides, ['collection.jpg', 'giam-gia.jpg', 'caocap.jpg'], strict=True)
-    ):
-        image = slide.select_one('img')
-        assert image['src'] == f'/static/images/{filename}'
-        with Image.open(STATIC / 'images' / filename) as asset:
-            assert asset.getexif().get(274, 1) == 1
-            assert (int(image['width']), int(image['height'])) == asset.size
-        assert image['loading'] == 'eager'
-        assert image['decoding'] == 'async'
-        assert image['fetchpriority'] == ('high' if index == 0 else 'low')
-        assert declarations(image.parent['style']) == {'height': '500px'}
-        assert declarations(image['style']) == {
-            'object-fit': 'cover',
-            'object-position': 'center',
-            'filter': 'brightness(0.8)',
-        }
-        assert {'d-block', 'w-100', 'h-100'}.issubset(image['class'])
+    hero = page.select_one('.storefront-hero')
+    assert len(hero.select('img')) == 1
+    assert hero.select_one('a.btn')['href'] == '/products'
+    assert page.select_one('[data-bs-ride=carousel]') is None
+
+    image = hero.select_one('img')
+    filename = 'ao-so-mi-nu-trang.jpg'
+    assert image['src'] == f'/static/images/{filename}'
+    with Image.open(STATIC / 'images' / filename) as asset:
+        assert asset.getexif().get(274, 1) == 1
+        assert (int(image['width']), int(image['height'])) == asset.size
+    assert image['loading'] == 'eager'
+    assert image['decoding'] == 'async'
+    assert image['fetchpriority'] == 'high'
     assert len(page.select('img[fetchpriority="high"]')) == 1
 
 

@@ -162,16 +162,31 @@ class MainService(BaseService):
             conn = MainService.get_connection()
             with conn.cursor() as cursor:
                 cursor.execute("""SELECT
-                    to_regclass('customers') IS NOT NULL
-                    AND to_regclass('products') IS NOT NULL
-                    AND to_regclass('attachments') IS NOT NULL
-                    AND to_regclass('oauthidentities') IS NOT NULL
-                    AND to_regclass('oauthstates') IS NOT NULL
+                    NOT EXISTS (
+                        SELECT 1 FROM (VALUES
+                            ('customers', 'SELECT'),
+                            ('products', 'SELECT'),
+                            ('attachments', 'SELECT'),
+                            ('oauthidentities', 'SELECT'),
+                            ('oauthstates', 'INSERT'),
+                            ('orders', 'SELECT'),
+                            ('orders', 'INSERT'),
+                            ('orderdetails', 'INSERT'),
+                            ('passwordresettokens', 'UPDATE')
+                        ) AS required(relation, privilege)
+                        WHERE has_table_privilege(to_regclass(relation), privilege) IS NOT TRUE
+                    )
                     AND EXISTS (
-                        SELECT 1 FROM pg_index
-                        WHERE indrelid = to_regclass('orders')
-                          AND indexrelid = to_regclass('uq_orders_checkout_key')
-                          AND indisvalid AND indisunique
+                        SELECT 1 FROM pg_index AS checkout_index
+                        JOIN pg_attribute AS checkout_key
+                          ON checkout_key.attrelid = checkout_index.indrelid
+                         AND checkout_key.attnum = checkout_index.indkey[0]
+                        WHERE checkout_index.indrelid = to_regclass('orders')
+                          AND checkout_index.indexrelid = to_regclass('uq_orders_checkout_key')
+                          AND checkout_index.indisvalid AND checkout_index.indisunique
+                          AND checkout_index.indimmediate AND checkout_index.indpred IS NULL
+                          AND checkout_index.indnkeyatts = 1
+                          AND checkout_key.attname = 'checkout_key' AND checkout_key.atttypid = 'uuid'::regtype
                     )
                     AND EXISTS (
                         SELECT 1 FROM pg_constraint

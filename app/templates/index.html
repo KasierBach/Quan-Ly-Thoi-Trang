@@ -3,186 +3,19 @@
 {% block title %}Fashion Store - Trang chủ{% endblock %}
 
 {% block content %}
-<!-- Hero Section -->
-<div class="container-fluid p-0">
-    <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel" data-bs-interval="5000">
-        <div class="carousel-indicators">
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active"></button>
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1"></button>
-            <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2"></button>
-        </div>
-        <div class="carousel-inner">
-            <div class="carousel-item active">
-                <div class="position-relative overflow-hidden" style="height: 500px;">
-                    <img src="{{ url_for('static', filename='images/collection.jpg') }}" class="d-block w-100 h-100"
-                        alt="Bộ sưu tập mới" width="3480" height="2000" loading="eager" decoding="async" fetchpriority="high"
-                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
-                    <div class="position-absolute top-0 start-0 w-100 h-100"
-                        style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.3), rgba(118, 75, 162, 0.3));">
-                    </div>
-                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-start h-100"
-                        style="left: 8%; right: auto; text-align: left; top: 0; bottom: 0;" data-aos="fade-right">
-                        <h1 class="display-4 fw-bold mb-4"
-                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                            Bộ sưu tập mới nhất ✨
-                        </h1>
-                        <p class="lead mb-4"
-                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 500px;">
-                            Khám phá các xu hướng thời trang mới nhất cho mùa này với những thiết kế độc đáo và chất
-                            lượng cao
-                        </p>
-                        <a href="{{ url_for('product.products') }}" class="btn btn-primary btn-lg px-5 py-3">
-                            <i class="fas fa-shopping-bag me-2"></i>Mua sắm ngay
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="carousel-item">
-                <div class="position-relative overflow-hidden" style="height: 500px;">
-                    <img src="{{ url_for('static', filename='images/giam-gia.jpg') }}" class="d-block w-100 h-100"
-                        alt="Giảm giá" width="1920" height="640" loading="eager" decoding="async" fetchpriority="low"
-                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
-                    <div class="position-absolute top-0 start-0 w-100 h-100"
-                        style="background: linear-gradient(45deg, rgba(240, 147, 251, 0.3), rgba(245, 87, 108, 0.3));">
-                    </div>
-                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-center h-100 text-center"
-                        style="left: 0; right: 0; top: 0; bottom: 0;" data-aos="zoom-in">
-                        <h1 class="display-3 fw-bold mb-4"
-                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                            Khám phá danh mục
-                        </h1>
-                        <p class="lead mb-4"
-                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 600px;">
-                            Xem giá và biến thể size, màu được lưu trong ứng dụng.
-                        </p>
-                        <a href="{{ url_for('product.products') }}"
-                            class="btn btn-warning btn-lg px-5 py-3 text-dark fw-bold">
-                            <i class="fas fa-fire me-2"></i>Xem ngay
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="carousel-item">
-                <div class="position-relative overflow-hidden" style="height: 500px;">
-                    <img src="{{ url_for('static', filename='images/caocap.jpg') }}" class="d-block w-100 h-100"
-                        alt="Thời trang cao cấp" width="4727" height="2000" loading="eager" decoding="async" fetchpriority="low"
-                        style="object-fit: cover; object-position: center; filter: brightness(0.8);">
-                    <div class="position-absolute top-0 start-0 w-100 h-100"
-                        style="background: linear-gradient(45deg, rgba(44, 62, 80, 0.4), rgba(52, 73, 94, 0.4));"></div>
-                    <div class="carousel-caption d-flex flex-column justify-content-center align-items-end h-100"
-                        style="right: 8%; left: auto; text-align: right; top: 0; bottom: 0;" data-aos="fade-left">
-                        <h1 class="display-4 fw-bold mb-4"
-                            style="color: #fff; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">
-                            Thời trang cao cấp 👑
-                        </h1>
-                        <p class="lead mb-4"
-                            style="color: #f8f9fa; text-shadow: 1px 1px 2px rgba(0,0,0,0.5); max-width: 500px;">
-                            Các sản phẩm trong bộ dữ liệu của dự án cá nhân.
-                        </p>
-                        <a href="{{ url_for('product.products') }}" class="btn btn-outline-light btn-lg px-5 py-3">
-                            <i class="fas fa-crown me-2"></i>Khám phá
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
-            <span class="carousel-control-prev-icon"></span>
-            <span class="visually-hidden">Previous</span>
-        </button>
-        <button class="carousel-control-next" type="button" data-bs-target="#heroCarousel" data-bs-slide="next">
-            <span class="carousel-control-next-icon"></span>
-            <span class="visually-hidden">Next</span>
-        </button>
-    </div>
-</div>
-
-<!-- Features Section -->
-<section class="py-5"
-    style="background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);">
+<section class="storefront-hero py-4 py-lg-5" aria-labelledby="storefront-hero-title">
     <div class="container">
-        <div class="row text-center">
-            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="100">
-                <div class="feature p-4 h-100">
-                    <div class="feature-icon mb-3">
-                        <i class="fas fa-truck fa-3x"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Thông tin sản phẩm</h4>
-                    <p class="text-muted">Tìm kiếm và xem biến thể size, màu</p>
-                </div>
+        <div class="row align-items-center g-4 g-lg-5">
+            <div class="col-md-6">
+                <h1 class="display-4 fw-bold mb-3" id="storefront-hero-title">Thời trang cho mỗi ngày</h1>
+                <p class="lead text-body-secondary mb-4">Chọn áo, quần và váy đầm theo kích cỡ, màu sắc và mức giá phù hợp.</p>
+                <a href="{{ url_for('product.products') }}" class="btn btn-primary btn-lg px-4">Xem sản phẩm</a>
             </div>
-            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="200">
-                <div class="feature p-4 h-100">
-                    <div class="feature-icon mb-3">
-                        <i class="fas fa-undo fa-3x"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Lịch sử đơn hàng</h4>
-                    <p class="text-muted">Xem đơn đã đặt và trạng thái trong ứng dụng</p>
-                </div>
+            <div class="col-md-6">
+                <img src="{{ url_for('static', filename='images/ao-so-mi-nu-trang.jpg') }}"
+                     class="storefront-hero-image d-block w-100" alt="Áo sơ mi trắng đặt trên nền sáng"
+                     width="2048" height="2048" loading="eager" decoding="async" fetchpriority="high">
             </div>
-            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="300">
-                <div class="feature p-4 h-100">
-                    <div class="feature-icon mb-3">
-                        <i class="fas fa-lock fa-3x"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Đặt hàng COD</h4>
-                    <p class="text-muted">Ghi nhận đơn, chưa tích hợp thanh toán online</p>
-                </div>
-            </div>
-            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="400">
-                <div class="feature p-4 h-100">
-                    <div class="feature-icon mb-3">
-                        <i class="fas fa-headset fa-3x"></i>
-                    </div>
-                    <h4 class="fw-bold mb-3">Tin nhắn hỗ trợ</h4>
-                    <p class="text-muted">Trao đổi qua tính năng chat của ứng dụng</p>
-                </div>
-            </div>
-        </div>
-    </div>
-</section>
-
-<!-- Categories Section -->
-<section class="py-5">
-    <div class="container">
-        <div class="text-center mb-5" data-aos="fade-up">
-            <h2 class="display-5 fw-bold mb-3">
-                <i class="fas fa-tags me-3"></i>Danh mục sản phẩm
-            </h2>
-            <p class="lead text-muted">Khám phá các danh mục thời trang đa dạng của chúng tôi</p>
-        </div>
-
-
-
-        <div class="row g-4">
-            {% for category in categories %}
-            <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
-                <div class="card category-card h-100 border-0 overflow-hidden">
-                    <div class="position-relative">
-                        <img src="{{ category|image_url }}" class="card-img-top"
-                            alt="{{ category.CategoryName }}" loading="lazy" decoding="async"
-                            style="height: 280px; object-fit: cover; transition: transform 0.5s ease;">
-                        <div class="position-absolute top-0 start-0 w-100 h-100"
-                            style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));">
-                        </div>
-                        <div class="position-absolute bottom-0 start-0 w-100 p-4"
-                            style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
-                            <h5 class="text-white fw-bold mb-2">{{ category.CategoryName }}</h5>
-                        </div>
-                    </div>
-                    <div class="card-body text-center p-4">
-                        <p class="card-text text-muted mb-4">
-                            {{ category.Description or 'Khám phá các sản phẩm ' + category.CategoryName + ' mới nhất của
-                            chúng tôi' }}
-                        </p>
-                        <a href="{{ url_for('product.products', category=category.CategoryID) }}"
-                            class="btn btn-primary">
-                            <i class="fas fa-arrow-right me-2"></i>Xem sản phẩm
-                        </a>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
         </div>
     </div>
 </section>
@@ -245,6 +78,96 @@
             <a href="{{ url_for('product.products') }}" class="btn btn-primary btn-lg px-5">
                 <i class="fas fa-shopping-bag me-2"></i>Xem tất cả sản phẩm
             </a>
+        </div>
+    </div>
+</section>
+
+<!-- Categories Section -->
+<section class="py-5">
+    <div class="container">
+        <div class="text-center mb-5" data-aos="fade-up">
+            <h2 class="display-5 fw-bold mb-3">
+                <i class="fas fa-tags me-3"></i>Danh mục sản phẩm
+            </h2>
+            <p class="lead text-muted">Khám phá các danh mục thời trang đa dạng của chúng tôi</p>
+        </div>
+
+
+
+        <div class="row g-4">
+            {% for category in categories %}
+            <div class="col-md-4 mb-4" data-aos="fade-up" data-aos-delay="{{ loop.index * 100 }}">
+                <div class="card category-card h-100 border-0 overflow-hidden">
+                    <div class="position-relative">
+                        <img src="{{ category|image_url }}" class="card-img-top"
+                            alt="{{ category.CategoryName }}" loading="lazy" decoding="async"
+                            style="height: 280px; object-fit: cover; transition: transform 0.5s ease;">
+                        <div class="position-absolute top-0 start-0 w-100 h-100"
+                            style="background: linear-gradient(45deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));">
+                        </div>
+                        <div class="position-absolute bottom-0 start-0 w-100 p-4"
+                            style="background: linear-gradient(transparent, rgba(0,0,0,0.7));">
+                            <h5 class="text-white fw-bold mb-2">{{ category.CategoryName }}</h5>
+                        </div>
+                    </div>
+                    <div class="card-body text-center p-4">
+                        <p class="card-text text-muted mb-4">
+                            {{ category.Description or 'Khám phá các sản phẩm ' + category.CategoryName + ' mới nhất của
+                            chúng tôi' }}
+                        </p>
+                        <a href="{{ url_for('product.products', category=category.CategoryID) }}"
+                            class="btn btn-primary">
+                            <i class="fas fa-arrow-right me-2"></i>Xem sản phẩm
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="py-5"
+    style="background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,249,250,0.9) 100%);">
+    <div class="container">
+        <div class="row text-center">
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="100">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-truck fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Thông tin sản phẩm</h4>
+                    <p class="text-muted">Tìm kiếm và xem biến thể size, màu</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="200">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-undo fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Lịch sử đơn hàng</h4>
+                    <p class="text-muted">Xem đơn đã đặt và trạng thái trong ứng dụng</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="300">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-lock fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Đặt hàng COD</h4>
+                    <p class="text-muted">Ghi nhận đơn, chưa tích hợp thanh toán online</p>
+                </div>
+            </div>
+            <div class="col-md-3 mb-4" data-aos="fade-up" data-aos-delay="400">
+                <div class="feature p-4 h-100">
+                    <div class="feature-icon mb-3">
+                        <i class="fas fa-headset fa-3x"></i>
+                    </div>
+                    <h4 class="fw-bold mb-3">Tin nhắn hỗ trợ</h4>
+                    <p class="text-muted">Trao đổi qua tính năng chat của ứng dụng</p>
+                </div>
+            </div>
         </div>
     </div>
 </section>

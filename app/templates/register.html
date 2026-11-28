@@ -32,7 +32,7 @@
                                     <div class="auth-control">
                                         <i class="fas fa-user auth-field-icon" aria-hidden="true"></i>
                                         <input type="text" class="form-control" id="full_name" name="full_name"
-                                               required autocomplete="name">
+                                               required autocomplete="name" value="{{ request.form.get('full_name', '') }}">
                                     </div>
                                 </div>
                                 <div class="col-md-6 mb-2">
@@ -41,7 +41,8 @@
                                     <div class="auth-control">
                                         <i class="fas fa-envelope auth-field-icon" aria-hidden="true"></i>
                                         <input type="email" class="form-control" id="email" name="email" required
-                                               autocomplete="email" spellcheck="false">
+                                               autocomplete="email" spellcheck="false"
+                                               value="{{ request.form.get('email', '') }}">
                                     </div>
                                 </div>
                             </div>
@@ -52,7 +53,8 @@
                                     <div class="auth-control has-eye">
                                         <i class="fas fa-lock auth-field-icon" aria-hidden="true"></i>
                                         <input type="password" class="form-control" id="password" name="password"
-                                               required autocomplete="new-password">
+                                               required autocomplete="new-password" data-new-password
+                                               aria-describedby="password-help password-status">
                                         <button type="button" class="auth-eye" data-eye aria-pressed="false"
                                                 aria-label="Hiện mật khẩu">
                                             <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
@@ -65,7 +67,8 @@
                                     <div class="auth-control has-eye">
                                         <i class="fas fa-shield-halved auth-field-icon" aria-hidden="true"></i>
                                         <input type="password" class="form-control" id="confirm_password"
-                                            name="confirm_password" required autocomplete="new-password">
+                                            name="confirm_password" required autocomplete="new-password"
+                                            aria-describedby="confirm-status">
                                         <button type="button" class="auth-eye" data-eye aria-pressed="false"
                                                 aria-label="Hiện xác nhận mật khẩu">
                                             <i class="fas fa-eye" aria-hidden="true" data-eye-icon></i>
@@ -74,17 +77,15 @@
                                 </div>
                             </div>
                             <div class="mb-2">
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-circle-info" aria-hidden="true"></i>
-                                    Nên dùng ít nhất 8 ký tự, có cả chữ và số để tài khoản an toàn hơn.
-                                </small>
-                                <div class="auth-hint" data-confirm-hint aria-live="polite"></div>
+                                {% include 'partials/auth_password_help.html' %}
+                                <div class="auth-hint" id="confirm-status" data-confirm-hint aria-live="polite"></div>
                             </div>
                             <div class="mb-2">
                                 <label for="phone" class="form-label">Số điện thoại</label>
                                 <div class="auth-control">
                                     <i class="fas fa-phone auth-field-icon" aria-hidden="true"></i>
-                                    <input type="tel" class="form-control" id="phone" name="phone" autocomplete="tel">
+                                    <input type="tel" class="form-control" id="phone" name="phone" autocomplete="tel"
+                                           value="{{ request.form.get('phone', '') }}">
                                 </div>
                             </div>
                             <div class="mb-2">
@@ -92,7 +93,7 @@
                                 <div class="auth-control">
                                     <i class="fas fa-location-dot auth-field-icon at-top" aria-hidden="true"></i>
                                     <textarea class="form-control" id="address" name="address" rows="3"
-                                              autocomplete="street-address"></textarea>
+                                              autocomplete="street-address">{{ request.form.get('address', '') }}</textarea>
                                 </div>
                             </div>
                             <div class="auth-disclaimer mb-2">

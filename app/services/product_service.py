@@ -29,8 +29,10 @@ class ProductService(BaseService):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT 'category' AS Kind, CategoryID AS EntityID FROM Categories
-                    WHERE CategoryID > 0
+                    SELECT 'category' AS Kind, c.CategoryID AS EntityID FROM Categories c
+                    WHERE c.CategoryID > 0 AND EXISTS (
+                        SELECT 1 FROM Products p WHERE p.CategoryID = c.CategoryID AND p.ProductID > 0
+                    )
                     UNION ALL
                     SELECT 'product' AS Kind, p.ProductID AS EntityID FROM Products p
                     JOIN Categories c ON c.CategoryID = p.CategoryID
@@ -459,6 +461,49 @@ class ProductService(BaseService):
                 conn.commit()
                 ProductService.invalidate_catalog()
                 return {'success': True}
+        except Exception as exc:
+            conn.rollback()
+            return ProductService._mutation_error(exc)
+        finally:
+            conn.close()
+
+    @staticmethod
+    def adjust_variant_stock(product_id, variant_id, delta) -> dict[str, Any]:
+        maximum = ProductService.MAX_INTEGER
+        try:
+            product_id = positive_int(product_id, 'Sản phẩm', maximum)
+            variant_id = positive_int(variant_id, 'Biến thể', maximum)
+            adjustment = str(delta).strip()
+            magnitude = adjustment[1:] if adjustment.startswith(('+', '-')) else adjustment
+            delta = positive_int(magnitude, 'Mức điều chỉnh tồn kho', maximum)
+            if adjustment.startswith('-'):
+                delta = -delta
+        except ValidationError as exc:
+            return {'success': False, 'message': str(exc), 'status_code': 400}
+        conn = BaseService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    'SELECT Quantity FROM ProductVariants WHERE ProductID = %s AND VariantID = %s FOR UPDATE',
+                    (product_id, variant_id),
+                )
+                variant = cursor.fetchone()
+                if variant is None:
+                    return {'success': False, 'message': 'Biến thể không thuộc sản phẩm này', 'status_code': 404}
+                quantity = variant.Quantity + delta
+                if not 0 <= quantity <= maximum:
+                    return {
+                        'success': False,
+                        'message': f'Mức điều chỉnh khiến tồn kho vượt giới hạn. Tồn kho hiện tại là {variant.Quantity}.',
+                        'status_code': 409,
+                    }
+                cursor.execute(
+                    'UPDATE ProductVariants SET Quantity = %s WHERE ProductID = %s AND VariantID = %s',
+                    (quantity, product_id, variant_id),
+                )
+                conn.commit()
+                ProductService.invalidate_catalog()
+                return {'success': True, 'quantity': quantity}
         except Exception as exc:
             conn.rollback()
             return ProductService._mutation_error(exc)

@@ -114,6 +114,7 @@
         <!-- Product Variants -->
         <div class="form-section">
             <h4>Biến thể sản phẩm</h4>
+            <p id="stock-adjustment-help" class="small text-muted">Nhập số âm để giảm tồn kho, số dương để tăng tồn kho.</p>
             <table class="table table-bordered variants-table">
                 <thead class="table-light">
                     <tr>
@@ -128,7 +129,20 @@
                     <tr>
                         <td>{{ variant.ColorName }}</td>
                         <td>{{ variant.SizeName }}</td>
-                        <td>{{ variant.Quantity }}</td>
+                        <td>
+                            <div class="mb-1">{{ variant.Quantity }}</div>
+                            <form method="POST" class="d-flex flex-wrap gap-2"
+                                action="{{ url_for('admin.admin_adjust_variant_stock', product_id=product.ProductID, variant_id=variant.VariantID) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <label class="visually-hidden" for="stock-delta-{{ variant.VariantID }}">
+                                    Mức điều chỉnh tồn kho {{ variant.ColorName }}, {{ variant.SizeName }}
+                                </label>
+                                <input type="number" name="delta" id="stock-delta-{{ variant.VariantID }}"
+                                    class="form-control form-control-sm" style="max-width: 5rem" step="1"
+                                    aria-describedby="stock-adjustment-help" placeholder="VD -2" required>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">Điều chỉnh</button>
+                            </form>
+                        </td>
                         <td class="text-end">
                             <form method="POST"
                                 action="{{ url_for('admin.admin_delete_variant', variant_id=variant.VariantID) }}"
@@ -149,7 +163,7 @@
                 </tbody>
             </table>
 
-            <h5>Thêm biến thể mới</h5>
+            <h5>Thêm biến thể hoặc nhập thêm tồn kho</h5>
             <form method="POST" action="{{ url_for('admin.admin_add_variant') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="product_id" value="{{ product.ProductID }}">

@@ -34,6 +34,7 @@
 </head>
 
 <body class="{% block body_class %}{% endblock %}">
+    <a class="skip-to-content visually-hidden-focusable btn btn-dark" href="#main-content">Đến nội dung chính</a>
     {% block navbar %}
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg sticky-top">
@@ -154,26 +155,25 @@
     </nav>
     {% endblock %}
 
-    <!-- Flash Messages -->
-    <div class="flash-messages">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show">
-            <i
-                class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' or category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
-            {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <main class="main-content" id="main-content" tabindex="-1">
+        <!-- Flash Messages -->
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show">
+                <i
+                    class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' or category == 'danger' %}exclamation-triangle{% else %}info-circle{% endif %} me-2"></i>
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Đóng thông báo"></button>
+            </div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
         </div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
-    </div>
 
-    <!-- Main Content -->
-    <div class="main-content">
         {% block content %}{% endblock %}
-    </div>
+    </main>
 
     {% block footer %}
     <!-- Footer -->

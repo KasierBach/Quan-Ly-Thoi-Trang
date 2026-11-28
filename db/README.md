@@ -4,11 +4,13 @@
 
 ## Apply schema migrations
 
-Set `DATABASE_URL` in the shell and run `python -m tools.migrate_db` from the repository root. The tool uses `MIGRATION_DATABASE_URL` when set, which lets deployment use a separate role with schema permissions. It reads the process environment only. Use the direct PostgreSQL URL for the same database the app will connect to.
+Set `DATABASE_URL` in the shell and run `python -m tools.migrate_db` from the repository root. The tool reads the process environment only and uses `MIGRATION_DATABASE_URL` when set. Use a direct PostgreSQL URL for the same database the app will connect to. When using separate roles, configure the app role's permissions on the schema, tables, sequences and functions created by the migration role. `/health/ready` checks the app role's access to core tables as well as schema compatibility.
 
 The first run applies the additive bootstrap and the numbered scripts in `db/migrations`. A PostgreSQL advisory lock serializes runs and `public.thua2_schema_migrations` records completed scripts in the same transaction as the migration. Use a new numbered script for each subsequent schema change. Render runs the tool in `preDeployCommand` and local Compose runs it before Gunicorn. `/health/ready` verifies the required schema using the app's connection.
 
-Before applying to an existing database, take a database backup and verify the upgrade on a copy. Migration `0005` retires old plaintext reset credentials and preserves their history. Back up runtime uploads separately. When switching to the persistent mount, copy any existing `instance/uploads/avatars` and `instance/uploads/chat` into the corresponding subdirectories of `UPLOAD_ROOT`. Place any retained `app/static/images/pixabay-*.jpg` files in `UPLOAD_ROOT/products` with their original filenames.
+Before applying to an existing database, back up PostgreSQL and all three runtime upload directories (`avatars`, `chat` and `products`) under the currently configured `UPLOAD_ROOT`, or `instance/uploads` if unset. Take both backups while writes are paused so database references still match the files. Verify the upgrade on a copy. Migration `0005` retires old plaintext reset credentials and preserves their history.
+
+When switching to the persistent mount, copy the existing upload directories into the new root without changing filenames. Copy any older `app/static/images/pixabay-*.jpg` files into `UPLOAD_ROOT/products`. The database backup contains their references, and the bytes must come from a filesystem backup or the old instance while they are still available.
 
 ## Provenance
 
