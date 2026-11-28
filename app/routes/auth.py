@@ -131,8 +131,10 @@ def my_account():
 def upload_avatar():
     try:
         path, image_url = save_image(request.files.get('avatar'))
-    except ValidationError as exc:
-        return jsonify(success=False, message=str(exc)), 400
+    except ValidationError:
+        return jsonify(
+            success=False, message='Ảnh đại diện không hợp lệ. Vui lòng kiểm tra định dạng và dung lượng.'
+        ), 400
     result = AuthService.update_avatar(session['user_id'], image_url)
     if not result['success']:
         path.unlink(missing_ok=True)

@@ -177,8 +177,8 @@ class OrderService(BaseService):
         try:
             order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
             user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
-        except ValidationError as exc:
-            return {'success': False, 'message': str(exc), 'status_code': 400}
+        except ValidationError:
+            return {'success': False, 'message': 'Đơn hàng hoặc khách hàng không hợp lệ', 'status_code': 400}
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:

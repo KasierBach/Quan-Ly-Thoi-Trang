@@ -95,8 +95,8 @@ def subscribe_newsletter():
     try:
         email = email_address(request.form.get('email'))
         result = dict(MainService.subscribe_newsletter(email))
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Email không hợp lệ'), 400
     status = result.pop('status_code', 200 if result.get('success') else 500)
     return jsonify(result), status
 

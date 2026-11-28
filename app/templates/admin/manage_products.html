@@ -147,10 +147,14 @@
                                             class="btn btn-sm btn-outline-primary" title="Chỉnh sửa">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        <button class="btn btn-sm btn-outline-danger btn-delete"
-                                            data-product-id="{{ product.ProductID }}" title="Xóa">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <form class="delete-product-form" method="post"
+                                            action="{{ url_for('admin.admin_delete_product', product_id=product.ProductID) }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Xóa"
+                                                aria-label="Xóa {{ product.ProductName }}">
+                                                <i class="fas fa-trash" aria-hidden="true"></i>
+                                            </button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -274,22 +278,9 @@
     });
 
     // Delete confirmation
-    document.querySelectorAll('.btn-delete').forEach(button => {
-        button.addEventListener('click', function () {
-            const productId = this.getAttribute('data-product-id');
-            if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) {
-                // Create a form to submit POST request for deletion
-                const form = document.createElement('form');
-                form.method = 'POST';
-                form.action = "{{ url_for('admin.admin_delete_product', product_id=0) }}".replace('0', productId);
-                const csrfInput = document.createElement('input');
-                csrfInput.type = 'hidden';
-                csrfInput.name = 'csrf_token';
-                csrfInput.value = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-                form.appendChild(csrfInput);
-                document.body.appendChild(form);
-                form.submit();
-            }
+    document.querySelectorAll('.delete-product-form').forEach(form => {
+        form.addEventListener('submit', event => {
+            if (!confirm('Bạn có chắc chắn muốn xóa sản phẩm này?')) event.preventDefault();
         });
     });
 </script>

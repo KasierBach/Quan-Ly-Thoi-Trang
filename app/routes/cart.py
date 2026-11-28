@@ -15,6 +15,7 @@ from app.validation import ValidationError, local_redirect, money, positive_int
 cart_bp = Blueprint('cart', __name__)
 CHECKOUT_REVIEW_SECONDS = 30 * 60
 CART_CHANGED_MESSAGE = 'Giỏ hàng đã thay đổi. Vui lòng kiểm tra lại sản phẩm trước khi đặt hàng.'
+ITEM_SELECTION_MESSAGE = 'Biến thể hoặc số lượng không hợp lệ. Vui lòng kiểm tra lại lựa chọn.'
 
 
 def _payload():
@@ -171,8 +172,8 @@ def add_to_cart():
         item = ProductService.cart_item(vid, accumulated, variant)
         cart = [row for row in cart if row['variant_id'] != vid] + [item]
         _store_cart(cart)
-    except ValidationError as exc:
-        return _cart_error(str(exc))
+    except ValidationError:
+        return _cart_error(ITEM_SELECTION_MESSAGE)
     if api_request():
         return jsonify(success=True, message='Đã thêm sản phẩm vào giỏ hàng', **_summary(cart))
     flash('Đã thêm sản phẩm vào giỏ hàng', 'success')
@@ -200,8 +201,8 @@ def buy_now():
         if qty > variant.Quantity:
             return _cart_error(f'Chỉ còn {variant.Quantity} sản phẩm trong kho', 409, variant.ProductID)
         checkout_url = _buy_now_url([{'variant_id': vid, 'quantity': qty}])
-    except ValidationError as exc:
-        return _cart_error(str(exc))
+    except ValidationError:
+        return _cart_error(ITEM_SELECTION_MESSAGE)
     if api_request():
         return jsonify(success=True, checkout_url=checkout_url)
     return redirect(checkout_url)

@@ -5,6 +5,7 @@ import re
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+from bs4 import BeautifulSoup
 import psycopg2
 import pytest
 
@@ -307,7 +308,18 @@ def test_reports_show_actual_counts_and_no_fake_controls(admin_client, monkeypat
 def test_currency_render_does_not_hide_fractional_money(admin_client, monkeypatch, path, amount):
     mock_admin_reads(monkeypatch)
     html = admin_client.get(path).get_data(as_text=True)
-    assert amount in re.sub(r'<script\b[^>]*>.*?</script>', '', html, flags=re.S)
+    assert amount in BeautifulSoup(html, 'html.parser').get_text()
+
+
+def test_product_delete_renders_a_post_form_with_csrf(admin_client, monkeypatch):
+    mock_admin_reads(monkeypatch)
+    page = admin_client.get('/admin/products/manage')
+    assert page.status_code == 200
+    form = BeautifulSoup(page.data, 'html.parser').select_one('.delete-product-form')
+    assert form['action'] == '/admin/products/delete/1'
+    assert form['method'] == 'post'
+    assert form.select_one('input[name=csrf_token]')['value']
+    assert form.select_one('button[type=submit]')['aria-label'].startswith('Xóa ')
 
 
 def test_edit_template_modal_is_rendered_and_config_exists(admin_client, monkeypatch):

@@ -32,7 +32,8 @@ def positive_int(value, field, max_value=None):
 
 def email_address(value):
     value = required_text(value, 'Email', 254).casefold()
-    if not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', value):
+    local, separator, domain = value.partition('@')
+    if not local or not separator or '@' in domain or '.' not in domain[1:-1] or any(c.isspace() for c in value):
         raise ValidationError('Email không hợp lệ')
     return value
 

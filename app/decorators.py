@@ -73,10 +73,11 @@ def handle_db_errors(func):
             return func(*args, **kwargs)
         except HTTPException:
             raise
-        except ValidationError as exc:
+        except ValidationError:
+            message = 'Dữ liệu không hợp lệ. Vui lòng kiểm tra lại.'
             if api_request():
-                return jsonify(success=False, message=str(exc)), 400
-            flash(str(exc), 'error')
+                return jsonify(success=False, message=message), 400
+            flash(message, 'error')
             return redirect(url_for('main.home'))
         except psycopg2.Error as exc:
             current_app.logger.error(
