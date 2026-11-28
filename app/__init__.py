@@ -88,7 +88,7 @@ def create_app(config_class=None):
         from app.services.cart_service import CartService
 
         cart = session.get('cart', [])
-        if session.get('cart_id'):
+        if app.config.get('DB_CONNECT_ENABLED', True) and session.get('cart_id'):
             try:
                 saved = CartService.load(session['cart_id'])
                 if saved is not None:
