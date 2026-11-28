@@ -455,13 +455,13 @@ export class ChatApp {
     }
 
     async messageAction(event, id, extra = {}) {
+        this.ui.hideContextMenu();
         try {
             await this.socket.request(event, { ...this.scope(), message_id: Number(id), ...extra });
             if (['add_reaction', 'remove_reaction'].includes(event)) await this.reloadReactions(id);
             else await Promise.all([this.loadHistory(), this.loadPinnedMessages(this.currentConversationId)]);
             return true;
         } catch (error) { this.ui.showToast(error.message); return false; }
-        finally { this.ui.hideContextMenu(); }
     }
     toggleReaction(id, emoji) {
         if (!this.userId) { this.ui.showToast('Đăng nhập để thả cảm xúc'); return; }
