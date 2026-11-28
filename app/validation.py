@@ -1,7 +1,10 @@
 from datetime import date
 from decimal import Decimal, InvalidOperation
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
+
+
+PHONE_NUMBER_FORMAT_MESSAGE = 'Số điện thoại cần từ 8 đến 15 chữ số, có thể bắt đầu bằng +'
 
 
 class ValidationError(ValueError):
@@ -65,7 +68,7 @@ def phone_number(value, optional=False):
         return None
     value = required_text(value, 'Số điện thoại', 20)
     if not re.fullmatch(r'\+?[0-9]{8,15}', value):
-        raise ValidationError('Số điện thoại cần từ 8 đến 15 chữ số, có thể bắt đầu bằng +')
+        raise ValidationError(PHONE_NUMBER_FORMAT_MESSAGE)
     return value
 
 
@@ -80,7 +83,9 @@ def password_value(value):
 def local_redirect(value):
     if not isinstance(value, str) or any(ord(char) < 32 for char in value) or '\\' in value:
         return None
-    parsed = urlsplit(value)
-    if parsed.scheme or parsed.netloc or not value.startswith('/') or value.startswith('//'):
+    if not value.startswith('/') or value.startswith('//'):
         return None
-    return value
+    parsed = urlsplit(value)
+    if parsed.scheme or parsed.netloc:
+        return None
+    return urlunsplit(('', '', parsed.path, parsed.query, parsed.fragment))

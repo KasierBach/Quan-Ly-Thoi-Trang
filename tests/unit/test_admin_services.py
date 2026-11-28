@@ -323,9 +323,10 @@ def test_pixabay_download_reencodes_and_never_overwrites(app, fake_db, tmp_path,
         result = MediaService.save_pixabay_image('https://cdn.pixabay.com/photo.jpg', 1)
     assert result['success'] is True
     assert original.read_bytes() == b'original'
-    with Image.open(tmp_path / result['path']) as saved:
+    product_directory = tmp_path / 'uploads' / 'products'
+    with Image.open(product_directory / result['path'].removeprefix('images/')) as saved:
         assert saved.format == 'JPEG'
     assert outbound.call_args.kwargs['allow_redirects'] is False
     assert outbound.call_args.kwargs['stream'] is True
     response.close.assert_called_once()
-    assert not list(original.parent.glob('.pixabay-*'))
+    assert not list(product_directory.glob('.pixabay-*'))

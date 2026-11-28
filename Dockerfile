@@ -12,5 +12,5 @@ COPY --chown=appuser:appuser . .
 RUN mkdir -p /app/instance/uploads && chown -R appuser:appuser /app/instance
 USER appuser
 EXPOSE 4000
-HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:4000/health/live', timeout=3)"
-CMD ["gunicorn", "--worker-class", "gthread", "--workers", "1", "--threads", "16", "--bind", "0.0.0.0:4000", "--timeout", "60", "run:app"]
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["python", "-m", "tools.docker_healthcheck"]
+CMD ["sh", "-c", "if [ \"$MIGRATE_ON_START\" = 1 ]; then python -m tools.migrate_db || exit; fi; exec gunicorn --worker-class gthread --workers 1 --threads 16 --bind 0.0.0.0:4000 --timeout 60 run:app"]

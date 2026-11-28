@@ -7,7 +7,7 @@ from urllib.parse import urlsplit
 import requests
 from flask import current_app
 
-from app.uploads import image_bytes
+from app.uploads import image_bytes, upload_root
 from app.validation import ValidationError, positive_int, required_text
 
 from .base_service import BaseService
@@ -146,10 +146,7 @@ class MediaService(BaseService):
                 if len(raw) > limit:
                     return MediaService._external_error()
             cleaned, extension, _ = image_bytes(bytes(raw))
-            static_folder = current_app.static_folder
-            if static_folder is None:
-                return MediaService._external_error()
-            folder = Path(static_folder) / 'images'
+            folder = upload_root() / 'products'
             folder.mkdir(parents=True, exist_ok=True)
             filename = f'pixabay-{product_id}-{secrets.token_hex(16)}.{extension}'
             with tempfile.NamedTemporaryFile(dir=folder, prefix='.pixabay-', delete=False) as output:

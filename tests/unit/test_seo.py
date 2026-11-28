@@ -207,6 +207,13 @@ def test_sitemap_escapes_xml_and_enforces_url_and_byte_caps(app, monkeypatch):
             seo.sitemap_document('https://store.example.test', [])
 
 
+def test_sitemap_omits_catalog_without_public_products(app):
+    with app.test_request_context('/'):
+        root = ElementTree.fromstring(seo.sitemap_document('https://store.example.test', ()))
+    urls = [entry.text for entry in root.findall('{*}url/{*}loc')]
+    assert urls == ['https://store.example.test/', 'https://store.example.test/contact']
+
+
 def test_sitemap_inventory_one_bounded_id_query_cached_and_invalidated(app, fake_db):
     fake_db.cursor.fetchall.return_value = [
         CaseInsensitiveRecord(Kind='category', EntityID=3),

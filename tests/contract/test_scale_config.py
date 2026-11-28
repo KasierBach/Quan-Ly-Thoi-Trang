@@ -146,7 +146,7 @@ def test_scale_topology_keeps_single_worker_instances_and_shared_backplane():
     assert '  web1:\n    <<: *web' in compose and '  web2:\n    <<: *web' in compose
     assert 'SOCKETIO_MESSAGE_QUEUE: redis://redis:6379/1' in compose
     assert 'RATELIMIT_STORAGE_URI: redis://redis:6379/0' in compose
-    assert 'redis:7.4.2-alpine' in compose and 'POSTGRES_DB: thua2_main_test' in compose
+    assert 'redis:7.4.12-alpine' in compose and 'POSTGRES_DB: thua2_main_test' in compose
     assert '${SCALE_SECRET_KEY:?' in compose and 'env_file:' not in compose
     assert 'internal: true' in compose and 'read_only: true' in compose
     assert '127.0.0.1:55435' not in compose and 'docker compose exec' in compose

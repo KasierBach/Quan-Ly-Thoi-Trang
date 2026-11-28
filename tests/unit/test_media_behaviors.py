@@ -81,10 +81,22 @@ def test_image_download_decodes_to_local_unique_jpeg(app, tmp_path, fake_db, mon
     with app.app_context():
         data = MediaService.save_pixabay_image('https://cdn.pixabay.com/image.png', 1)
     assert data['success']
-    saved = tmp_path / data['path']
+    saved = tmp_path / 'uploads' / 'products' / data['path'].removeprefix('images/')
     assert saved.is_file() and saved.read_bytes().startswith(b'\xff\xd8')
     assert data['path'].startswith('images/pixabay-1-')
+    assert not (tmp_path / data['path']).exists()
+    with app.test_client().get(f'/static/{data["path"]}') as served:
+        assert served.status_code == 200 and served.data == saved.read_bytes()
     result.close.assert_called_once()
+
+
+def test_legacy_pixabay_file_still_uses_its_original_url(client, app, tmp_path):
+    app.static_folder = str(tmp_path)
+    legacy = tmp_path / 'images' / f'pixabay-1-{"a" * 32}.jpg'
+    legacy.parent.mkdir()
+    legacy.write_bytes(b'legacy image')
+    with client.get(f'/static/images/{legacy.name}') as served:
+        assert served.status_code == 200 and served.data == legacy.read_bytes()
 
 
 @pytest.mark.parametrize(

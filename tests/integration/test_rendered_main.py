@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 from urllib.parse import parse_qs, unquote, urljoin, urlsplit
+from xml.etree import ElementTree
 
 from bs4 import BeautifulSoup
 from flask import template_rendered, url_for
@@ -58,6 +59,31 @@ ADMIN = [
     ('admin.admin_reports', '/admin/reports', {}, 'admin/reports.html'),
     ('chat.admin_messages_page', '/admin/messages', {}, 'messages.html'),
 ]
+
+
+def test_sitemap_skips_noindex_category_with_no_products(db_app, db_client, db_connection):
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            'INSERT INTO Categories (CategoryName) VALUES (%s) RETURNING CategoryID',
+            ('Empty SEO category',),
+        )
+        empty_category = cursor.fetchone().CategoryID
+    db_connection.commit()
+    db_app.config['PUBLIC_BASE_URL'] = 'https://store.example.test'
+
+    empty_page = db_client.get(f'/products?category={empty_category}')
+    assert empty_page.status_code == 200
+    assert (
+        BeautifulSoup(empty_page.data, 'html.parser').select_one('meta[name=robots]')['content'].startswith('noindex')
+    )
+    response = db_client.get('/sitemap.xml')
+    assert response.status_code == 200
+    paths = [urlsplit(entry.text) for entry in ElementTree.fromstring(response.data).findall('{*}url/{*}loc')]
+    category_ids = {parse_qs(path.query).get('category', [None])[0] for path in paths}
+    assert '1' in category_ids
+    assert str(empty_category) not in category_ids
+
+
 PAGE_CASES = [(actor, *page) for actor in ('anonymous', 'customer', 'admin') for page in PUBLIC]
 PAGE_CASES += [
     ('anonymous', *page)

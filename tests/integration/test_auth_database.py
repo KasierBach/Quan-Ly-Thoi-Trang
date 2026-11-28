@@ -1,4 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
 import hashlib
+from threading import Barrier
 
 import pytest
 from bs4 import BeautifulSoup
@@ -52,7 +54,7 @@ def test_change_password_revokes_other_browser_session(db_app, db_client):
 def test_password_reset_token_hashed_single_use_and_revokes(db_app, db_client, db_connection):
     db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'})
     with db_app.app_context():
-        issued = AuthService.create_password_reset_token('customer@example.test')
+        issued = AuthService.issue_account_recovery_token('customer@example.test')
     with db_connection.cursor() as cursor:
         cursor.execute('SELECT Token FROM PasswordResetTokens WHERE CustomerID=1 AND IsUsed=FALSE')
         assert cursor.fetchone().Token == hashlib.sha256(issued['token'].encode()).hexdigest()
@@ -63,9 +65,47 @@ def test_password_reset_token_hashed_single_use_and_revokes(db_app, db_client, d
     assert db_client.get('/my_account').status_code == 302
 
 
+def test_failed_email_keeps_already_delivered_reset_link(db_app, db_client, db_connection, monkeypatch):
+    with db_app.app_context():
+        delivered = AuthService.issue_account_recovery_token('customer@example.test')
+    monkeypatch.setattr('app.routes.auth.send_email', lambda *_: False)
+    for email in ('customer@example.test', 'unknown@example.test'):
+        response = db_client.post('/forgot_password', data={'email': email})
+        assert response.status_code == 200
+        assert 'Kiểm tra hộp thư' in response.get_data(as_text=True)
+    with db_app.app_context():
+        assert AuthService.reset_password(delivered['token'], 'FirstReset123!')['success']
+        assert AuthService.login_user('customer@example.test', 'FirstReset123!')
+    with db_connection.cursor() as cursor:
+        cursor.execute('SELECT COUNT(*) AS active FROM PasswordResetTokens WHERE CustomerID=1 AND IsUsed=FALSE')
+        assert cursor.fetchone().active == 0
+
+
+def test_parallel_resets_with_different_tokens_only_change_password_once(db_app, db_connection):
+    with db_app.app_context():
+        tokens = [AuthService.issue_account_recovery_token('customer@example.test')['token'] for _ in range(2)]
+    start = Barrier(2)
+
+    def reset(token, password):
+        with db_app.app_context():
+            start.wait(timeout=5)
+            return AuthService.reset_password(token, password)['success']
+
+    passwords = ('FirstReset123!', 'SecondReset123!')
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        requests = [workers.submit(reset, token, password) for token, password in zip(tokens, passwords, strict=True)]
+        results = [request.result(timeout=5) for request in requests]
+    assert sum(results) == 1
+    with db_app.app_context():
+        assert AuthService.login_user('customer@example.test', passwords[results.index(True)])
+    with db_connection.cursor() as cursor:
+        cursor.execute('SELECT auth_version FROM Customers WHERE CustomerID=1')
+        assert cursor.fetchone().auth_version == 2
+
+
 def test_expired_reset_rejected(db_app, db_connection):
     with db_app.app_context():
-        issued = AuthService.create_password_reset_token('customer@example.test')
+        issued = AuthService.issue_account_recovery_token('customer@example.test')
     with db_connection.cursor() as cursor:
         cursor.execute("UPDATE PasswordResetTokens SET ExpiryDate=CURRENT_TIMESTAMP - INTERVAL '1 second'")
     db_connection.commit()

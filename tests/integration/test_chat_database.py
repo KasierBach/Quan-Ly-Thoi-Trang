@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from io import BytesIO
 from pathlib import Path
 from threading import Barrier
+from time import monotonic, sleep
 
 from flask_wtf.csrf import generate_csrf
 import pytest
@@ -18,7 +19,7 @@ from app.database import CaseInsensitiveRecord
 from app.services import attachment_storage
 from app.services.attachment_service import AttachmentService
 from app.services.chat_service import ChatService
-from app.services.conversation_service import ChatAccessError, ChatIdentity
+from app.services.conversation_service import ChatAccessError, ChatIdentity, ConversationService
 
 
 pytestmark = pytest.mark.integration
@@ -498,6 +499,47 @@ def test_leave_removes_access_and_transfers_owner_to_remaining_member(db_app, db
     assert browser(db_app, 3).post('/api/conversations/2/leave').status_code == 200
     assert one(db_connection, 'SELECT id FROM Conversations WHERE id=2') is None
     assert one(db_connection, 'SELECT id FROM Messages WHERE id=3') is None
+
+
+def test_concurrent_owner_and_successor_leaves_transfer_to_remaining_member(db_app, db_connection):
+    with db_app.app_context():
+        group = ConversationService.create_conversation(
+            'group', 'Concurrent owners', participant_ids=[2, 3], actor=actor()
+        )
+    cid = group['id']
+    with db_connection.cursor() as cursor:
+        cursor.execute('SELECT id FROM Conversations WHERE id = %s FOR UPDATE', (cid,))
+        cursor.execute('DELETE FROM Participants WHERE conversation_id = %s AND user_id = 1', (cid,))
+        cursor.execute('UPDATE Conversations SET created_by = 2 WHERE id = %s', (cid,))
+        cursor.execute("UPDATE Participants SET role = 'admin' WHERE conversation_id = %s AND user_id = 2", (cid,))
+
+    def leave_as_successor():
+        with db_app.app_context():
+            return ConversationService.leave_conversation(cid, 2, actor=actor(2))
+
+    with ThreadPoolExecutor(max_workers=1) as workers:
+        successor_leave = workers.submit(leave_as_successor)
+        try:
+            deadline = monotonic() + 5
+            with db_connection.cursor() as cursor:
+                while True:
+                    cursor.execute('SELECT pg_stat_clear_snapshot()')
+                    cursor.execute(
+                        'SELECT EXISTS (SELECT 1 FROM pg_stat_activity '
+                        'WHERE datname = current_database() AND pg_backend_pid() = ANY(pg_blocking_pids(pid))) AS waiting'
+                    )
+                    if cursor.fetchone().waiting:
+                        break
+                    assert monotonic() < deadline, 'successor must wait on the first leave'
+                    sleep(0.01)
+            db_connection.commit()
+            assert successor_leave.result(timeout=5)
+        finally:
+            db_connection.rollback()
+
+    assert one(db_connection, 'SELECT created_by FROM Conversations WHERE id=%s', (cid,)).created_by == 3
+    remaining = one(db_connection, 'SELECT user_id, role FROM Participants WHERE conversation_id=%s', (cid,))
+    assert (remaining.user_id, remaining.role) == (3, 'admin')
 
 
 def test_participant_personal_settings_do_not_leak_mute_to_other_members(db_app, db_connection):

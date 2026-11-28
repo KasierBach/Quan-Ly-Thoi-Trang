@@ -1,6 +1,7 @@
 import decimal
+import re
 
-from flask import Flask, abort, jsonify, render_template, request, session, url_for
+from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session, url_for
 from flask.json.provider import DefaultJSONProvider
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
@@ -10,6 +11,7 @@ from .config import Config, database_urls, validate_config
 from .database import db, init_db_pool
 from .extensions import csrf, limiter, mail, socketio
 from .formatting import format_money
+from .uploads import upload_root
 from .utils import resolve_image
 
 
@@ -94,11 +96,17 @@ def create_app(config_class=None):
         return {'categories': CategoryService.get_all_categories()}
 
     @app.before_request
-    def block_public_chat_uploads():
+    def static_uploads():
         if request.endpoint == 'static':
             filename = (request.view_args or {}).get('filename', '').replace('\\', '/')
             if filename.startswith('uploads/chat/'):
                 abort(404)
+            if re.fullmatch(r'images/pixabay-[1-9][0-9]*-[0-9a-f]{32}\.jpg', filename):
+                # Keep URLs already stored on products and fall back to legacy static files.
+                directory = upload_root() / 'products'
+                image = directory / filename.removeprefix('images/')
+                if image.is_file() and not directory.is_symlink() and not image.is_symlink():
+                    return send_from_directory(directory, image.name, mimetype='image/jpeg')
         return None
 
     @app.before_request

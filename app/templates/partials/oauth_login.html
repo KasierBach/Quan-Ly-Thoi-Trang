@@ -5,6 +5,7 @@
         {% if provider.enabled %}
         <form action="{{ url_for('oauth.login', provider=provider.name) }}" method="post" class="d-grid">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ next_page or '' }}">
             <button type="submit" class="btn btn-outline-secondary">
                 <i class="{{ 'fab fa-google' if provider.name == 'google' else 'fab fa-github' }}"
                    aria-hidden="true"></i>Đăng nhập với {{ provider.label }}

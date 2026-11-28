@@ -4,7 +4,10 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import date
 from decimal import Decimal
 import threading
+from time import monotonic, sleep
+from uuid import uuid4
 
+from bs4 import BeautifulSoup
 import psycopg2
 import pytest
 
@@ -335,6 +338,49 @@ def test_conditional_stock_update_rechecks_after_competing_transaction(db_connec
     assert _scalar(db_connection, 'SELECT COUNT(*) FROM OrderDetails WHERE OrderID = %s', (order_two,)) == 0
 
 
+def test_admin_stock_adjustment_applies_to_stock_after_concurrent_checkout(db_connection, database_url, monkeypatch):
+    from app.services.base_service import BaseService
+    from app.services.product_service import ProductService
+
+    before = _stock(db_connection)
+    checkout = _connect(database_url)
+    adjustment = _connect(database_url)
+    checkout_pid = checkout.get_backend_pid()
+    adjustment_pid = adjustment.get_backend_pid()
+    try:
+        order_id = _new_order(checkout)
+        _add(checkout, order_id, 1, 2)
+        monkeypatch.setattr(BaseService, 'get_connection', lambda: adjustment)
+
+        with ThreadPoolExecutor(max_workers=1) as worker:
+            future = worker.submit(ProductService.adjust_variant_stock, 1, 1, '-3', actor_id=2, reason='Damaged items')
+            try:
+                deadline = monotonic() + 4
+                while not _scalar(
+                    db_connection, 'SELECT %s = ANY(pg_blocking_pids(%s))', (checkout_pid, adjustment_pid)
+                ):
+                    if monotonic() >= deadline:
+                        pytest.fail('Stock adjustment did not wait for the checkout transaction')
+                    sleep(0.01)
+                checkout.commit()
+            finally:
+                checkout.rollback()
+            assert future.result(timeout=5) == {'success': True, 'quantity': before - 5}
+    finally:
+        checkout.close()
+        adjustment.close()
+    assert _stock(db_connection) == before - 5
+    assert _total(db_connection, order_id) == Decimal('398000.00')
+    with db_connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT variant_id, actor_id, actor_name, reason, quantity_before, quantity_after
+            FROM InventoryAdjustments WHERE product_id = 1
+        """)
+        assert [tuple(row.values()) for row in cursor.fetchall()] == [
+            (1, 2, 'Test Admin', 'Damaged items', before - 2, before - 5),
+        ]
+
+
 def test_concurrent_repeat_cancellation_restores_inventory_exactly_once(db_connection, database_url):
     before = _stock(db_connection)
     order_id = _new_order(db_connection)
@@ -476,3 +522,83 @@ def test_application_order_failure_rolls_back_all_rows(db_app, db_connection):
     assert _stock(db_connection, 1) == before_one
     assert _stock(db_connection, 2) == before_two
     assert _scalar(db_connection, 'SELECT COUNT(*) FROM Orders') == order_count
+
+
+def test_separate_checkout_pages_and_concurrent_submits_share_one_order(db_app, db_client, db_connection, monkeypatch):
+    from app.services.order_service import OrderService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute('UPDATE ProductVariants SET Quantity = 1 WHERE VariantID = 1')
+    db_connection.commit()
+    creds = {'email': 'customer@example.test', 'password': 'TestUser123!'}
+    assert db_client.post('/login', data=creds).status_code == 302
+    assert db_client.post('/add_to_cart', json={'variant_id': 1, 'quantity': 1}).status_code == 200
+    second_tab = db_app.test_client()
+    second_tab.set_cookie('session', db_client.get_cookie('session').value)
+
+    def fields(client):
+        page = client.get('/checkout')
+        assert page.status_code == 200
+        soup = BeautifulSoup(page.data, 'html.parser')
+        return {
+            'checkout_review': soup.select_one('input[name=checkout_review]')['value'],
+            'full_name': 'Concurrent Buyer',
+            'phone': '0901234000',
+            'email': 'concurrent@example.test',
+            'shipping_address': 'One Synthetic Checkout Street',
+            'order_notes': 'Checkout repeat integration',
+            'payment_method': OrderService.PAYMENT_METHOD,
+        }
+
+    first_form, second_form = fields(db_client), fields(second_tab)
+    lookup = OrderService.get_checkout_order
+    both_looked_up = threading.Barrier(2)
+
+    def force_concurrent_lookup(user_id, key):
+        order_id = lookup(user_id, key)
+        if order_id is None:
+            both_looked_up.wait(timeout=5)
+        return order_id
+
+    monkeypatch.setattr(OrderService, 'get_checkout_order', force_concurrent_lookup)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        first = workers.submit(db_client.post, '/checkout', json=first_form)
+        second = workers.submit(second_tab.post, '/checkout', json=second_form)
+        results = [request.result(timeout=15) for request in (first, second)]
+    assert [response.status_code for response in results] == [200, 200]
+    assert results[0].json['order_id'] == results[1].json['order_id']
+    order_id = results[0].json['order_id']
+    assert db_client.post('/checkout', json=first_form).json['order_id'] == order_id
+    assert _scalar(db_connection, 'SELECT COUNT(*) FROM Orders WHERE notes = %s', ('Checkout repeat integration',)) == 1
+    assert _scalar(db_connection, 'SELECT SUM(Quantity) FROM OrderDetails WHERE OrderID = %s', (order_id,)) == 1
+    assert _stock(db_connection) == 0
+
+
+def test_checkout_transaction_rechecks_reviewed_price_and_keeps_retry_available(db_app, db_connection):
+    from app.services.order_service import OrderService
+
+    before = _stock(db_connection)
+    key = uuid4().hex
+    with db_connection.cursor() as cursor:
+        cursor.execute('UPDATE Products SET Price = 299000 WHERE ProductID = 1')
+    db_connection.commit()
+    args = (
+        1,
+        OrderService.PAYMENT_METHOD,
+        'Reviewed Price Test Street',
+        [{'variant_id': 1, 'quantity': 1}],
+    )
+    with db_app.app_context():
+        stale = OrderService.create_order(*args, checkout_key=key, reviewed_prices={1: '199000.00'})
+        assert not stale['success'] and stale['status_code'] == 409
+        assert OrderService.get_checkout_order(1, key) is None
+        assert _stock(db_connection) == before
+
+        refreshed = OrderService.create_order(*args, checkout_key=key, reviewed_prices={1: '299000.00'})
+        assert refreshed['success'] is True
+        assert OrderService.get_checkout_order(3, key) is None
+        other_customer = OrderService.create_order(3, *args[1:], checkout_key=key, reviewed_prices={1: '299000.00'})
+        assert not other_customer['success'] and other_customer['status_code'] == 409
+
+    assert _total(db_connection, refreshed['order_id']) == Decimal('299000.00')
+    assert _stock(db_connection) == before - 1

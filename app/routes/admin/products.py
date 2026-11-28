@@ -1,4 +1,4 @@
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import handle_db_errors
 from app.services.attribute_service import AttributeService
@@ -95,9 +95,11 @@ def admin_edit_product(product_id):
         except ValidationError as exc:
             flash(str(exc), 'error')
         return redirect(url_for('admin.admin_edit_product', product_id=product_id))
+    history_page, history_size = paging_args(request.args, allowed=(20,))
     return render_template(
         'admin/edit_product.html',
         product=product,
+        inventory_history=ProductService.get_inventory_history(product_id, history_page, history_size),
         categories=CategoryService.get_all_categories(),
         variants=ProductService.get_product_variants(product_id),
         colors=AttributeService.get_all_colors(),
@@ -117,12 +119,29 @@ def admin_add_variant():
         size_id = positive_int(request.form.get('size_id'), 'Kích thước', MAX_ID)
         raw_quantity = request.form.get('quantity')
         quantity = 0 if raw_quantity == '0' else positive_int(raw_quantity, 'Số lượng', MAX_ID)
-        result = ProductService.add_variant(product_id, color_id, size_id, quantity)
-        _flash_result(result, 'Thêm biến thể thành công!')
+        result = ProductService.add_variant(
+            product_id, color_id, size_id, quantity, actor_id=session['user_id'], reason=request.form.get('reason')
+        )
+        _flash_result(result, 'Đã lưu biến thể và số lượng tồn kho.')
     except ValidationError as exc:
         flash(str(exc), 'error')
     if product_id is None:
         return redirect(url_for('admin.admin_manage_products'))
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id))
+
+
+@admin_bp.route('/admin/products/<int:product_id>/variants/<int:variant_id>/stock', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_adjust_variant_stock(product_id, variant_id):
+    result = ProductService.adjust_variant_stock(
+        product_id,
+        variant_id,
+        request.form.get('delta'),
+        actor_id=session['user_id'],
+        reason=request.form.get('reason'),
+    )
+    _flash_result(result, f'Đã điều chỉnh tồn kho. Số lượng sau điều chỉnh là {result.get("quantity")}.')
     return redirect(url_for('admin.admin_edit_product', product_id=product_id))
 
 

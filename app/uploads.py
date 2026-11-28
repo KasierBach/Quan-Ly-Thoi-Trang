@@ -16,6 +16,10 @@ IMAGE_FORMATS = {
 }
 
 
+def upload_root() -> Path:
+    return Path(current_app.config.get('UPLOAD_ROOT') or Path(current_app.instance_path) / 'uploads').resolve()
+
+
 def image_bytes(raw):
     if not raw or len(raw) > current_app.config.get('MAX_CONTENT_LENGTH', 5 * 1024 * 1024):
         raise ValidationError('Ảnh vượt giới hạn dung lượng')
@@ -39,8 +43,7 @@ def save_image(file, subdir='avatars'):
         raise ValidationError('Chưa chọn file ảnh')
     raw = file.stream.read(current_app.config.get('MAX_CONTENT_LENGTH', 5 * 1024 * 1024) + 1)
     cleaned, extension, _ = image_bytes(raw)
-    root = Path(current_app.config.get('UPLOAD_ROOT') or Path(current_app.instance_path) / 'uploads')
-    directory = root / subdir
+    directory = upload_root() / subdir
     directory.mkdir(parents=True, exist_ok=True)
     filename = f'{secrets.token_hex(16)}.{extension}'
     path = directory / filename

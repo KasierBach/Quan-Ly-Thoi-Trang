@@ -2,6 +2,18 @@
 
 `bootstrap.sql` targets PostgreSQL 14+ and initializes an empty database. Replay is additive: missing columns/constraints/indexes are added, views/functions/triggers are replaced without dropping objects, and existing rows are not updated or erased. Newly added legacy checks use `NOT VALID` so old rows are retained while future writes are checked. Existing duplicate case-insensitive emails/reset tokens or incompatible function return types cause a transactional failure, not silent deletion. This is not an instruction to migrate a live database.
 
+## Apply schema migrations
+
+Set `DATABASE_URL` in the shell and run `python -m tools.migrate_db` from the repository root. The tool reads the process environment only and uses `MIGRATION_DATABASE_URL` when set. Use a direct PostgreSQL URL for the same database the app will connect to. When using separate roles, configure the app role's permissions on the schema, tables, sequences and functions created by the migration role. `/health/ready` checks the app role's access to core tables as well as schema compatibility.
+
+The first run applies the additive bootstrap and the numbered scripts in `db/migrations`. A PostgreSQL advisory lock serializes runs and `public.thua2_schema_migrations` records completed scripts in the same transaction as the migration. Use a new numbered script for each subsequent schema change. Render runs the tool in `preDeployCommand` and local Compose runs it before Gunicorn. `/health/ready` verifies the required schema using the app's connection.
+
+Before applying to an existing database, back up PostgreSQL and all three runtime upload directories (`avatars`, `chat` and `products`) under the currently configured `UPLOAD_ROOT`, or `instance/uploads` if unset. Take both backups while writes are paused so database references still match the files. Verify the upgrade on a copy. Migration `0005` retires old plaintext reset credentials and preserves their history.
+
+When switching to the persistent mount, copy the existing upload directories into the new root without changing filenames. Copy any older `app/static/images/pixabay-*.jpg` files into `UPLOAD_ROOT/products`. The database backup contains their references, and the bytes must come from a filesystem backup or the old instance while they are still available.
+
+Migration `0006` starts recording manual stock changes made in the product editor after rollout. A separate app role needs `SELECT` and `INSERT` on `public.inventoryadjustments` for readiness and stock changes.
+
 ## Provenance
 
 Reconstruction uses only the **ignored January 2026 files**, read from the original folder, and SQL contracts in the approved main worktree at `aa0f131e60d4489eea1b16b753d220cd87d34ce3` (2026-04-17). Neither ignored file has Git history for its path; filesystem timestamps are not commit provenance.

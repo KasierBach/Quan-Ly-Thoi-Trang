@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import subprocess
 from unittest.mock import Mock
+from urllib.parse import parse_qs, urlsplit
 
 from bs4 import BeautifulSoup
 import psycopg2
@@ -16,6 +17,7 @@ from app.services.feedback_service import FeedbackService
 from app.services.order_service import OrderService
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
+from app.validation import ValidationError
 import app.routes.cart as cart_routes
 
 
@@ -93,6 +95,7 @@ def catalog(monkeypatch):
         ),
     }
     monkeypatch.setattr(ProductService, 'get_variant_detail', lambda vid: variants.get(vid))
+    monkeypatch.setattr(OrderService, 'get_checkout_order', lambda *_: None)
     monkeypatch.setattr(ProductService, 'get_product_by_id', lambda pid: products.get(pid))
     monkeypatch.setattr(
         ProductService, 'get_product_variants', lambda pid: [v for v in variants.values() if v.ProductID == pid]
@@ -191,8 +194,9 @@ def test_cart_add_rehydrates_exact_price_and_merges_duplicate_session_rows(clien
     )
     assert response.status_code == 200 and response.json['total'] == '0.30'
     assert response.json['cart_count'] == 3 and response.json['item_count'] == 1
+    assert response.json['items'][0]['price'] == '0.10'
     with client.session_transaction() as state:
-        assert state['cart'][0]['price'] == '0.10'
+        assert state['cart'] == [{'variant_id': 1, 'quantity': 3}]
         assert state['cart'][0]['quantity'] == 3
 
 
@@ -239,13 +243,23 @@ def test_html_cart_add_referrer_is_local_and_has_fallback(client, catalog):
     assert response.location == '/product/1'
 
 
-def test_buy_now_only_orders_temp_cart_and_preserves_normal_cart(auth_client, catalog, monkeypatch):
+def reviewed_checkout_fields(client, checkout_url='/checkout', **overrides):
+    page = client.get(checkout_url)
+    assert page.status_code == 200
+    soup = BeautifulSoup(page.data, 'html.parser')
+    return checkout_fields(checkout_review=soup.select_one('[name=checkout_review]')['value'], **overrides)
+
+
+def test_buy_now_only_orders_its_draft_and_preserves_normal_cart(auth_client, catalog, monkeypatch):
     set_cart(auth_client, [{'variant_id': 1, 'quantity': 2}])
-    response = auth_client.post('/buy_now', data={'variant_id': 2, 'quantity': 3})
-    assert response.location == '/checkout?buy_now=1'
+    start = auth_client.post('/buy_now', data={'variant_id': 2, 'quantity': 3})
+    assert start.location.startswith('/checkout?buy_now=1&draft=')
+    fields = reviewed_checkout_fields(auth_client, start.location, buy_now='1')
+    other = auth_client.post('/buy_now', data={'variant_id': 1, 'quantity': 1})
+    assert other.location != start.location
     submit = Mock(return_value={'success': True, 'order_id': 10})
     monkeypatch.setattr(OrderService, 'create_order', submit)
-    response = auth_client.post('/checkout?buy_now=1', data=checkout_fields(buy_now='1'))
+    response = auth_client.post(start.location, data=fields)
     assert response.status_code == 302 and response.location == '/order_confirmation/10'
     assert submit.call_args.args[3][0]['variant_id'] == 2
     assert submit.call_args.args[3][0]['quantity'] == 3
@@ -256,7 +270,7 @@ def test_buy_now_only_orders_temp_cart_and_preserves_normal_cart(auth_client, ca
 
 
 def test_buy_now_validation_failure_renders_same_mode_and_entered_fields(auth_client, catalog, monkeypatch):
-    set_cart(auth_client, [{'variant_id': 2, 'quantity': 1}], key='temp_cart')
+    start = auth_client.post('/buy_now', data={'variant_id': 2, 'quantity': 1})
     monkeypatch.setattr(
         OrderService,
         'create_order',
@@ -268,13 +282,85 @@ def test_buy_now_validation_failure_renders_same_mode_and_entered_fields(auth_cl
             }
         ),
     )
-    response = auth_client.post('/checkout?buy_now=1', data=checkout_fields(buy_now='1', shipping_address='Kept input'))
+    fields = reviewed_checkout_fields(auth_client, start.location, buy_now='1', shipping_address='Kept input')
+    response = auth_client.post(start.location, data=fields)
     assert response.status_code == 400
     soup = BeautifulSoup(response.data, 'html.parser')
-    assert soup.select_one('#checkoutForm')['action'] == '/checkout?buy_now=1'
+    assert soup.select_one('#checkoutForm')['action'] == start.location
     assert soup.select_one('[name=shipping_address]').get_text() == 'Kept input'
-    with auth_client.session_transaction() as state:
-        assert state['temp_cart'][0]['variant_id'] == 2
+    assert 'Mua ngay' in soup.get_text()
+
+
+def test_checkout_keeps_delivery_fields_and_refreshes_review_after_transaction_conflict(
+    auth_client, catalog, monkeypatch
+):
+    variants, _ = catalog
+    auth_client.post('/add_to_cart', data={'variant_id': 1})
+    fields = reviewed_checkout_fields(auth_client, shipping_address='Alternate Address', order_notes='Call first')
+
+    def price_changes(*args, **kwargs):
+        variants[1].Price = Decimal('1.50')
+        return {'success': False, 'message': 'Giá đã thay đổi', 'status_code': 409}
+
+    monkeypatch.setattr(OrderService, 'create_order', price_changes)
+    response = auth_client.post('/checkout', data=fields)
+    assert response.status_code == 409
+    soup = BeautifulSoup(response.data, 'html.parser')
+    assert soup.select_one('[name=shipping_address]').get_text() == 'Alternate Address'
+    assert soup.select_one('[name=order_notes]').get_text() == 'Call first'
+    fields['checkout_review'] = soup.select_one('[name=checkout_review]')['value']
+
+    submit = Mock(return_value={'success': True, 'order_id': 10})
+    monkeypatch.setattr(OrderService, 'create_order', submit)
+    assert auth_client.post('/checkout', data=fields).location == '/order_confirmation/10'
+    assert submit.call_args.kwargs['reviewed_prices'] == {1: '1.50'}
+
+
+def test_guest_buy_now_drafts_from_same_session_survive_sign_in(app, client, catalog, monkeypatch):
+    client.get('/login')
+    second_tab = app.test_client()
+    second_tab.set_cookie('session', client.get_cookie('session').value)
+    first_draft = client.post('/buy_now', data={'variant_id': 1}).location
+    second_draft = second_tab.post('/buy_now', data={'variant_id': 2}).location
+    client.set_cookie('session', second_tab.get_cookie('session').value)
+
+    login = client.get(first_draft)
+    next_page = parse_qs(urlsplit(login.location).query)['next'][0]
+    assert next_page == first_draft
+    monkeypatch.setattr(
+        AuthService,
+        'login_user',
+        lambda *_: record(CustomerID=1, FullName='Buyer', Role='customer', AuthVersion=1, DarkModeEnabled=False),
+    )
+    signed_in = client.post('/login', data={'email': 'buyer@example.test', 'password': 'TestPass1!', 'next': next_page})
+    assert signed_in.location == first_draft
+    first_page = client.get(first_draft).get_data(as_text=True)
+    second_page = client.get(second_draft).get_data(as_text=True)
+    assert 'Áo chính' in first_page and 'Mua ngay' in second_page
+
+
+@pytest.mark.parametrize('changed', ['price', 'quantity'])
+def test_checkout_requires_reconfirmation_when_reviewed_order_changes(auth_client, catalog, monkeypatch, changed):
+    variants, _ = catalog
+    auth_client.post('/add_to_cart', data={'variant_id': 1})
+    fields = reviewed_checkout_fields(auth_client)
+    if changed == 'price':
+        variants[1].Price = Decimal('1.50')
+    else:
+        auth_client.post('/update_cart', data={'variant_id': 1, 'quantity': 2})
+
+    submit = Mock(return_value={'success': True, 'order_id': 10})
+    monkeypatch.setattr(OrderService, 'create_order', submit)
+    response = auth_client.post('/checkout', data=fields)
+    assert response.status_code == 409
+    submit.assert_not_called()
+    soup = BeautifulSoup(response.data, 'html.parser')
+    replacement = soup.select_one('[name=checkout_review]')['value']
+    assert replacement != fields['checkout_review']
+    response = auth_client.post('/checkout', data={**fields, 'checkout_review': replacement})
+    assert response.location == '/order_confirmation/10'
+    assert submit.call_args.args[3][0]['quantity'] == (2 if changed == 'quantity' else 1)
+    assert submit.call_args.kwargs['reviewed_prices'] == {1: '1.50' if changed == 'price' else '0.10'}
 
 
 @pytest.mark.parametrize('query,form', [('1', '0'), ('2', '1'), ('1', 'bad')])
@@ -299,7 +385,7 @@ def test_checkout_rejects_conflicting_or_unknown_mode(auth_client, catalog, quer
 )
 def test_checkout_rejects_unimplemented_or_invalid_fields_before_order_write(auth_client, catalog, fake_db, overrides):
     set_cart(auth_client, [{'variant_id': 1, 'quantity': 1}])
-    response = auth_client.post('/checkout', data=checkout_fields(**overrides))
+    response = auth_client.post('/checkout', data=reviewed_checkout_fields(auth_client, **overrides))
     assert response.status_code == 400
     fake_db.connection.cursor.assert_not_called()
     with auth_client.session_transaction() as state:
@@ -458,22 +544,53 @@ def test_products_filters_pagination_and_sort_controls_preserve_state(client, ca
         assert 'per_page=24' in link['href'] and 'color=1' in link['href'] and 'sort=price_asc' in link['href']
     assert soup.select_one('#filterForm input[name=per_page]')['value'] == '24'
     assert soup.select_one('#filterForm input[name=sort]')['value'] == 'price_asc'
+    for name in ('category', 'min_price', 'max_price', 'color', 'size', 'in_stock'):
+        field = soup.select_one(f'#filterForm [name={name}]')
+        assert soup.find('label', attrs={'for': field['id']}).get_text(strip=True)
+        assert not field.has_attr('onchange')
+    sort_field = soup.select_one('#sortForm select[name=sort]')
+    assert soup.find('label', attrs={'for': sort_field['id']}).get_text(strip=True)
+    assert not sort_field.has_attr('onchange')
+    assert soup.select_one('#sortForm button[type=submit]')
     assert soup.select_one('.wishlist-add-btn')['data-product-id'] == '1'
-    assert '49' in soup.select_one('.badge.bg-primary').get_text()
+    assert soup.select_one('#product-list-top .badge.bg-primary').get_text(strip=True) == '49'
+    assert soup.select_one('#catalogFilterPanel summary .badge').get_text(strip=True).startswith('5')
 
 
-@pytest.mark.parametrize(
-    'query',
-    [
-        'min_price=NaN',
-        'max_price=Infinity',
-        'min_price=-1',
-        'min_price=2&max_price=1',
-        'color=-1',
-        'size=1.2',
-        'in_stock=2',
-    ],
-)
+def test_invalid_catalog_price_range_renders_filter_correction(app, client, catalog, monkeypatch):
+    app.config['DB_CONNECT_ENABLED'] = True  # Use the catalog fixture's category options.
+    search = Mock()
+    monkeypatch.setattr(ProductService, 'search_products', search)
+    response = client.get(
+        '/products?search=shirt&category=1&color=1&size=1&min_price=10.20&max_price=0.10&in_stock=1&per_page=24&sort=price_asc'
+    )
+    assert response.status_code == 400
+    search.assert_not_called()
+    soup = BeautifulSoup(response.data, 'html.parser')
+    message = soup.select_one('#filterForm [role=alert]')
+    assert message.get_text(strip=True) == 'Giá tối thiểu không được lớn hơn giá tối đa'
+    for name, value in [('min_price', '10.20'), ('max_price', '0.10')]:
+        field = soup.select_one(f'#filterForm input[name={name}]')
+        assert field['value'] == value
+        assert field['aria-invalid'] == 'true' and field['aria-describedby'] == message['id']
+    for name in ('category', 'color', 'size'):
+        assert soup.select_one(f'#filterForm select[name={name}] option[selected]')['value'] == '1'
+    assert soup.select_one('#filterForm input[name=in_stock]').has_attr('checked')
+    for name, value in [('search', 'shirt'), ('per_page', '24'), ('sort', 'price_asc')]:
+        assert soup.select_one(f'#filterForm input[name={name}]')['value'] == value
+
+
+@pytest.mark.parametrize('query', ['min_price=NaN', 'max_price=Infinity', 'min_price=-1'])
+def test_bad_catalog_prices_render_filter_error_without_searching(client, catalog, monkeypatch, query):
+    search = Mock()
+    monkeypatch.setattr(ProductService, 'search_products', search)
+    response = client.get('/products?' + query)
+    assert response.status_code == 400
+    assert BeautifulSoup(response.data, 'html.parser').select_one('#catalogPriceError')
+    search.assert_not_called()
+
+
+@pytest.mark.parametrize('query', ['color=-1', 'size=1.2', 'in_stock=2'])
 def test_bad_product_filters_return_400_without_database_query(client, fake_db, query):
     assert client.get('/products?' + query).status_code == 400
     fake_db.connection.cursor.assert_not_called()
@@ -619,7 +736,7 @@ def test_buy_now_zero_stock_and_missing_variants_return_conflicts(client, catalo
 
 def test_buy_now_json_returns_checkout_url(client, catalog):
     response = client.post('/buy_now', json={'variant_id': 1, 'quantity': 1})
-    assert response.status_code == 200 and response.json['checkout_url'] == '/checkout?buy_now=1'
+    assert response.status_code == 200 and response.json['checkout_url'].startswith('/checkout?buy_now=1&draft=')
 
 
 def test_get_variant_success_reports_current_stock_including_sold_out(client, catalog):
@@ -650,7 +767,9 @@ def test_checkout_json_result_uses_only_authoritative_cart(auth_client, catalog,
     set_cart(auth_client, [{'variant_id': 1, 'quantity': 1, 'price': '0.01'}])
     create = Mock(return_value={'success': True, 'order_id': 9})
     monkeypatch.setattr(OrderService, 'create_order', create)
-    response = auth_client.post('/checkout', data=checkout_fields(), headers={'Accept': 'application/json'})
+    response = auth_client.post(
+        '/checkout', data=reviewed_checkout_fields(auth_client), headers={'Accept': 'application/json'}
+    )
     assert response.status_code == 200 and response.json['confirmation_url'] == '/order_confirmation/9'
     assert create.call_args.args[3][0]['price'] == '0.10'
     with auth_client.session_transaction() as state:
@@ -659,13 +778,25 @@ def test_checkout_json_result_uses_only_authoritative_cart(auth_client, catalog,
 
 def test_stock_rejected_checkout_keeps_cart(auth_client, catalog, monkeypatch):
     set_cart(auth_client, [{'variant_id': 1, 'quantity': 6}])
-    create = Mock()
+    create = Mock(return_value={'success': False, 'message': 'Hết hàng', 'status_code': 409})
     monkeypatch.setattr(OrderService, 'create_order', create)
-    response = auth_client.post('/checkout', data=checkout_fields())
-    assert response.status_code == 400
-    create.assert_not_called()
+    response = auth_client.post(
+        '/checkout', data=reviewed_checkout_fields(auth_client), headers={'Accept': 'application/json'}
+    )
+    assert response.status_code == 409
+    create.assert_called_once()
     with auth_client.session_transaction() as state:
         assert state['cart'][0]['quantity'] == 6
+
+
+def test_checkout_cart_error_uses_a_public_message(auth_client, catalog, monkeypatch):
+    set_cart(auth_client, [{'variant_id': 1, 'quantity': 1}])
+    failure = Mock(side_effect=ValidationError('Internal cart diagnostic'))
+    monkeypatch.setattr(ProductService, 'refresh_cart_items', failure)
+    response = auth_client.get('/checkout', headers={'Accept': 'application/json'})
+    assert response.status_code == 409
+    assert response.json['message'].startswith('Giỏ hàng đã thay đổi')
+    assert b'Internal cart diagnostic' not in response.data
 
 
 def test_cancel_order_failure_passes_service_http_status(auth_client, monkeypatch):

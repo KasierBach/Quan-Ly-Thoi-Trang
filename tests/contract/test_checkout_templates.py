@@ -31,10 +31,11 @@ def test_buy_now_checkout_form_preserves_mode(auth_client, monkeypatch):
     )
     with auth_client.session_transaction() as session:
         session['temp_cart'] = [row]
-    response = auth_client.get('/checkout?buy_now=1')
+    response = auth_client.get('/checkout?buy_now=1', follow_redirects=True)
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')
-    assert soup.select_one('#checkoutForm')['action'] == '/checkout?buy_now=1'
+    assert soup.select_one('#checkoutForm')['action'].startswith('/checkout?buy_now=1&draft=')
+    assert soup.select_one('input[name=checkout_review]')['value']
     assert soup.select_one('input[name=buy_now]')['value'] == '1'
     assert soup.select_one('input[name=phone]')['value'] == '0900000001'
     payments = soup.select('input[name=payment_method]')

@@ -9,6 +9,7 @@ from app.services.attribute_service import AttributeService
 from app.services.customer_service import CustomerService
 from app.services.feedback_service import FeedbackService
 from app.services.main_service import MainService
+from app.services.product_service import ProductService
 from app.services.report_service import ReportService
 from app.validation import ValidationError
 
@@ -210,6 +211,31 @@ def test_real_attributes_protect_referenced_and_duplicate_values(db_app):
         assert AttributeService.add_color(' test black ')['status_code'] == 409
         assert AttributeService.add_size(' test m ')['status_code'] == 409
         assert AttributeService.add_color('New color')['success'] is True
+
+
+@pytest.mark.parametrize(
+    'list_values, add_value, delete_value, name_column, id_column',
+    [
+        (
+            ProductService.get_all_colors,
+            AttributeService.add_color,
+            AttributeService.delete_color,
+            'ColorName',
+            'ColorID',
+        ),
+        (ProductService.get_all_sizes, AttributeService.add_size, AttributeService.delete_size, 'SizeName', 'SizeID'),
+    ],
+)
+def test_attribute_writes_refresh_storefront_filters(
+    db_app, list_values, add_value, delete_value, name_column, id_column
+):
+    label = 'New filter value'
+    with db_app.app_context():
+        assert label not in [row[name_column] for row in list_values()]
+        assert add_value(label)['success']
+        value = next(row for row in list_values() if row[name_column] == label)
+        assert delete_value(value[id_column])['success']
+        assert label not in [row[name_column] for row in list_values()]
 
 
 def test_real_all_admin_views_and_main_contact_render(db_client):

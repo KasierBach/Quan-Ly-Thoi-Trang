@@ -168,6 +168,7 @@ def mock_admin_reads(monkeypatch):
         (ProductService, 'get_admin_products', paging('products', [product])),
         (ProductService, 'get_product_by_id', product),
         (ProductService, 'get_product_variants', []),
+        (ProductService, 'get_inventory_history', {'entries': [], 'page': 1, 'has_older': False}),
         (ProductService, 'get_featured_products', [product]),
         (ProductService, 'get_best_selling_products', [product]),
         (OrderService, 'get_orders_admin', paging('orders', [order])),
@@ -216,6 +217,29 @@ def test_admin_routes_render_existing_templates(admin_client, monkeypatch, path)
     else:
         assert response.headers['Content-Type'].startswith('text/csv')
         assert 'attachment' in response.headers['Content-Disposition']
+
+
+@pytest.mark.parametrize('alternate_recipient', [True, False])
+def test_admin_order_shows_delivery_contact_and_notes(admin_client, monkeypatch, alternate_recipient):
+    order = mock_admin_reads(monkeypatch).order
+    if alternate_recipient:
+        order['recipient_name'] = 'Delivery Recipient'
+        order['recipient_email'] = 'recipient@example.test'
+        order['recipient_phone'] = '0911111111'
+        order['notes'] = 'Call before delivery <leave at front desk>'
+
+    response = admin_client.get('/admin/orders/1')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    if alternate_recipient:
+        assert 'Delivery Recipient' in html
+        assert 'recipient@example.test' in html
+        assert '0911111111' in html
+        assert 'Call before delivery &lt;leave at front desk&gt;' in html
+    else:
+        assert 'Customer' in html
+        assert 'person@example.test' in html
+        assert '0900000000' in html
 
 
 def test_every_owned_template_parses(app):
@@ -407,7 +431,7 @@ def test_product_zero_quantity_and_money_supported(admin_client, monkeypatch):
         '/admin/products/add_variant', data={'product_id': 1, 'color_id': 1, 'size_id': 1, 'quantity': 0}
     )
     assert response.status_code == 302
-    mutation.assert_called_once_with(1, 1, 1, 0)
+    mutation.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None)
     add = Mock(return_value={'success': True, 'product_id': 1})
     monkeypatch.setattr(ProductService, 'add_product', add)
     response = admin_client.post(

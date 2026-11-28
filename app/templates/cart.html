@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="container py-4">
-    <h2 class="mb-4">Giỏ hàng của bạn</h2>
+    <h1 class="h2 mb-4">Giỏ hàng của bạn</h1>
     {% if cart %}
     <div class="row">
         <div class="col-lg-8">
@@ -14,35 +14,37 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Sản phẩm</th>
-                                    <th>Giá</th>
-                                    <th>Số lượng</th>
-                                    <th>Tổng</th>
-                                    <th></th>
+                        <table class="table table-hover cart-table" role="table">
+                            <thead role="rowgroup">
+                                <tr role="row">
+                                    <th scope="col" role="columnheader">Sản phẩm</th>
+                                    <th scope="col" role="columnheader">Đơn giá</th>
+                                    <th scope="col" role="columnheader">Số lượng</th>
+                                    <th scope="col" role="columnheader">Thành tiền</th>
+                                    <th scope="col" role="columnheader"><span class="visually-hidden">Thao tác</span></th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody role="rowgroup">
                                 {% for item in cart %}
-                                <tr id="cart-item-{{ item.variant_id }}">
-                                    <td>
+                                <tr id="cart-item-{{ item.variant_id }}" role="row">
+                                    <td class="cart-item-product" role="cell">
                                         <div class="d-flex align-items-center">
                                             <img src="{{ item|image_url }}"
-                                                class="img-thumbnail me-3"
-                                                style="width: 80px; height: 80px; object-fit: cover;"
+                                                class="img-thumbnail me-3 cart-item-image"
                                                 alt="{{ item.product_name }}">
-                                            <div>
+                                            <div class="cart-item-info">
                                                 <h6 class="mb-0">{{ item.product_name }}</h6>
                                                 <small class="text-muted">Màu: {{ item.color }}, Size: {{ item.size
                                                     }}</small>
                                             </div>
                                         </div>
                                     </td>
-                                    <td id="price-{{ item.variant_id }}">{{ item.price|money }} đ</td>
-                                    <td>
-                                        <div class="input-group" style="width: 120px;">
+                                    <td class="cart-item-price" role="cell">
+                                        <span class="d-block d-md-none small text-muted" aria-hidden="true">Đơn giá</span>
+                                        <span id="price-{{ item.variant_id }}">{{ item.price|money }} đ</span>
+                                    </td>
+                                    <td class="cart-item-quantity" role="cell">
+                                        <div class="input-group">
                                             <button class="btn btn-sm btn-outline-secondary update-qty-btn"
                                                 type="button" data-variant-id="{{ item.variant_id }}"
                                                 data-change="-1" aria-label="Giảm số lượng">-</button>
@@ -58,8 +60,11 @@
                                         <small class="text-muted d-block">Còn {{ item.stock }} sản phẩm trong kho</small>
                                         <span class="text-danger small d-block" id="stock-warning-{{ item.variant_id }}" {% if item.quantity <= item.stock %}hidden{% endif %}>Vượt tồn kho, vui lòng giảm số lượng trước khi thanh toán.</span>
                                     </td>
-                                    <td id="subtotal-{{ item.variant_id }}">{{ (item.price * item.quantity)|money }} đ</td>
-                                    <td>
+                                    <td class="cart-item-subtotal" role="cell">
+                                        <span class="d-block d-md-none small text-muted" aria-hidden="true">Thành tiền</span>
+                                        <span id="subtotal-{{ item.variant_id }}">{{ (item.price * item.quantity)|money }} đ</span>
+                                    </td>
+                                    <td class="cart-item-remove" role="cell">
                                         <button type="button" class="btn btn-sm btn-outline-danger remove-item-btn"
                                             data-variant-id="{{ item.variant_id }}" aria-label="Xóa {{ item.product_name }}">
                                             <i class="fas fa-trash"></i>

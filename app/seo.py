@@ -229,10 +229,12 @@ def sitemap_document(base, entries):
     """Bound URL count and serialized bytes; do not silently truncate the catalog."""
     parts = [b'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     size = len(parts[0]) + len(b'</urlset>')
-    paths = [url_for('main.home'), url_for('main.contact'), url_for('product.products')]
+    paths = [url_for('main.home'), url_for('main.contact')]
 
     def inventory_paths():
-        for kind, entity_id in entries:
+        for index, (kind, entity_id) in enumerate(entries):
+            if index == 0:
+                yield url_for('product.products')
             if type(entity_id) is not int or not 0 < entity_id <= 2_147_483_647:
                 raise ValueError('Invalid public sitemap ID')
             if kind == 'product':

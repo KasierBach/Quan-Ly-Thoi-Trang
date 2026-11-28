@@ -74,16 +74,19 @@ def test_customer_cart_checkout_order(gui_page, db_connection):
         assert order.recipient_email == 'recipient@example.test'
 
 
-def test_buy_now_preserves_normal_cart(gui_page, db_connection):
+def test_guest_buy_now_survives_login_and_preserves_normal_cart(gui_page, db_connection):
     page = gui_page
-    login(page)
     product(page)
     page.get_by_role('button', name=re.compile('Thêm vào giỏ hàng')).click()
     page.get_by_role('button', name='Test Black', exact=True).click()
     page.get_by_role('button', name='Test M', exact=True).click()
     page.get_by_label('Số lượng:', exact=True).fill('2')
     page.get_by_role('button', name=re.compile('Mua ngay')).click()
-    expect(page).to_have_url(re.compile(r'/checkout\?buy_now=1$'))
+    expect(page).to_have_url(re.compile(r'/login\?next='))
+    page.get_by_label('Email', exact=True).fill('customer@example.test')
+    page.get_by_label('Mật khẩu', exact=True).fill('TestUser123!')
+    page.get_by_role('button', name=re.compile('Đăng nhập')).click()
+    expect(page).to_have_url(re.compile(r'/checkout\?buy_now=1&draft=.+$'))
     page.get_by_label(re.compile('Số điện thoại')).fill('0900000011')
     page.get_by_label('Ghi chú cho đơn hàng').fill('Synthetic buy now')
     page.get_by_role('button', name='Đặt hàng', exact=False).click()

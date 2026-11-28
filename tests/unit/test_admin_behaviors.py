@@ -150,8 +150,10 @@ def test_main_contact_insert_update_read_and_health(fake_db):
     fake_db.cursor.fetchone.return_value = row(MessageID=1)
     assert MainService.update_contact_message_status(1, 'Answered')['success']
     assert MainService.get_contact_message(1).MessageID == 1
-    fake_db.cursor.fetchone.return_value = [1]
+    fake_db.cursor.fetchone.return_value = [True]
     assert MainService.check_health()
+    fake_db.cursor.fetchone.return_value = [False]
+    assert not MainService.check_health()
     fake_db.cursor.execute.side_effect = RuntimeError('failure')
     assert not MainService.check_health()
 

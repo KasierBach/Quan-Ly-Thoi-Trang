@@ -85,7 +85,7 @@ def test_avatar_database_failure_removes_new_file(auth_client, app, monkeypatch)
 
 @pytest.mark.parametrize('token_data', [None, {'token': 'x' * 43, 'full_name': '<script>Test</script>'}])
 def test_forgot_password_generic_response_and_safe_email(client, monkeypatch, token_data):
-    monkeypatch.setattr(AuthService, 'create_password_reset_token', lambda _: token_data)
+    monkeypatch.setattr(AuthService, 'issue_account_recovery_token', lambda _: token_data)
     send = MagicMock(return_value=True)
     monkeypatch.setattr('app.routes.auth.send_email', send)
     response = client.post('/forgot_password', data={'email': 'user@example.test'})
@@ -98,7 +98,7 @@ def test_forgot_password_generic_response_and_safe_email(client, monkeypatch, to
 
 def test_forgot_invalid_email_never_issues_token(client, monkeypatch):
     issue = MagicMock()
-    monkeypatch.setattr(AuthService, 'create_password_reset_token', issue)
+    monkeypatch.setattr(AuthService, 'issue_account_recovery_token', issue)
     assert client.post('/forgot_password', data={'email': 'invalid'}).status_code == 400
     issue.assert_not_called()
 

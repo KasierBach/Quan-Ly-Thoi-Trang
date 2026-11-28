@@ -2,6 +2,7 @@ from io import BytesIO
 from unittest.mock import MagicMock
 
 import pytest
+from bs4 import BeautifulSoup
 from PIL import Image
 from werkzeug.security import generate_password_hash
 
@@ -78,6 +79,26 @@ def test_register_mismatch_never_calls_service(client, monkeypatch):
     register.assert_not_called()
 
 
+def test_registration_keeps_entered_details_without_echoing_passwords(client):
+    data = {
+        'full_name': 'Synthetic & Sample',
+        'email': 'test@example.test',
+        'phone': '0900000011',
+        'address': 'Unit <B> & house 5',
+        'password': 'weakpassword',
+        'confirm_password': 'weakpassword',
+    }
+    response = client.post('/register', data=data)
+    assert response.status_code == 400
+    assert b'weakpassword' not in response.data
+    page = BeautifulSoup(response.data, 'html.parser')
+    for field in ('full_name', 'email', 'phone'):
+        assert page.select_one(f'input[name="{field}"]')['value'] == data[field]
+    assert page.select_one('textarea[name="address"]').text == data['address']
+    assert page.select_one('[data-new-password]')['aria-describedby'] == 'password-help password-status'
+    assert '8–128' in page.select_one('#password-help').text
+
+
 def test_register_uses_customer_role_and_preserves_cart(client, monkeypatch):
     monkeypatch.setattr(
         AuthService,
@@ -102,6 +123,38 @@ def test_register_uses_customer_role_and_preserves_cart(client, monkeypatch):
         assert session['role'] == 'customer'
         assert not session['is_admin']
         assert session['cart'][0]['quantity'] == 2
+
+
+def test_registration_preserves_checkout_destination_through_validation_error(client, monkeypatch):
+    monkeypatch.setattr(
+        AuthService,
+        'register_user',
+        lambda *_: {'success': True, 'customer_id': 8, 'full_name': 'Test', 'auth_version': 1},
+    )
+    next_page = '/checkout?buy_now=1&draft=example-signed-draft'
+    page = client.get('/login', query_string={'next': next_page})
+    soup = BeautifulSoup(page.text, 'html.parser')
+    form_link = soup.select_one('.auth-links a[href^="/register"]')
+    page = client.get(form_link['href'])
+    soup = BeautifulSoup(page.text, 'html.parser')
+    field = soup.select_one('form[action="/register"] input[name="next"]')
+    assert field['value'] == next_page
+
+    data = {
+        'full_name': 'Test',
+        'email': 'user@example.test',
+        'password': 'GoodPass123!',
+        'confirm_password': 'wrong',
+        'next': field['value'],
+    }
+    response = client.post('/register', data=data)
+    assert response.status_code == 400
+    soup = BeautifulSoup(response.text, 'html.parser')
+    assert soup.select_one('form[action="/register"] input[name="next"]')['value'] == next_page
+
+    response = client.post('/register', data={**data, 'confirm_password': data['password']})
+    assert response.status_code == 302
+    assert response.headers['Location'] == next_page
 
 
 def test_api_login_guard_returns_json(client):
@@ -183,7 +236,7 @@ def test_auth_hash_check_and_reset_digest(fake_db):
         CustomerID=1, FullName='Test', Password=generate_password_hash('GoodPass123!')
     )
     assert AuthService.login_user('user@example.test', 'wrong') is None
-    result = AuthService.create_password_reset_token('user@example.test')
+    result = AuthService.issue_account_recovery_token('user@example.test')
     assert len(result['token']) >= 32
     insert = fake_db.cursor.execute.call_args_list[-1]
     assert result['token'] not in str(insert)

@@ -57,7 +57,7 @@ def test_factory_public_assets_keep_security_headers(offline_assets):
 def test_factory_existing_before_and_after_hooks_are_preserved(offline_assets):
     before = {callback.__name__ for callback in offline_assets.before_request_funcs[None]}
     after = [callback.__name__ for callback in offline_assets.after_request_funcs[None]]
-    assert {'csrf_protect', 'block_public_chat_uploads', 'revalidate_session', 'initialize_page_chat'} <= before
+    assert {'csrf_protect', 'static_uploads', 'revalidate_session', 'initialize_page_chat'} <= before
     assert 'add_security_headers' in after
     assert after.index('_prepare_asset_response') < after.index('add_security_headers')
     assert offline_assets.config['SEND_FILE_MAX_AGE_DEFAULT'] is None

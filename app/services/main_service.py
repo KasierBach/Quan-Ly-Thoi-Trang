@@ -156,13 +156,49 @@ class MainService(BaseService):
 
     @staticmethod
     def check_health():
-        """A connection failure is an unhealthy result, not an uncaught exception."""
+        """Report readiness only once the database has the required schema."""
         conn = None
         try:
             conn = MainService.get_connection()
             with conn.cursor() as cursor:
-                cursor.execute('SELECT 1')
-                return cursor.fetchone()[0] == 1
+                cursor.execute("""SELECT
+                    NOT EXISTS (
+                        SELECT 1 FROM (VALUES
+                            ('customers', 'SELECT'),
+                            ('products', 'SELECT'),
+                            ('attachments', 'SELECT'),
+                            ('oauthidentities', 'SELECT'),
+                            ('oauthstates', 'INSERT'),
+                            ('orders', 'SELECT'),
+                            ('orders', 'INSERT'),
+                            ('orderdetails', 'INSERT'),
+                            ('inventoryadjustments', 'SELECT'),
+                            ('inventoryadjustments', 'INSERT'),
+                            ('passwordresettokens', 'UPDATE')
+                        ) AS required(relation, privilege)
+                        WHERE has_table_privilege(to_regclass(relation), privilege) IS NOT TRUE
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM pg_index AS checkout_index
+                        JOIN pg_attribute AS checkout_key
+                          ON checkout_key.attrelid = checkout_index.indrelid
+                         AND checkout_key.attnum = checkout_index.indkey[0]
+                        WHERE checkout_index.indrelid = to_regclass('orders')
+                          AND checkout_index.indexrelid = to_regclass('uq_orders_checkout_key')
+                          AND checkout_index.indisvalid AND checkout_index.indisunique
+                          AND checkout_index.indimmediate AND checkout_index.indpred IS NULL
+                          AND checkout_index.indnkeyatts = 1
+                          AND checkout_key.attname = 'checkout_key' AND checkout_key.atttypid = 'uuid'::regtype
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        JOIN pg_attribute ON attrelid = conrelid AND attname = 'token' AND NOT attisdropped
+                        WHERE conrelid = to_regclass('passwordresettokens')
+                          AND conname = 'passwordresettokens_sha256'
+                          AND atttypid = 'varchar'::regtype
+                          AND convalidated
+                    )""")
+                return cursor.fetchone()[0] is True
         except Exception:
             return False
         finally:

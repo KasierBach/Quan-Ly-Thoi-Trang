@@ -29,8 +29,10 @@ class ProductService(BaseService):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT 'category' AS Kind, CategoryID AS EntityID FROM Categories
-                    WHERE CategoryID > 0
+                    SELECT 'category' AS Kind, c.CategoryID AS EntityID FROM Categories c
+                    WHERE c.CategoryID > 0 AND EXISTS (
+                        SELECT 1 FROM Products p WHERE p.CategoryID = c.CategoryID AND p.ProductID > 0
+                    )
                     UNION ALL
                     SELECT 'product' AS Kind, p.ProductID AS EntityID FROM Products p
                     JOIN Categories c ON c.CategoryID = p.CategoryID
@@ -437,7 +439,7 @@ class ProductService(BaseService):
             conn.close()
 
     @staticmethod
-    def add_variant(product_id, color_id, size_id, quantity) -> dict[str, Any]:
+    def add_variant(product_id, color_id, size_id, quantity, *, actor_id, reason) -> dict[str, Any]:
         try:
             product_id = positive_int(product_id, 'Sản phẩm', ProductService.MAX_INTEGER)
             color_id = positive_int(color_id, 'Màu sắc', ProductService.MAX_INTEGER)
@@ -447,6 +449,9 @@ class ProductService(BaseService):
                 if not isinstance(quantity, bool) and str(quantity) == '0'
                 else positive_int(quantity, 'Tồn kho', ProductService.MAX_INTEGER)
             )
+            if quantity:
+                actor_id = positive_int(actor_id, 'Người điều chỉnh', ProductService.MAX_INTEGER)
+                reason = required_text(reason, 'Lý do điều chỉnh', 300)
         except ValidationError as exc:
             return {'success': False, 'message': str(exc), 'status_code': 400}
         conn = BaseService.get_connection()
@@ -456,12 +461,114 @@ class ProductService(BaseService):
                     'SELECT sp_AddProductVariant(%s, %s, %s, %s) AS VariantID',
                     (product_id, color_id, size_id, quantity),
                 )
+                if quantity:
+                    variant_id = cursor.fetchone().VariantID
+                    if not ProductService._record_inventory_adjustment(
+                        cursor, product_id, variant_id, quantity, actor_id, reason
+                    ):
+                        conn.rollback()
+                        return {'success': False, 'message': 'Người điều chỉnh không tồn tại', 'status_code': 403}
                 conn.commit()
                 ProductService.invalidate_catalog()
                 return {'success': True}
         except Exception as exc:
             conn.rollback()
             return ProductService._mutation_error(exc)
+        finally:
+            conn.close()
+
+    @staticmethod
+    def adjust_variant_stock(product_id, variant_id, delta, *, actor_id, reason) -> dict[str, Any]:
+        maximum = ProductService.MAX_INTEGER
+        try:
+            product_id = positive_int(product_id, 'Sản phẩm', maximum)
+            variant_id = positive_int(variant_id, 'Biến thể', maximum)
+            actor_id = positive_int(actor_id, 'Người điều chỉnh', maximum)
+            reason = required_text(reason, 'Lý do điều chỉnh', 300)
+            adjustment = str(delta).strip()
+            magnitude = adjustment[1:] if adjustment.startswith(('+', '-')) else adjustment
+            delta = positive_int(magnitude, 'Mức điều chỉnh tồn kho', maximum)
+            if adjustment.startswith('-'):
+                delta = -delta
+        except ValidationError as exc:
+            return {'success': False, 'message': str(exc), 'status_code': 400}
+        conn = BaseService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT Quantity FROM ProductVariants
+                    WHERE ProductID = %s AND VariantID = %s FOR UPDATE
+                    """,
+                    (product_id, variant_id),
+                )
+                variant = cursor.fetchone()
+                if variant is None:
+                    return {'success': False, 'message': 'Biến thể không thuộc sản phẩm này', 'status_code': 404}
+                quantity = variant.Quantity + delta
+                if not 0 <= quantity <= maximum:
+                    return {
+                        'success': False,
+                        'message': f'Mức điều chỉnh khiến tồn kho vượt giới hạn. Tồn kho hiện tại là {variant.Quantity}.',
+                        'status_code': 409,
+                    }
+                cursor.execute(
+                    'UPDATE ProductVariants SET Quantity = %s WHERE ProductID = %s AND VariantID = %s',
+                    (quantity, product_id, variant_id),
+                )
+                if not ProductService._record_inventory_adjustment(
+                    cursor, product_id, variant_id, delta, actor_id, reason
+                ):
+                    conn.rollback()
+                    return {'success': False, 'message': 'Người điều chỉnh không tồn tại', 'status_code': 403}
+                conn.commit()
+                ProductService.invalidate_catalog()
+                return {'success': True, 'quantity': quantity}
+        except Exception as exc:
+            conn.rollback()
+            return ProductService._mutation_error(exc)
+        finally:
+            conn.close()
+
+    @staticmethod
+    def _record_inventory_adjustment(cursor, product_id, variant_id, delta, actor_id, reason):
+        # Both stock mutations hold the variant lock through this insert and commit.
+        cursor.execute(
+            """
+            INSERT INTO InventoryAdjustments
+                (product_id, variant_id, color_name, size_name, actor_id, actor_name,
+                 reason, quantity_before, quantity_after)
+            SELECT pv.ProductID, pv.VariantID, c.ColorName, s.SizeName, a.CustomerID, a.FullName,
+                   %s, pv.Quantity - %s, pv.Quantity
+            FROM ProductVariants pv
+            JOIN Colors c ON c.ColorID = pv.ColorID
+            JOIN Sizes s ON s.SizeID = pv.SizeID
+            JOIN Customers a ON a.CustomerID = %s
+            WHERE pv.ProductID = %s AND pv.VariantID = %s
+            """,
+            (reason, delta, actor_id, product_id, variant_id),
+        )
+        return cursor.rowcount == 1
+
+    @staticmethod
+    def get_inventory_history(product_id, page, page_size):
+        product_id = positive_int(product_id, 'Sản phẩm', ProductService.MAX_INTEGER)
+        conn = BaseService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT variant_id, color_name, size_name, actor_id, actor_name, reason,
+                           quantity_before, quantity_after, created_at
+                    FROM InventoryAdjustments
+                    WHERE product_id = %s
+                    ORDER BY id DESC
+                    LIMIT %s OFFSET %s
+                    """,
+                    (product_id, page_size + 1, (page - 1) * page_size),
+                )
+                entries = cursor.fetchall()
+                return {'entries': entries[:page_size], 'page': page, 'has_older': len(entries) > page_size}
         finally:
             conn.close()
 

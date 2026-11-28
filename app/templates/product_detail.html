@@ -25,7 +25,7 @@
         </div>
         <div class="col-md-6 d-flex flex-column justify-content-center">
             <div>
-                <h2 class="mb-3">{{ product.ProductName }}</h2>
+                <h1 class="h2 mb-3">{{ product.ProductName }}</h1>
                 <p class="text-muted mb-2">Danh mục: {{ product.CategoryName }}</p>
                 <div class="d-flex align-items-center mb-4">
                     <h3 class="text-danger mb-0 me-3">{{ product.Price|money }} đ</h3>
@@ -36,30 +36,30 @@
                 <form id="productPurchaseForm" action="{{ url_for('cart.add_to_cart') }}" method="post" onsubmit="return validateVariantSelection();">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="product_id" value="{{ product.ProductID }}">
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Màu sắc:</label>
-                        <div class="color-options">
+                    <fieldset class="mb-4">
+                        <legend class="form-label fw-bold fs-6">Màu sắc:</legend>
+                        <div class="color-options d-flex flex-wrap gap-2">
                             {% for color in colors %}
-                            <span class="color-swatch"
-                                data-bg-color="{% if color.name == 'Đen' %}#000000{% elif color.name == 'Trắng' %}#FFFFFF{% elif color.name == 'Đỏ' %}#FF0000{% elif color.name == 'Xanh dương' %}#0000FF{% elif color.name == 'Xanh lá' %}#00FF00{% elif color.name == 'Vàng' %}#FFFF00{% elif color.name == 'Hồng' %}#FFC0CB{% elif color.name == 'Xám' %}#808080{% elif color.name == 'Nâu' %}#A52A2A{% else %}#CCCCCC{% endif %}"
-                                data-color-id="{{ color.id }}" title="{{ color.name }}" tabindex="0" role="button"
-                                aria-label="{{ color.name }}" aria-pressed="false" onclick="selectColor(this)"
-                                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectColor(this);}"></span>
+                            <button class="variant-option color-option" type="button"
+                                data-color-id="{{ color.id }}" aria-pressed="false" onclick="selectColor(this)">
+                                <span class="color-swatch" aria-hidden="true"
+                                    data-bg-color="{% if color.name == 'Đen' %}#000000{% elif color.name == 'Trắng' %}#FFFFFF{% elif color.name == 'Đỏ' %}#FF0000{% elif color.name == 'Xanh dương' %}#0000FF{% elif color.name == 'Xanh lá' %}#00FF00{% elif color.name == 'Vàng' %}#FFFF00{% elif color.name == 'Hồng' %}#FFC0CB{% elif color.name == 'Xám' %}#808080{% elif color.name == 'Nâu' %}#A52A2A{% else %}#CCCCCC{% endif %}"></span>
+                                {{ color.name }}
+                            </button>
                             {% endfor %}
                         </div>
                         <input type="hidden" name="color_id" id="selectedColor">
-                    </div>
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">Kích thước:</label>
-                        <div class="size-options">
+                    </fieldset>
+                    <fieldset class="mb-4">
+                        <legend class="form-label fw-bold fs-6">Kích thước:</legend>
+                        <div class="size-options d-flex flex-wrap gap-2">
                             {% for size in sizes %}
-                            <span class="size-option" data-size-id="{{ size.id }}" tabindex="0" role="button"
-                                aria-label="{{ size.name }}" aria-pressed="false" onclick="selectSize(this)"
-                                onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();selectSize(this);}">{{ size.name }}</span>
+                            <button class="variant-option size-option" type="button"
+                                data-size-id="{{ size.id }}" aria-pressed="false" onclick="selectSize(this)">{{ size.name }}</button>
                             {% endfor %}
                         </div>
                         <input type="hidden" name="size_id" id="selectedSize">
-                    </div>
+                    </fieldset>
                     <input type="hidden" name="variant_id" id="variantId">
                     <div class="mb-4">
                         <label for="quantity" class="form-label fw-bold">Số lượng:</label>
@@ -100,7 +100,7 @@
     <div class="row mt-5">
         <div class="col-12">
             <div class="card shadow-sm">
-                <div class="card-header bg-white border-bottom">
+                <div class="card-header border-bottom">
                     <ul class="nav nav-tabs card-header-tabs" id="productTabs" role="tablist">
                         <li class="nav-item" role="presentation">
                             <button class="nav-link active fw-bold" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab" aria-controls="description" aria-selected="true">
@@ -267,10 +267,8 @@
         }
 
         function selectColor(element) {
-            document.querySelectorAll('.color-swatch').forEach(swatch => {
-                const selected = swatch === element;
-                swatch.classList.toggle('active', selected);
-                swatch.setAttribute('aria-pressed', String(selected));
+            document.querySelectorAll('.color-option').forEach(option => {
+                option.setAttribute('aria-pressed', String(option === element));
             });
             selectedColor = element.dataset.colorId;
             document.getElementById('selectedColor').value = selectedColor;
@@ -279,9 +277,7 @@
 
         function selectSize(element) {
             document.querySelectorAll('.size-option').forEach(option => {
-                const selected = option === element;
-                option.classList.toggle('active', selected);
-                option.setAttribute('aria-pressed', String(selected));
+                option.setAttribute('aria-pressed', String(option === element));
             });
             selectedSize = element.dataset.sizeId;
             document.getElementById('selectedSize').value = selectedSize;

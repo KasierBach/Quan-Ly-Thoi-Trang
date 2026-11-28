@@ -87,6 +87,23 @@ CREATE TABLE IF NOT EXISTS ProductVariants (
     Quantity INT NOT NULL DEFAULT 0,
     UNIQUE (ProductID, ColorID, SizeID)
 );
+-- Snapshot identities and variant labels so deleting a catalog row cannot erase an adjustment.
+CREATE TABLE IF NOT EXISTS InventoryAdjustments (
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_id INTEGER NOT NULL CHECK (product_id > 0),
+    variant_id INTEGER NOT NULL CHECK (variant_id > 0),
+    color_name VARCHAR(50) NOT NULL,
+    size_name VARCHAR(50) NOT NULL,
+    actor_id INTEGER NOT NULL CHECK (actor_id > 0),
+    actor_name VARCHAR(255) NOT NULL,
+    reason VARCHAR(300) NOT NULL CHECK (BTRIM(reason) <> ''),
+    quantity_before INTEGER NOT NULL CHECK (quantity_before >= 0),
+    quantity_after INTEGER NOT NULL CHECK (quantity_after >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    CHECK (quantity_before <> quantity_after)
+);
+CREATE INDEX IF NOT EXISTS idx_inventory_adjustments_product
+    ON InventoryAdjustments (product_id, id DESC);
 CREATE TABLE IF NOT EXISTS Orders (
     OrderID SERIAL PRIMARY KEY,
     CustomerID INT NOT NULL REFERENCES Customers(CustomerID),
@@ -100,6 +117,8 @@ ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_name VARCHAR(255);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_phone VARCHAR(20);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS recipient_email VARCHAR(254);
 ALTER TABLE Orders ADD COLUMN IF NOT EXISTS notes TEXT;
+ALTER TABLE Orders ADD COLUMN IF NOT EXISTS checkout_key UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_checkout_key ON Orders (checkout_key);
 CREATE TABLE IF NOT EXISTS OrderDetails (
     OrderDetailID SERIAL PRIMARY KEY,
     OrderID INT NOT NULL REFERENCES Orders(OrderID) ON DELETE CASCADE,
@@ -151,7 +170,7 @@ CREATE TABLE IF NOT EXISTS ProductComments (
 CREATE TABLE IF NOT EXISTS PasswordResetTokens (
     TokenID SERIAL PRIMARY KEY,
     CustomerID INT NOT NULL REFERENCES Customers(CustomerID),
-    Token VARCHAR(100) NOT NULL,
+    Token VARCHAR(100) NOT NULL CONSTRAINT passwordresettokens_sha256 CHECK (Token::text ~ '^[0-9a-f]{64}$'),
     ExpiryDate TIMESTAMP NOT NULL,
     IsUsed BOOLEAN DEFAULT FALSE,
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -250,7 +269,7 @@ BEGIN
         ('orderdetails', 'orderdetails_nonnegative_price', 'Price >= 0'),
         ('orderdetails', 'orderdetails_finite_price', 'Price <> ''NaN''::NUMERIC'),
         ('orderdetails', 'orderdetails_references_required', 'OrderID IS NOT NULL AND VariantID IS NOT NULL'),
-        ('passwordresettokens', 'passwordresettokens_sha256', 'Token ~ ''^[0-9a-f]{64}$'''),
+        ('passwordresettokens', 'passwordresettokens_sha256', 'Token::text ~ ''^[0-9a-f]{64}$'''),
         ('conversations', 'conversations_valid_type', 'type IN (''private'', ''group'', ''support'')'),
         ('participants', 'participants_valid_role', 'role IS NOT NULL AND role IN (''member'', ''admin'', ''owner'')'),
         ('participants', 'participants_references_required', 'conversation_id IS NOT NULL AND user_id IS NOT NULL'),

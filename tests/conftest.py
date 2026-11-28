@@ -108,7 +108,7 @@ def db_connection(database_url):
             cursor.execute("""
                 TRUNCATE Attachments, Reactions, PinnedMessages, Messages, Participants, Conversations,
                          PasswordResetTokens, ProductComments, Reviews, Wishlist, ContactMessages,
-                         NewsletterSubscribers, OrderDetails, Orders, ProductVariants, Products,
+                         NewsletterSubscribers, OrderDetails, Orders, InventoryAdjustments, ProductVariants, Products,
                          Sizes, Colors, Categories, Customers RESTART IDENTITY CASCADE
             """)
             cursor.execute("SELECT set_config('thua2.allow_test_seed', 'loopback-disposable', false)")
