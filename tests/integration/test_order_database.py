@@ -353,7 +353,9 @@ def test_admin_stock_adjustment_applies_to_stock_after_concurrent_checkout(db_co
         monkeypatch.setattr(BaseService, 'get_connection', lambda: adjustment)
 
         with ThreadPoolExecutor(max_workers=1) as worker:
-            future = worker.submit(ProductService.adjust_variant_stock, 1, 1, '-3')
+            future = worker.submit(
+                ProductService.adjust_variant_stock, 1, 1, '-3', actor_id=2, reason='Damaged items'
+            )
             try:
                 deadline = monotonic() + 4
                 while not _scalar(
@@ -371,6 +373,14 @@ def test_admin_stock_adjustment_applies_to_stock_after_concurrent_checkout(db_co
         adjustment.close()
     assert _stock(db_connection) == before - 5
     assert _total(db_connection, order_id) == Decimal('398000.00')
+    with db_connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT variant_id, actor_id, actor_name, reason, quantity_before, quantity_after
+            FROM InventoryAdjustments WHERE product_id = 1
+        """)
+        assert [tuple(row.values()) for row in cursor.fetchall()] == [
+            (1, 2, 'Test Admin', 'Damaged items', before - 2, before - 5),
+        ]
 
 
 def test_concurrent_repeat_cancellation_restores_inventory_exactly_once(db_connection, database_url):

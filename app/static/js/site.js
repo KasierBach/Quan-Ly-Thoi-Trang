@@ -129,7 +129,10 @@
     });
     document.addEventListener('click', event => { if (!event.target.closest('#searchForm')) dismiss(); });
     input.addEventListener('keydown', event => {
-        if (event.key === 'Escape') dismiss();
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            dismiss();
+        }
         if (event.key === 'ArrowDown') { event.preventDefault(); results.querySelector('a')?.focus(); }
     });
     results.addEventListener('keydown', event => {

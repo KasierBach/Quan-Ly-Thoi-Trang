@@ -45,6 +45,10 @@ EXPECTED_COLUMNS = {
     'colors': {'colorid', 'colorname'},
     'sizes': {'sizeid', 'sizename'},
     'productvariants': {'variantid', 'productid', 'colorid', 'sizeid', 'quantity'},
+    'inventoryadjustments': {
+        'id', 'product_id', 'variant_id', 'color_name', 'size_name', 'actor_id', 'actor_name',
+        'reason', 'quantity_before', 'quantity_after', 'created_at',
+    },
     'orders': {
         'orderid',
         'customerid',

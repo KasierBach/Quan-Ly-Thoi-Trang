@@ -240,16 +240,16 @@ def test_recent_card_markup_is_lazy_and_existing_one_shot_fallback_remains(clien
     )
 
 
-def test_existing_css_reserves_card_and_autocomplete_crop_boxes():
+def test_product_cards_and_suggestions_fit_images_in_stable_boxes():
     css = (STATIC / 'css' / 'style.css').read_text(encoding='utf-8')
     bootstrap = (STATIC / 'vendor' / 'bootstrap' / 'bootstrap.min.css').read_text(encoding='utf-8')
     assert re.search(r'\.card-img-top\{width:100%\}', bootstrap)
     card = declarations(re.search(r'\.product-img\s*\{([^}]+)\}', css).group(1))
-    assert card['height'].strip() == '200px' and card['object-fit'].strip() == 'cover'
+    assert card['height'].strip() == '200px' and card['object-fit'].strip() == 'contain'
     assert re.search(r'@media\s*\(max-width:\s*768px\)\s*\{\s*\.product-img\s*\{\s*height:\s*180px;', css)
     thumbnail = declarations(re.search(r'\.search-autocomplete-img\s*\{([^}]+)\}', css).group(1))
     assert thumbnail['width'].strip() == '45px' and thumbnail['height'].strip() == '45px'
-    assert thumbnail['object-fit'].strip() == 'cover'
+    assert thumbnail['object-fit'].strip() == 'contain' and thumbnail['flex-shrink'].strip() == '0'
 
 
 def test_autocomplete_creates_lazy_safe_dom_thumbnails_without_http(client, storefront, monkeypatch):

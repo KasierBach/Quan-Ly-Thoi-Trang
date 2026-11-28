@@ -168,6 +168,7 @@ def mock_admin_reads(monkeypatch):
         (ProductService, 'get_admin_products', paging('products', [product])),
         (ProductService, 'get_product_by_id', product),
         (ProductService, 'get_product_variants', []),
+        (ProductService, 'get_inventory_history', {'entries': [], 'page': 1, 'has_older': False}),
         (ProductService, 'get_featured_products', [product]),
         (ProductService, 'get_best_selling_products', [product]),
         (OrderService, 'get_orders_admin', paging('orders', [order])),
@@ -430,7 +431,7 @@ def test_product_zero_quantity_and_money_supported(admin_client, monkeypatch):
         '/admin/products/add_variant', data={'product_id': 1, 'color_id': 1, 'size_id': 1, 'quantity': 0}
     )
     assert response.status_code == 302
-    mutation.assert_called_once_with(1, 1, 1, 0)
+    mutation.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None)
     add = Mock(return_value={'success': True, 'product_id': 1})
     monkeypatch.setattr(ProductService, 'add_product', add)
     response = admin_client.post(

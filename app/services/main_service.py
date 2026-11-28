@@ -172,6 +172,8 @@ class MainService(BaseService):
                             ('orders', 'SELECT'),
                             ('orders', 'INSERT'),
                             ('orderdetails', 'INSERT'),
+                            ('inventoryadjustments', 'SELECT'),
+                            ('inventoryadjustments', 'INSERT'),
                             ('passwordresettokens', 'UPDATE')
                         ) AS required(relation, privilege)
                         WHERE has_table_privilege(to_regclass(relation), privilege) IS NOT TRUE

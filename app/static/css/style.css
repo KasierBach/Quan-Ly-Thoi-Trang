@@ -569,12 +569,8 @@ body {
 
 .product-img {
     height: 200px;
-    object-fit: cover;
-    transition: var(--transition);
-}
-
-.product-card:hover .product-img {
-    transform: scale(1.05);
+    object-fit: contain;
+    background-color: var(--bs-tertiary-bg);
 }
 
 @media (max-width: 768px) {
@@ -728,12 +724,40 @@ footer a:hover {
 /* Search Bar */
 .search-bar {
     max-width: 280px;
-    min-width: 150px;
-    flex-shrink: 1;
+    min-width: 0;
+    flex: 1 1 11rem;
     position: relative;
 }
 
+@media (min-width: 1200px) {
+    .navbar-expand-xl .nav-link {
+        padding-inline: 0.625rem !important;
+    }
+}
+
+.navbar-user-name {
+    display: inline-block;
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+}
+
+@media (max-width: 1199.98px) {
+    .search-bar {
+        flex-basis: 100%;
+        max-width: none;
+        margin-top: 0.625rem;
+    }
+
+    .search-bar .form-control,
+    .search-bar .btn {
+        min-height: 44px;
+    }
+}
+
 .search-bar .form-control {
+    min-width: 0;
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
 }
@@ -785,13 +809,17 @@ footer a:hover {
 .search-autocomplete-img {
     width: 45px;
     height: 45px;
-    object-fit: cover;
+    flex-shrink: 0;
+    object-fit: contain;
+    background-color: var(--bs-tertiary-bg);
     border-radius: 6px;
     margin-right: 12px;
 }
 
 .search-autocomplete-info {
     flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
 }
 
 .search-autocomplete-name {

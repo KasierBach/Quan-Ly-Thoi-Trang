@@ -37,7 +37,7 @@
     <a class="skip-to-content visually-hidden-focusable btn btn-dark" href="#main-content">Đến nội dung chính</a>
     {% block navbar %}
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg sticky-top">
+    <nav class="navbar navbar-expand-xl sticky-top">
         <div class="container">
             <a class="navbar-brand" href="{{ url_for('main.home') }}">
                 <i class="fas fa-store me-2"></i>Fashion Store
@@ -45,6 +45,16 @@
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Mở menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
+            <form class="d-flex me-xl-3 search-bar" action="{{ url_for('product.products') }}" method="get" role="search"
+                id="searchForm">
+                <input class="form-control" type="search" name="search" id="searchInput"
+                    placeholder="Tìm kiếm sản phẩm..." autocomplete="off" value="{{ search_term|default('') }}"
+                    aria-label="Tìm kiếm sản phẩm" aria-controls="searchAutocomplete" aria-expanded="false">
+                <button class="btn btn-outline-primary" type="submit" aria-label="Tìm kiếm">
+                    <i class="fas fa-search" aria-hidden="true"></i>
+                </button>
+                <div class="search-autocomplete" id="searchAutocomplete"></div>
+            </form>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
@@ -71,17 +81,6 @@
                     </li>
                 </ul>
 
-                <!-- Search Bar -->
-                <form class="d-flex me-3 search-bar" action="{{ url_for('product.products') }}" method="get"
-                    id="searchForm">
-                    <input class="form-control" type="search" name="search" id="searchInput"
-                        placeholder="Tìm kiếm sản phẩm..." autocomplete="off" aria-label="Tìm kiếm sản phẩm" aria-controls="searchAutocomplete" aria-expanded="false">
-                    <button class="btn btn-outline-primary" type="submit" aria-label="Tìm kiếm">
-                        <i class="fas fa-search"></i>
-                    </button>
-                    <div class="search-autocomplete" id="searchAutocomplete"></div>
-                </form>
-
                 <ul class="navbar-nav">
                     <li class="nav-item">
                         <a class="nav-link position-relative" href="{{ url_for('cart.view_cart') }}" aria-label="Giỏ hàng">
@@ -104,7 +103,7 @@
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-user me-1"></i>{{ session.user_name }}
+                            <i class="fas fa-user me-1"></i><span class="navbar-user-name">{{ session.user_name }}</span>
                             {% if is_admin %}
                             <span class="badge bg-danger ms-1"
                                 style="font-size: 0.7em; vertical-align: middle;">Admin</span>

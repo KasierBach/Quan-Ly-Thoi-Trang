@@ -46,7 +46,11 @@ function searchFixture() {
     return {
         results, requests,
         type: (value) => { input.value = value; input.fire('input'); },
-        escape: () => input.fire('keydown', { key: 'Escape' }),
+        escape() {
+            let prevented = false;
+            input.fire('keydown', { key: 'Escape', preventDefault: () => { prevented = true; } });
+            return prevented;
+        },
         clickOutside: () => document.fire('click', { target: { closest: () => null } }),
         runDebounce() {
             const callback = timers.get(250);
@@ -64,7 +68,7 @@ function reply(request, ok = true) {
 test('Escape cancels debounce and an outside click discards a pending response', async () => {
     const search = searchFixture();
     search.type('áo');
-    search.escape();
+    assert.equal(search.escape(), true);
     assert.equal(search.runDebounce(), undefined);
     assert.equal(search.requests.length, 0);
 

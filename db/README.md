@@ -12,6 +12,8 @@ Before applying to an existing database, back up PostgreSQL and all three runtim
 
 When switching to the persistent mount, copy the existing upload directories into the new root without changing filenames. Copy any older `app/static/images/pixabay-*.jpg` files into `UPLOAD_ROOT/products`. The database backup contains their references, and the bytes must come from a filesystem backup or the old instance while they are still available.
 
+Migration `0006` starts recording manual stock changes made in the product editor after rollout. A separate app role needs `SELECT` and `INSERT` on `public.inventoryadjustments` for readiness and stock changes.
+
 ## Provenance
 
 Reconstruction uses only the **ignored January 2026 files**, read from the original folder, and SQL contracts in the approved main worktree at `aa0f131e60d4489eea1b16b753d220cd87d34ce3` (2026-04-17). Neither ignored file has Git history for its path; filesystem timestamps are not commit provenance.

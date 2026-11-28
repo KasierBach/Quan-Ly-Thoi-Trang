@@ -1,4 +1,5 @@
 from decimal import Decimal
+from functools import partial
 from unittest.mock import Mock
 
 import psycopg2
@@ -366,9 +367,10 @@ def test_admin_pagination_defaults_are_safe(fake_db, page, per_page):
         (ProductService.add_product, ('Name', '', '1', 0, '0')),
         (ProductService.update_product, (0, 'Name', '', '1', 1, '0', '')),
         (ProductService.update_product, (1, 'Name', '', '1', 1, '0', 'x' * 256)),
-        (ProductService.add_variant, (1, 1, 1, '-1')),
-        (ProductService.add_variant, (1, 1, 1, True)),
-        (ProductService.add_variant, (1, 1, 1, '1.1')),
+        (partial(ProductService.add_variant, actor_id=2, reason=None), (1, 1, 1, '-1')),
+        (partial(ProductService.add_variant, actor_id=2, reason=None), (1, 1, 1, True)),
+        (partial(ProductService.add_variant, actor_id=2, reason=None), (1, 1, 1, '1.1')),
+        (partial(ProductService.add_variant, actor_id=2, reason=None), (1, 1, 1, '1')),
         (ProductService.delete_variant, (0,)),
         (ProductService.delete_product, ('1.1',)),
     ],
@@ -390,24 +392,38 @@ def test_catalog_add_uses_decimal_and_invalidates_after_commit(fake_db, monkeypa
 
 
 def test_zero_stock_variant_is_valid(fake_db):
-    assert ProductService.add_variant(1, 1, 1, '0')['success'] is True
+    assert ProductService.add_variant(1, 1, 1, '0', actor_id=2, reason=None)['success'] is True
+    fake_db.cursor.execute.assert_called_once()
     assert fake_db.cursor.execute.call_args.args[1] == (1, 1, 1, 0)
 
 
 @pytest.mark.parametrize('delta', [None, '0', '+0', '--1', '1.5', '1e2', '-2147483648'])
 def test_stock_adjustment_validates_before_db_connection(fake_db, delta):
-    assert ProductService.adjust_variant_stock(1, 9, delta)['status_code'] == 400
+    assert ProductService.adjust_variant_stock(1, 9, delta, actor_id=2, reason='Damaged')['status_code'] == 400
     fake_db.connection.cursor.assert_not_called()
 
 
 @pytest.mark.parametrize('delta,expected', [('-5', 0), ('+3', 8)])
-def test_stock_adjustment_locks_variant_and_keeps_adjusted_count(fake_db, delta, expected):
+def test_stock_adjustment_locks_variant_and_records_adjustment(fake_db, delta, expected):
     fake_db.cursor.fetchone.return_value = record(Quantity=5)
-    assert ProductService.adjust_variant_stock(1, 9, delta) == {'success': True, 'quantity': expected}
-    lock, update = fake_db.cursor.execute.call_args_list
+    result = ProductService.adjust_variant_stock(1, 9, delta, actor_id=2, reason=' Recount ')
+    assert result == {'success': True, 'quantity': expected}
+    lock, update, history = fake_db.cursor.execute.call_args_list
     assert 'FOR UPDATE' in lock.args[0] and lock.args[1] == (1, 9)
     assert update.args[1] == (expected, 1, 9)
+    assert 'INSERT INTO InventoryAdjustments' in history.args[0]
+    assert history.args[1] == ('Recount', int(delta), 2, 1, 9)
     fake_db.connection.commit.assert_called_once()
+
+
+def test_stock_adjustment_rolls_back_if_history_insert_fails(app, fake_db):
+    fake_db.cursor.fetchone.return_value = record(Quantity=5)
+    fake_db.cursor.execute.side_effect = [None, None, psycopg2.OperationalError('history unavailable')]
+    with app.app_context():
+        result = ProductService.adjust_variant_stock(1, 9, '-1', actor_id=2, reason='Damaged')
+    assert result['status_code'] == 503
+    fake_db.connection.rollback.assert_called_once()
+    fake_db.connection.commit.assert_not_called()
 
 
 @pytest.mark.parametrize(
@@ -416,7 +432,7 @@ def test_stock_adjustment_locks_variant_and_keeps_adjusted_count(fake_db, delta,
 )
 def test_stock_adjustment_does_not_write_missing_or_out_of_range_variant(fake_db, variant, delta, status):
     fake_db.cursor.fetchone.return_value = variant
-    assert ProductService.adjust_variant_stock(1, 9, delta)['status_code'] == status
+    assert ProductService.adjust_variant_stock(1, 9, delta, actor_id=2, reason='Damaged')['status_code'] == status
     fake_db.cursor.execute.assert_called_once()
     fake_db.connection.commit.assert_not_called()
 
@@ -536,7 +552,7 @@ def test_catalog_feature_lists_bind_limit_and_stable_tie_break(fake_db, method):
     [
         (ProductService.add_product, ('Name', '', '1', 1, '0')),
         (ProductService.update_product, (1, 'Name', '', '1', 1, '0', '')),
-        (ProductService.add_variant, (1, 1, 1, 1)),
+        (partial(ProductService.add_variant, actor_id=2, reason='Restock'), (1, 1, 1, 1)),
         (ProductService.delete_product, (1,)),
         (ProductService.delete_variant, (1,)),
     ],
@@ -559,7 +575,7 @@ def test_catalog_integrity_errors_are_conflicts(fake_db, code):
             return code
 
     fake_db.cursor.execute.side_effect = DatabaseConflict('private')
-    assert ProductService.add_variant(1, 1, 1, 1)['status_code'] == 409
+    assert ProductService.add_variant(1, 1, 1, 1, actor_id=2, reason='Restock')['status_code'] == 409
     fake_db.connection.rollback.assert_called_once()
 
 
