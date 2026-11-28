@@ -1,5 +1,6 @@
+from functools import wraps
 from urllib.parse import urlsplit
-from uuid import NAMESPACE_URL, uuid4, uuid5
+from uuid import uuid4
 
 from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, session, url_for
 from itsdangerous import BadData, URLSafeTimedSerializer
@@ -7,6 +8,7 @@ from markupsafe import escape
 
 from app.decorators import api_request, handle_db_errors, login_required
 from app.services.auth_service import AuthService
+from app.services.cart_service import current_cart, previous_session_key, replace_cart
 from app.services.order_service import OrderService
 from app.services.product_service import ProductService
 from app.utils import send_email
@@ -15,6 +17,7 @@ from app.validation import ValidationError, local_redirect, money, positive_int
 cart_bp = Blueprint('cart', __name__)
 CHECKOUT_REVIEW_SECONDS = 30 * 60
 CART_CHANGED_MESSAGE = 'Giỏ hàng đã thay đổi. Vui lòng kiểm tra lại sản phẩm trước khi đặt hàng.'
+ITEM_SELECTION_MESSAGE = 'Biến thể hoặc số lượng không hợp lệ. Vui lòng kiểm tra lại lựa chọn.'
 
 
 def _payload():
@@ -68,27 +71,27 @@ def _display_cart(cart):
     return [{**item, 'price': money(item['price'], 'Giá sản phẩm')} for item in cart]
 
 
-def _store_cart(cart):
-    compact_cart = ProductService.normalize_cart_items(cart)
-    previous_cart = session.get('cart', [])
-    if compact_cart != previous_cart:
-        if compact_cart != ProductService.normalize_cart_items(previous_cart):
-            session['cart_revision'] = uuid4().hex
-        session['cart'] = compact_cart
+class CartConflict(Exception):
+    pass
 
 
-def _previous_cart_key(purpose):
-    # Requests using the same pre-upgrade cookie must agree on the draft ID.
-    cookie = request.cookies.get(current_app.config['SESSION_COOKIE_NAME'], '')
-    return uuid5(NAMESPACE_URL, f'fashion-store:{purpose}:{cookie}').hex
+def _store_cart(snapshot, cart):
+    items = ProductService.normalize_cart_items(cart)
+    if items != snapshot.items and not replace_cart(snapshot, items):
+        raise CartConflict
 
 
-def _cart_revision():
-    revision = session.get('cart_revision')
-    if not revision:
-        revision = _previous_cart_key('cart')
-        session['cart_revision'] = revision
-    return revision
+def _retry_cart_change(func):
+    @wraps(func)
+    def wrapped():
+        for _ in range(5):
+            try:
+                return func()
+            except CartConflict:
+                continue
+        return _cart_error(CART_CHANGED_MESSAGE, 409)
+
+    return wrapped
 
 
 def _checkout_serializer(purpose):
@@ -107,7 +110,7 @@ def _read_checkout_token(purpose, token):
 def _buy_now_url(items, checkout_key=None):
     owner = session.get('checkout_owner')
     if not owner:
-        owner = _previous_cart_key('checkout-owner') if session else uuid4().hex
+        owner = previous_session_key('checkout-owner') if session else uuid4().hex
         session['checkout_owner'] = owner
     draft = _checkout_serializer('buy-now').dumps(
         {
@@ -134,9 +137,10 @@ def _checkout_preview(cart, checkout_key, user_id, buy_now):
 
 
 def _complete_checkout(order_id, buy_now, checkout_key):
-    if not buy_now and checkout_key == session.get('cart_revision'):
-        session.pop('cart', None)
-        session.pop('cart_revision', None)
+    if not buy_now:
+        snapshot = current_cart()
+        if checkout_key == snapshot.revision:
+            replace_cart(snapshot, [])
     confirmation_url = url_for('cart.order_confirmation', order_id=order_id)
     if api_request():
         return jsonify(success=True, order_id=order_id, confirmation_url=confirmation_url)
@@ -153,6 +157,7 @@ def _restart_checkout(message, checkout_url):
 
 @cart_bp.route('/add_to_cart', methods=['POST'])
 @handle_db_errors
+@_retry_cart_change
 def add_to_cart():
     try:
         data = _payload()
@@ -161,7 +166,8 @@ def add_to_cart():
         variant = ProductService.get_variant_detail(vid)
         if not variant:
             return _cart_error('Sản phẩm không tồn tại', 404)
-        cart = ProductService.refresh_cart_items(session.get('cart', []), drop_missing=True)
+        snapshot = current_cart()
+        cart = ProductService.refresh_cart_items(snapshot.items, drop_missing=True)
         existing = next((item for item in cart if item['variant_id'] == vid), None)
         accumulated = positive_int(
             qty + (existing['quantity'] if existing else 0), 'Số lượng', ProductService.MAX_INTEGER
@@ -170,9 +176,9 @@ def add_to_cart():
             return _cart_error(f'Chỉ còn {variant.Quantity} sản phẩm trong kho', 409, variant.ProductID)
         item = ProductService.cart_item(vid, accumulated, variant)
         cart = [row for row in cart if row['variant_id'] != vid] + [item]
-        _store_cart(cart)
-    except ValidationError as exc:
-        return _cart_error(str(exc))
+        _store_cart(snapshot, cart)
+    except ValidationError:
+        return _cart_error(ITEM_SELECTION_MESSAGE)
     if api_request():
         return jsonify(success=True, message='Đã thêm sản phẩm vào giỏ hàng', **_summary(cart))
     flash('Đã thêm sản phẩm vào giỏ hàng', 'success')
@@ -181,9 +187,11 @@ def add_to_cart():
 
 @cart_bp.route('/cart')
 @handle_db_errors
+@_retry_cart_change
 def view_cart():
-    cart = ProductService.refresh_cart_items(session.get('cart', []), drop_missing=True)
-    _store_cart(cart)
+    snapshot = current_cart()
+    cart = ProductService.refresh_cart_items(snapshot.items, drop_missing=True)
+    _store_cart(snapshot, cart)
     return render_template('cart.html', cart=_display_cart(cart), total=ProductService.cart_total(cart))
 
 
@@ -200,8 +208,8 @@ def buy_now():
         if qty > variant.Quantity:
             return _cart_error(f'Chỉ còn {variant.Quantity} sản phẩm trong kho', 409, variant.ProductID)
         checkout_url = _buy_now_url([{'variant_id': vid, 'quantity': qty}])
-    except ValidationError as exc:
-        return _cart_error(str(exc))
+    except ValidationError:
+        return _cart_error(ITEM_SELECTION_MESSAGE)
     if api_request():
         return jsonify(success=True, checkout_url=checkout_url)
     return redirect(checkout_url)
@@ -209,11 +217,13 @@ def buy_now():
 
 @cart_bp.route('/update_cart', methods=['POST'])
 @handle_db_errors
+@_retry_cart_change
 def update_cart():
     data = _payload()
     vid = positive_int(data.get('variant_id'), 'Biến thể', ProductService.MAX_INTEGER)
     qty = positive_int(data.get('quantity'), 'Số lượng', ProductService.MAX_INTEGER)
-    items = ProductService.normalize_cart_items(session.get('cart', []))
+    snapshot = current_cart()
+    items = snapshot.items
     if not any(item['variant_id'] == vid for item in items):
         return jsonify(success=False, message='Sản phẩm không có trong giỏ hàng'), 404
     cart = ProductService.refresh_cart_items(items)
@@ -221,7 +231,7 @@ def update_cart():
     if qty > item['stock']:
         return jsonify(success=False, message=f'Chỉ còn {item["stock"]} sản phẩm trong kho'), 409
     item['quantity'] = qty
-    _store_cart(cart)
+    _store_cart(snapshot, cart)
     return jsonify(
         success=True,
         quantity=qty,
@@ -233,13 +243,15 @@ def update_cart():
 
 @cart_bp.route('/remove_from_cart', methods=['POST'])
 @handle_db_errors
+@_retry_cart_change
 def remove_from_cart():
     vid = positive_int(_payload().get('variant_id'), 'Biến thể', ProductService.MAX_INTEGER)
-    items = ProductService.normalize_cart_items(session.get('cart', []))
+    snapshot = current_cart()
+    items = snapshot.items
     if not any(item['variant_id'] == vid for item in items):
         return jsonify(success=False, message='Sản phẩm không có trong giỏ hàng'), 404
     cart = ProductService.refresh_cart_items([item for item in items if item['variant_id'] != vid], drop_missing=True)
-    _store_cart(cart)
+    _store_cart(snapshot, cart)
     return jsonify(success=True, **_summary(cart))
 
 
@@ -265,14 +277,15 @@ def checkout():
                 legacy = ProductService.normalize_cart_items(session.get('temp_cart', []))
                 if len(legacy) == 1:
                     session.pop('temp_cart')
-                    return redirect(_buy_now_url(legacy, _previous_cart_key('buy-now')))
+                    return redirect(_buy_now_url(legacy, previous_session_key('buy-now')))
             return _restart_checkout('Lượt mua ngay đã hết hạn. Vui lòng chọn lại sản phẩm.', url_for('cart.view_cart'))
         source = draft['items']
         checkout_key = draft['key']
         checkout_url = url_for('cart.checkout', buy_now=1, draft=token)
     else:
-        source = session.get('cart', [])
-        checkout_key = _cart_revision() if source else None
+        snapshot = current_cart()
+        source = snapshot.items
+        checkout_key = snapshot.revision if source else None
 
     review = None
     if request.method == 'POST':
@@ -296,8 +309,6 @@ def checkout():
             return jsonify(success=False, message='Giỏ hàng trống'), 400
         flash('Giỏ hàng trống', 'error')
         return redirect(url_for('cart.view_cart'))
-    if not is_buy_now:
-        _store_cart(cart)
     context = {
         'is_buy_now': is_buy_now,
         'checkout_url': checkout_url,
@@ -344,18 +355,18 @@ def checkout():
         if result['success']:
             return _complete_checkout(result['order_id'], is_buy_now, checkout_key)
         message = result['message']
+        context['error_field'] = result.get('field')
         status = result.get('status_code', 400)
         if status == 409 and not api_request():
             # Refresh the review after a transaction conflict, keeping the submitted delivery details.
             try:
-                current_cart = ProductService.refresh_cart_items(source)
+                refreshed_cart = ProductService.refresh_cart_items(source)
             except ValidationError:
                 return _restart_checkout(CART_CHANGED_MESSAGE, url_for('cart.view_cart'))
-            context.update(_checkout_preview(current_cart, checkout_key, user_id, is_buy_now))
+            context.update(_checkout_preview(refreshed_cart, checkout_key, user_id, is_buy_now))
     if api_request():
         return jsonify(success=False, message=message), status
-    flash(message, 'error')
-    return render_template('checkout.html', **context), status
+    return render_template('checkout.html', checkout_error=message, **context), status
 
 
 @cart_bp.route('/order_confirmation/<int:order_id>')

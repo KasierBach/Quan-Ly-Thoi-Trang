@@ -165,19 +165,50 @@ class MainService(BaseService):
                     NOT EXISTS (
                         SELECT 1 FROM (VALUES
                             ('customers', 'SELECT'),
+                            ('customers', 'INSERT'),
+                            ('customers', 'UPDATE'),
                             ('products', 'SELECT'),
+                            ('productvariants', 'SELECT'),
+                            ('productvariants', 'INSERT'),
+                            ('productvariants', 'UPDATE'),
                             ('attachments', 'SELECT'),
                             ('oauthidentities', 'SELECT'),
                             ('oauthstates', 'INSERT'),
                             ('orders', 'SELECT'),
                             ('orders', 'INSERT'),
+                            ('orders', 'UPDATE'),
+                            ('orderdetails', 'SELECT'),
                             ('orderdetails', 'INSERT'),
                             ('inventoryadjustments', 'SELECT'),
                             ('inventoryadjustments', 'INSERT'),
-                            ('passwordresettokens', 'UPDATE')
+                            ('passwordresettokens', 'SELECT'),
+                            ('passwordresettokens', 'INSERT'),
+                            ('passwordresettokens', 'UPDATE'),
+                            ('shoppingcarts', 'SELECT'),
+                            ('shoppingcarts', 'INSERT'),
+                            ('shoppingcarts', 'UPDATE')
                         ) AS required(relation, privilege)
                         WHERE has_table_privilege(to_regclass(relation), privilege) IS NOT TRUE
                     )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM (VALUES
+                            ('orders', 'orderid'), ('orderdetails', 'orderdetailid'),
+                            ('customers', 'customerid'), ('passwordresettokens', 'tokenid'),
+                            ('productvariants', 'variantid')
+                        ) AS required(relation, column_name)
+                        WHERE has_sequence_privilege(
+                            to_regclass(pg_get_serial_sequence(relation, column_name)), 'USAGE'
+                        ) IS NOT TRUE
+                    )
+                    AND NOT EXISTS (
+                        SELECT 1 FROM (VALUES
+                            ('sp_addorderdetail(integer,integer,integer)'),
+                            ('sp_updateorderstatus(integer,character varying)'),
+                            ('sp_addproductvariant(integer,integer,integer,integer)')
+                        ) AS required(signature)
+                        WHERE has_function_privilege(to_regprocedure(signature), 'EXECUTE') IS NOT TRUE
+                    )
+                    AND to_regclass('uq_inventory_adjustments_operation') IS NOT NULL
                     AND EXISTS (
                         SELECT 1 FROM pg_index AS checkout_index
                         JOIN pg_attribute AS checkout_key

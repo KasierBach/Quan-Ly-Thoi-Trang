@@ -1,4 +1,5 @@
 from html import escape
+import re
 
 from flask import (
     Blueprint,
@@ -14,6 +15,8 @@ from flask import (
     url_for,
 )
 
+from werkzeug.utils import secure_filename
+
 from app.decorators import handle_db_errors, login_required
 from app.extensions import limiter
 from app.services.auth_service import AuthService
@@ -27,11 +30,12 @@ auth_bp = Blueprint('auth', __name__)
 
 
 def establish_session(user_id, name, role, auth_version=1, dark_mode=False):
-    cart = session.get('cart', [])
     checkout_state = {}
     if session.get('user_id') in (None, user_id):
         checkout_state = {
-            key: session[key] for key in ('cart_revision', 'checkout_owner', 'temp_cart') if key in session
+            key: session[key]
+            for key in ('cart_id', 'cart', 'cart_revision', 'checkout_owner', 'temp_cart')
+            if key in session
         }
     session.clear()
     session.update(
@@ -41,7 +45,6 @@ def establish_session(user_id, name, role, auth_version=1, dark_mode=False):
         is_admin=role == 'admin',
         auth_version=auth_version,
         dark_mode=bool(dark_mode),
-        cart=cart,
     )
     session.update(checkout_state)
     session.permanent = True
@@ -131,20 +134,37 @@ def my_account():
 def upload_avatar():
     try:
         path, image_url = save_image(request.files.get('avatar'))
-    except ValidationError as exc:
-        return jsonify(success=False, message=str(exc)), 400
+    except ValidationError:
+        return jsonify(
+            success=False, message='Ảnh đại diện không hợp lệ. Vui lòng kiểm tra định dạng và dung lượng.'
+        ), 400
     result = AuthService.update_avatar(session['user_id'], image_url)
     if not result['success']:
         path.unlink(missing_ok=True)
         return jsonify(result), 503
+    previous = result.get('previous_avatar')
+    if isinstance(previous, str) and re.fullmatch(r'/uploads/avatars/[0-9a-f]{32}\.jpg', previous):
+        try:
+            path.with_name(previous.rsplit('/', 1)[-1]).unlink(missing_ok=True)
+        except OSError:
+            current_app.logger.warning('Could not remove an unused avatar')
     return jsonify(success=True, avatar_url=image_url)
 
 
 @auth_bp.route('/uploads/avatars/<filename>')
+@handle_db_errors
 def avatar_file(filename):
-    if not filename.endswith('.jpg') or len(filename) != 36:
+    if not re.fullmatch(r'[0-9a-f]{32}\.jpg', filename):
         abort(404)
-    return send_from_directory(upload_root() / 'avatars', filename, mimetype='image/jpeg')
+    filename = secure_filename(filename)
+    if not AuthService.avatar_is_current(f'/uploads/avatars/{filename}'):
+        abort(404)
+    directory = upload_root() / 'avatars'
+    if directory.is_symlink() or (directory / filename).is_symlink():
+        abort(404)
+    response = send_from_directory(directory, filename, mimetype='image/jpeg', conditional=False)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
 @auth_bp.route('/update_profile', methods=['POST'])

@@ -1,6 +1,8 @@
 :root {
-    --primary-color: #ee4d2d;
-    --primary-hover: #d73527;
+    --primary-color: #b6351b;
+    --primary-hover: #962a16;
+    --primary-fill: #b6351b;
+    --primary-fill-hover: #962a16;
     --secondary-color: #ff6b35;
     --accent-color: #ffa726;
     --success-color: #26a69a;
@@ -68,8 +70,8 @@ body {
 }
 
 .storefront-hero .btn-primary {
-    background: var(--primary-hover);
-    border-color: var(--primary-hover);
+    background: var(--primary-fill);
+    border-color: var(--primary-fill);
 }
 
 .storefront-hero .btn-primary:hover {
@@ -154,14 +156,14 @@ body {
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #ff4757 100%);
+    background: linear-gradient(135deg, var(--primary-fill) 0%, #be3043 100%);
     border-color: var(--primary-color);
     color: white;
     box-shadow: 0 4px 15px rgba(238, 77, 45, 0.3);
 }
 
 .btn-primary:hover {
-    background: linear-gradient(135deg, var(--primary-hover) 0%, #ff3742 100%);
+    background: linear-gradient(135deg, var(--primary-fill-hover) 0%, #a32335 100%);
     border-color: var(--primary-hover);
     color: white;
     transform: translateY(-2px);
@@ -176,7 +178,7 @@ body {
 }
 
 .btn-outline-primary:hover {
-    background: linear-gradient(135deg, var(--primary-color) 0%, #ff4757 100%);
+    background: linear-gradient(135deg, var(--primary-fill) 0%, #be3043 100%);
     border-color: var(--primary-color);
     color: white;
     transform: translateY(-2px);
@@ -623,23 +625,23 @@ body {
 }
 
 .alert-success {
-    background-color: var(--success-color);
-    color: white;
+    background-color: var(--bs-success-bg-subtle);
+    color: var(--bs-success-text-emphasis);
 }
 
 .alert-danger {
-    background-color: var(--danger-color);
-    color: white;
+    background-color: var(--bs-danger-bg-subtle);
+    color: var(--bs-danger-text-emphasis);
 }
 
 .alert-warning {
-    background-color: var(--warning-color);
-    color: white;
+    background-color: var(--bs-warning-bg-subtle);
+    color: var(--bs-warning-text-emphasis);
 }
 
 .alert-info {
-    background-color: #2196f3;
-    color: white;
+    background-color: var(--bs-info-bg-subtle);
+    color: var(--bs-info-text-emphasis);
 }
 
 /* Badge Styles */
@@ -649,7 +651,7 @@ body {
 }
 
 .badge.bg-primary {
-    background-color: var(--primary-color) !important;
+    background-color: var(--primary-fill) !important;
 }
 
 .badge.bg-success {
@@ -904,7 +906,7 @@ footer a:hover {
 }
 
 .price-old {
-    color: var(--gray-500);
+    color: var(--bs-secondary-color);
     text-decoration: line-through;
 }
 
@@ -932,7 +934,7 @@ footer a:hover {
 }
 
 .bg-primary {
-    background-color: var(--primary-color) !important;
+    background-color: var(--primary-fill) !important;
 }
 
 .border-primary {
@@ -1147,6 +1149,8 @@ footer a:hover {
 
 /* Dark Mode Styles */
 [data-bs-theme="dark"] {
+    --primary-color: #ff937b;
+    --primary-hover: #ffb2a1;
     --bs-body-color: #f8f9fa;
     --bs-body-bg: #121212;
 }
@@ -1284,4 +1288,120 @@ footer a:hover {
 
 .bg-gradient-primary {
     background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+}
+
+/* Keep navigation and form controls reachable on narrow screens. */
+.storefront-navbar .navbar-toggler,
+.mobile-cart-link {
+    min-width: 44px;
+    min-height: 44px;
+}
+
+.mobile-cart-link {
+    display: inline-grid;
+    place-items: center;
+    padding: 0 !important;
+}
+
+.mobile-cart-link .cart-badge {
+    top: 0;
+    right: 0;
+}
+
+#checkoutForm .form-control,
+#newsletter-form :is(.form-control, .btn) {
+    min-height: 44px;
+}
+
+.checkout-page :is(.form-control, .form-check-input)[aria-invalid="true"] {
+    border: 2px solid var(--bs-danger-text-emphasis);
+}
+
+.checkout-page :is(.form-control, .form-check-input):focus-visible,
+.storefront-navbar :is(a, button):focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.checkout-page .card:hover {
+    transform: none;
+}
+
+.checkout-actions {
+    display: grid;
+    gap: 0.5rem;
+}
+
+#placeOrderBtn {
+    min-height: 48px;
+}
+
+@media (max-width: 1199.98px) {
+    .storefront-navbar .navbar-brand {
+        min-width: 0;
+        margin-inline-end: 0.25rem;
+        font-size: clamp(1.05rem, 5.6vw, 1.3rem);
+    }
+
+    .btn.wishlist-add-btn,
+    .btn.remove-wishlist-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    .checkout-page:has(#checkoutForm) {
+        --checkout-bar-space: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+        padding-bottom: var(--checkout-bar-space);
+    }
+
+    html:has(.checkout-page #checkoutForm) {
+        scroll-padding-block: 8rem calc(5.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
+    .checkout-actions {
+        position: fixed;
+        z-index: 1025;
+        inset: auto 0 0;
+        grid-template-columns: 1fr max-content;
+        align-items: center;
+        padding: 0.625rem max(0.75rem, env(safe-area-inset-right, 0px))
+            max(0.625rem, env(safe-area-inset-bottom, 0px)) max(0.75rem, env(safe-area-inset-left, 0px));
+        border-top: 1px solid var(--bs-border-color);
+        background: var(--bs-body-bg);
+        box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.09);
+    }
+
+    .checkout-mobile-total {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 44px;
+        color: var(--bs-body-color);
+        font-size: 0.875rem;
+        line-height: 1.35;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    .checkout-mobile-total span {
+        color: var(--primary-color);
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+    }
+
+    .checkout-help {
+        min-height: 44px;
+        color: var(--primary-color);
+    }
+
+    .checkout-help:hover {
+        color: var(--primary-hover);
+    }
+
+    .checkout-page:has(#checkoutForm) .chat-window {
+        bottom: calc(var(--checkout-bar-space) + 3.25rem);
+        max-height: calc(100dvh - var(--checkout-bar-space) - 4rem);
+    }
 }

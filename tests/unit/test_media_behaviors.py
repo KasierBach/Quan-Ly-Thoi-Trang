@@ -77,10 +77,14 @@ def test_image_download_decodes_to_local_unique_jpeg(app, tmp_path, fake_db, mon
     image = BytesIO()
     Image.new('RGB', (4, 4), 'blue').save(image, 'PNG')
     result = response(raw=image.getvalue())
-    monkeypatch.setattr('app.services.media_service.requests.get', lambda *args, **kwargs: result)
+    get = MagicMock(return_value=result)
+    monkeypatch.setattr('app.services.media_service.requests.get', get)
     with app.app_context():
-        data = MediaService.save_pixabay_image('https://cdn.pixabay.com/image.png', 1)
+        data = MediaService.save_pixabay_image('https://CDN.PIXABAY.COM:443/image.png?size=small', 1)
     assert data['success']
+    get.assert_called_once_with(
+        'https://cdn.pixabay.com/image.png?size=small', timeout=(3, 10), stream=True, allow_redirects=False
+    )
     saved = tmp_path / 'uploads' / 'products' / data['path'].removeprefix('images/')
     assert saved.is_file() and saved.read_bytes().startswith(b'\xff\xd8')
     assert data['path'].startswith('images/pixabay-1-')

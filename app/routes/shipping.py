@@ -12,6 +12,11 @@ from app.validation import ValidationError
 
 
 shipping_bp = Blueprint('shipping', __name__, url_prefix='/shipping')
+GEOCODE_ERROR_MESSAGES = {
+    404: 'Chưa tìm thấy vị trí phù hợp với địa chỉ đã lưu.',
+    422: 'Địa chỉ đã lưu chưa đủ thông tin để xác định vị trí.',
+    429: 'Dịch vụ bản đồ đang bận. Vui lòng thử lại sau.',
+}
 
 
 def _error(message, status_code, retry_after=None):
@@ -86,7 +91,10 @@ def geocode(order_id):
     try:
         point = GeocodeService.geocode(data['order'].ShippingAddress)
     except GeocodeError as error:
-        return _error(str(error), error.status_code, error.retry_after)
+        message = GEOCODE_ERROR_MESSAGES.get(
+            error.status_code, 'Dịch vụ bản đồ tạm thời không khả dụng. Vui lòng thử lại sau.'
+        )
+        return _error(message, error.status_code, error.retry_after)
     return jsonify(
         success=True,
         lat=point['lat'],

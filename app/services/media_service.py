@@ -2,19 +2,19 @@ import os
 from pathlib import Path
 import secrets
 import tempfile
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
 from flask import current_app
 
-from app.uploads import image_bytes, upload_root
+from app.uploads import expired_product_uploads, image_bytes, remove_unused_product_uploads, upload_root
 from app.validation import ValidationError, positive_int, required_text
 
 from .base_service import BaseService
 
 
 class MediaService(BaseService):
-    IMAGE_HOSTS = {'pixabay.com', 'cdn.pixabay.com'}
+    IMAGE_HOSTS = {'pixabay.com': 'pixabay.com', 'cdn.pixabay.com': 'cdn.pixabay.com'}
     MAX_IMAGE_BYTES = 5 * 1024 * 1024
 
     @staticmethod
@@ -37,22 +37,23 @@ class MediaService(BaseService):
             parsed = urlsplit(value)
             valid = (
                 parsed.scheme == 'https'
-                and not parsed.username
-                and not parsed.password
+                and parsed.username is None
+                and parsed.password is None
                 and parsed.port in (None, 443)
                 and not parsed.fragment
             )
-            if api:
-                valid = (
-                    valid and parsed.hostname == 'pixabay.com' and parsed.path in ('/api', '/api/') and not parsed.query
-                )
-            else:
-                valid = valid and parsed.hostname in MediaService.IMAGE_HOSTS and bool(parsed.path.strip('/'))
         except ValueError as exc:
             raise ValidationError('Địa chỉ ảnh không hợp lệ') from exc
         if not valid:
             raise ValidationError('Chỉ hỗ trợ địa chỉ HTTPS của Pixabay')
-        return value
+        if api:
+            if parsed.hostname == 'pixabay.com' and parsed.path in ('/api', '/api/') and not parsed.query:
+                return 'https://pixabay.com/api/' if parsed.path == '/api/' else 'https://pixabay.com/api'
+        else:
+            host = MediaService.IMAGE_HOSTS.get(parsed.hostname or '')
+            if host and parsed.path.strip('/'):
+                return urlunsplit(('https', host, parsed.path, parsed.query, ''))
+        raise ValidationError('Chỉ hỗ trợ địa chỉ HTTPS của Pixabay')
 
     @staticmethod
     def _external_error():
@@ -123,6 +124,9 @@ class MediaService(BaseService):
                 cursor.execute('SELECT ProductID FROM Products WHERE ProductID = %s', (product_id,))
                 if not cursor.fetchone():
                     return {'success': False, 'message': 'Sản phẩm không tồn tại', 'status_code': 404}
+                expired = expired_product_uploads()
+                if expired:
+                    remove_unused_product_uploads(cursor, expired)
         finally:
             conn.close()
         response = None

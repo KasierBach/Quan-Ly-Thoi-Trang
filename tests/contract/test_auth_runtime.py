@@ -176,6 +176,7 @@ def test_avatar_saves_decoded_image_and_checks_service_result(auth_client, monke
     Image.new('RGB', (8, 8), 'blue').save(buffer, 'PNG')
     buffer.seek(0)
     monkeypatch.setattr(AuthService, 'update_avatar', lambda *_: {'success': True})
+    monkeypatch.setattr(AuthService, 'avatar_is_current', lambda _: True)
     response = auth_client.post('/api/profile/avatar', data={'avatar': (buffer, 'avatar.png')})
     assert response.status_code == 200
     url = response.json['avatar_url']

@@ -84,8 +84,8 @@ def admin_export_report():
         contents = ReportService.generate_csv_report(
             report_type, args.get('start_date'), args.get('end_date'), args.get('group_by', 'day')
         )
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Loại báo cáo, khoảng ngày hoặc cách nhóm không hợp lệ'), 400
     return Response(
         contents,
         mimetype='text/csv',
@@ -114,8 +114,8 @@ def admin_send_report_email():
         report_type = ReportService.validate_report_type(data.get('report_type', 'daily_revenue'))
         group_by = ReportService.validate_group(data.get('group_by', 'day'))
         start, end = ReportService.validate_dates(data.get('start_date'), data.get('end_date'))
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Kiểm tra email, lời nhắn và bộ lọc báo cáo trước khi gửi'), 400
     if (
         current_app.testing
         or current_app.config.get('MAIL_SUPPRESS_SEND')
@@ -150,8 +150,8 @@ def admin_send_report_email():
 def admin_search_pixabay():
     try:
         return service_response(MediaService.search_pixabay(request.args.get('q', '')))
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Nhập từ khóa tìm ảnh dài từ 1 đến 100 ký tự'), 400
 
 
 @admin_bp.route('/admin/api/save_pixabay_image', methods=['POST'])
@@ -163,5 +163,5 @@ def admin_save_pixabay_image():
         return jsonify({'success': False, 'message': 'Dữ liệu JSON không hợp lệ'}), 400
     try:
         return service_response(MediaService.save_pixabay_image(data.get('image_url'), data.get('product_id')))
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Kiểm tra sản phẩm và chọn ảnh HTTPS từ Pixabay'), 400

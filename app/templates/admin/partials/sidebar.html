@@ -1,0 +1,32 @@
+{% set links = [
+    ('admin.admin_dashboard', 'fa-tachometer-alt', 'Tổng quan', []),
+    ('admin.admin_manage_products', 'fa-box', 'Sản phẩm', ['admin.admin_products', 'admin.admin_add_product', 'admin.admin_edit_product']),
+    ('admin.admin_orders', 'fa-shopping-cart', 'Đơn hàng', ['admin.admin_order_detail']),
+    ('admin.admin_customers', 'fa-users', 'Khách hàng', ['admin.admin_customer_detail']),
+    ('admin.admin_attributes', 'fa-tags', 'Thuộc tính', []),
+    ('admin.admin_comments', 'fa-comment', 'Bình luận', []),
+    ('admin.admin_contact_messages', 'fa-envelope', 'Liên hệ', []),
+    ('chat.admin_messages_page', 'fa-comments', 'Hỗ trợ trực tuyến', []),
+    ('admin.admin_reports', 'fa-chart-line', 'Báo cáo', [])
+] %}
+<button class="btn btn-outline-secondary d-md-none mb-3" type="button" data-bs-toggle="offcanvas"
+    data-bs-target="#adminSidebar" aria-controls="adminSidebar">
+    <i class="fas fa-bars me-2" aria-hidden="true"></i>Danh mục quản trị
+</button>
+<div class="offcanvas-md offcanvas-start admin-sidebar" tabindex="-1" id="adminSidebar" aria-labelledby="adminSidebarTitle">
+    <div class="offcanvas-header">
+        <h2 class="offcanvas-title h5" id="adminSidebarTitle">Danh mục quản trị</h2>
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebar" aria-label="Đóng danh mục"></button>
+    </div>
+    <div class="offcanvas-body">
+        <nav class="list-group w-100" aria-label="Danh mục quản trị">
+            {% for endpoint, icon, label, related in links %}
+            {% set current = request.endpoint == endpoint %}
+            <a href="{{ url_for(endpoint) }}"
+                class="list-group-item list-group-item-action d-flex align-items-center gap-2{% if current or request.endpoint in related %} active{% endif %}"{% if current %} aria-current="page"{% endif %}>
+                <i class="fas {{ icon }} fa-fw" aria-hidden="true"></i>{{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+</div>

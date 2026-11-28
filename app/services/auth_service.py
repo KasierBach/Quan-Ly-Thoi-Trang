@@ -228,12 +228,31 @@ class AuthService(BaseService):
         conn = AuthService.get_connection()
         try:
             with conn.cursor() as cursor:
+                cursor.execute('SELECT avatar_url FROM Customers WHERE CustomerID = %s FOR UPDATE', (user_id,))
+                customer = cursor.fetchone()
+                if not customer:
+                    return {'success': False, 'message': 'Tài khoản không tồn tại'}
+                previous = customer.get('avatar_url')
                 cursor.execute('UPDATE Customers SET avatar_url = %s WHERE CustomerID = %s', (avatar_url, user_id))
+                if previous and previous != avatar_url:
+                    cursor.execute('SELECT 1 FROM Customers WHERE avatar_url = %s LIMIT 1', (previous,))
+                    if cursor.fetchone():
+                        previous = None
                 conn.commit()
-                return {'success': True}
+                return {'success': True, 'previous_avatar': previous if previous != avatar_url else None}
         except psycopg2.Error as exc:
             conn.rollback()
             return AuthService.handle_error(exc, 'Không thể cập nhật ảnh đại diện')
+        finally:
+            conn.close()
+
+    @staticmethod
+    def avatar_is_current(avatar_url):
+        conn = AuthService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute('SELECT 1 FROM Customers WHERE avatar_url = %s LIMIT 1', (avatar_url,))
+                return cursor.fetchone() is not None
         finally:
             conn.close()
 

@@ -123,7 +123,7 @@ def test_admin_variant_zero_stock_is_supported(admin_client, monkeypatch):
         '/admin/products/add_variant', data={'product_id': '1', 'color_id': '1', 'size_id': '1', 'quantity': '0'}
     )
     assert response.status_code == 302
-    add.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None)
+    add.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None, operation_key='')
 
 
 def test_admin_variant_stock_adjustment_posts_for_one_product_variant(admin_client, monkeypatch):
@@ -133,7 +133,7 @@ def test_admin_variant_stock_adjustment_posts_for_one_product_variant(admin_clie
     assert admin_client.get(path).status_code == 405
     response = admin_client.post(path, data={'delta': '-2', 'reason': 'Damaged', 'actor_id': '999'})
     assert response.location == '/admin/products/edit/1'
-    adjust.assert_called_once_with(1, 9, '-2', actor_id=2, reason='Damaged')
+    adjust.assert_called_once_with(1, 9, '-2', actor_id=2, reason='Damaged', operation_key='')
     with admin_client.session_transaction() as state:
         assert any(category == 'success' and '4' in message for category, message in state.get('_flashes', []))
 

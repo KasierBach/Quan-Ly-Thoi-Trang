@@ -412,7 +412,7 @@ def test_stock_adjustment_locks_variant_and_records_adjustment(fake_db, delta, e
     assert 'FOR UPDATE' in lock.args[0] and lock.args[1] == (1, 9)
     assert update.args[1] == (expected, 1, 9)
     assert 'INSERT INTO InventoryAdjustments' in history.args[0]
-    assert history.args[1] == ('Recount', int(delta), 2, 1, 9)
+    assert history.args[1] == ('Recount', int(delta), None, 2, 1, 9)
     fake_db.connection.commit.assert_called_once()
 
 

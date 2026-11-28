@@ -420,13 +420,19 @@ def test_account_dark_preference_persists_in_database_and_fresh_context(gui_page
 def test_checkout_invalid_phone_preserves_cart_and_fields_then_recovers(gui_page, db_connection):
     page, shop = gui_page, ShopPages(gui_page)
     name, email, address = 'Synthetic Phone Recovery', 'phase3.checkout@example.test', '80 Synthetic Recovery Road'
+    page.set_viewport_size({'width': 320, 'height': 700})
     before = stock(db_connection)
     shop.login.sign_in()
     shop.product.open()
     shop.product.select_variant(quantity=2)
     shop.product.add_to_cart()
+    expect(page.locator('#navbarNav')).to_be_hidden()
+    expect(page.get_by_role('link', name='Giỏ hàng', exact=True)).to_be_in_viewport()
     shop.cart.open()
     form = shop.cart.checkout()
+    expect(form.get_by_role('button', name='Đặt hàng')).to_be_in_viewport()
+    expect(form.get_by_role('link', name=re.compile('Xem đơn hàng'))).to_be_in_viewport()
+    assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
     for label, value in [
         ('^Họ và tên', name),
         ('^Số điện thoại', '123abc'),
@@ -440,8 +446,11 @@ def test_checkout_invalid_phone_preserves_cart_and_fields_then_recovers(gui_page
     ) as rejected:
         form.locator('button[type="submit"]').click()
     assert rejected.value.status == 400
-    expect(page.locator('.flash-messages')).to_contain_text('Số điện thoại cần từ 8 đến 15 chữ số')
-    expect(form.get_by_label(re.compile(r'^Số điện thoại'))).to_have_value('123abc')
+    expect(form.locator('#phone-error')).to_contain_text('Số điện thoại cần từ 8 đến 15 chữ số')
+    phone = form.get_by_label(re.compile(r'^Số điện thoại'))
+    expect(phone).to_have_attribute('aria-invalid', 'true')
+    expect(phone).to_be_focused()
+    expect(phone).to_have_value('123abc')
     expect(form.get_by_label('Ghi chú cho đơn hàng', exact=True)).to_have_value('Phase3 checkout phone recovery')
     expect(form.locator('button[type="submit"]')).to_be_enabled()
     assert count(db_connection, 'Orders') == 3

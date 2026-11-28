@@ -8,7 +8,7 @@ class CartPage:
         self.page = page
 
     def open(self):
-        self.page.locator('a[aria-label="Giỏ hàng"]').click()
+        self.page.get_by_role('link', name='Giỏ hàng', exact=True).click()
         expect(self.page.get_by_role('heading', name='Giỏ hàng của bạn', exact=True)).to_be_visible()
 
     def quantity(self, name='Test Cotton Shirt'):

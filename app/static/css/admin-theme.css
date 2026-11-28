@@ -180,10 +180,17 @@
     .admin-page .admin-reports .page-header .text-end { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 }
 @media (max-width: 767.98px) {
+    .admin-page .flash-messages { position: static; max-width: none; margin-inline: 0.75rem; }
+    .admin-page .flash-messages .alert { margin: 0.75rem 0 0; }
     .admin-page .admin-layout { flex-direction: column; }
     .admin-page .admin-layout > :is(.col-md-3, .col-md-9) { flex: none; width: 100%; }
     .admin-page .admin-layout > .main-content { padding: 16px; }
-    .admin-page .admin-sidebar { margin-bottom: 20px; }
+    .admin-page .admin-sidebar {
+        --bs-offcanvas-width: min(20rem, 90vw);
+        --bs-offcanvas-bg: var(--admin-surface);
+        --bs-offcanvas-color: var(--admin-text);
+    }
+    .admin-page .admin-sidebar .offcanvas-body { padding: 0 1rem 1rem; }
     .admin-page .admin-navbar .navbar-brand { flex: 1; min-width: 0; white-space: normal; }
     .admin-page .admin-navbar .navbar-toggler { flex-shrink: 0; }
     .admin-page .admin-layout > .col-md-9 > .d-flex { flex-wrap: wrap; gap: 12px; }

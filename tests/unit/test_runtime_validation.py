@@ -40,7 +40,7 @@ def test_required_text(value):
     assert required_text(' abc ', 'Tên', 10) == 'abc'
 
 
-@pytest.mark.parametrize('value', ['', 'a', 'a@b', 'a @b.c', 'a@b c.d', None])
+@pytest.mark.parametrize('value', ['', 'a', 'a@b', 'a @b.c', 'a@b c.d', 'a@b@c.d', 'a@.b', 'a@b.', None])
 def test_email_rejects_invalid(value):
     with pytest.raises(ValidationError):
         email_address(value)
@@ -48,6 +48,7 @@ def test_email_rejects_invalid(value):
 
 def test_email_normalization():
     assert email_address(' User@Example.TEST ') == 'user@example.test'
+    assert email_address(' User+Shop@Store.Example.TEST ') == 'user+shop@store.example.test'
 
 
 @pytest.mark.parametrize('value', ['nan', 'Infinity', '-1', '0.001', True, {}, None, '1e20'])

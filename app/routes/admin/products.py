@@ -1,3 +1,5 @@
+from uuid import uuid4
+
 from flask import abort, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import handle_db_errors
@@ -105,6 +107,7 @@ def admin_edit_product(product_id):
         colors=AttributeService.get_all_colors(),
         sizes=AttributeService.get_all_sizes(),
         pixabay_enabled=MediaService.pixabay_enabled(),
+        stock_operation_key=lambda: uuid4().hex,
     )
 
 
@@ -120,9 +123,17 @@ def admin_add_variant():
         raw_quantity = request.form.get('quantity')
         quantity = 0 if raw_quantity == '0' else positive_int(raw_quantity, 'Số lượng', MAX_ID)
         result = ProductService.add_variant(
-            product_id, color_id, size_id, quantity, actor_id=session['user_id'], reason=request.form.get('reason')
+            product_id,
+            color_id,
+            size_id,
+            quantity,
+            actor_id=session['user_id'],
+            reason=request.form.get('reason'),
+            operation_key=request.form.get('operation_key', ''),
         )
-        _flash_result(result, 'Đã lưu biến thể và số lượng tồn kho.')
+        _flash_result(
+            result, 'Yêu cầu này đã được ghi nhận.' if result.get('replayed') else 'Đã lưu biến thể và tồn kho.'
+        )
     except ValidationError as exc:
         flash(str(exc), 'error')
     if product_id is None:
@@ -140,8 +151,14 @@ def admin_adjust_variant_stock(product_id, variant_id):
         request.form.get('delta'),
         actor_id=session['user_id'],
         reason=request.form.get('reason'),
+        operation_key=request.form.get('operation_key', ''),
     )
-    _flash_result(result, f'Đã điều chỉnh tồn kho. Số lượng sau điều chỉnh là {result.get("quantity")}.')
+    message = (
+        'Yêu cầu này đã được ghi nhận.'
+        if result.get('replayed')
+        else f'Đã điều chỉnh tồn kho. Số lượng sau điều chỉnh là {result.get("quantity")}.'
+    )
+    _flash_result(result, message)
     return redirect(url_for('admin.admin_edit_product', product_id=product_id))
 
 

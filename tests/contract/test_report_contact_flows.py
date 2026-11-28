@@ -56,13 +56,16 @@ def test_admin_image_routes_preserve_safe_service_error(admin_client, monkeypatc
         ('/admin/api/save_pixabay_image', 'save_pixabay_image', {'image_url': 'bad', 'product_id': 1}),
     ],
 )
-def test_admin_image_routes_validation_errors(admin_client, monkeypatch, endpoint, method, payload):
+def test_admin_image_routes_keep_internal_validation_details_private(
+    admin_client, monkeypatch, endpoint, method, payload
+):
     from app.validation import ValidationError
 
-    monkeypatch.setattr(MediaService, method, MagicMock(side_effect=ValidationError('Invalid image')))
+    monkeypatch.setattr(MediaService, method, MagicMock(side_effect=ValidationError('Internal image diagnostic')))
     response = admin_client.post(endpoint, json=payload) if payload else admin_client.get(endpoint)
     assert response.status_code == 400
     assert response.json['success'] is False
+    assert 'Internal image diagnostic' not in response.json['message']
 
 
 def test_invalid_report_export_is_400(admin_client):

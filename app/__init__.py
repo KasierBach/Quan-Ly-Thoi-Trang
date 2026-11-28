@@ -1,6 +1,7 @@
 import decimal
 import re
 
+import psycopg2
 from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session, url_for
 from flask.json.provider import DefaultJSONProvider
 from flask_wtf.csrf import CSRFError
@@ -84,7 +85,16 @@ def create_app(config_class=None):
 
     @app.context_processor
     def inject_cart_count():
+        from app.services.cart_service import CartService
+
         cart = session.get('cart', [])
+        if app.config.get('DB_CONNECT_ENABLED', True) and session.get('cart_id'):
+            try:
+                saved = CartService.load(session['cart_id'])
+                if saved is not None:
+                    cart = saved[1]
+            except psycopg2.Error:
+                app.logger.warning('Cart count unavailable')
         return {'cart_count': sum(item.get('quantity', 0) for item in cart if isinstance(item, dict))}
 
     @app.context_processor
@@ -119,9 +129,9 @@ def create_app(config_class=None):
 
         state = AuthService.get_identity_state(session['user_id'])
         if state is None or state.AuthVersion != session.get('auth_version'):
-            cart = session.get('cart', [])
+            cart = {key: session[key] for key in ('cart_id', 'cart', 'cart_revision') if key in session}
             session.clear()
-            session['cart'] = cart
+            session.update(cart)
             return None
         identity = {
             'user_name': state.FullName,
@@ -154,8 +164,10 @@ def create_app(config_class=None):
             'chat.messages_page',
         }
         if request.method == 'GET' and request.endpoint in page_endpoints:
+            from app.services.cart_service import ensure_cart_id
             from app.services.conversation_service import issue_guest_credentials
 
+            ensure_cart_id()
             issue_guest_credentials()
         return None
 

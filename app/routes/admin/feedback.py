@@ -22,8 +22,8 @@ def admin_reply_comment():
         comment_id = positive_int(request.form.get('comment_id'), 'Bình luận', max_value=2147483647)
         reply = required_text(request.form.get('reply'), 'Phản hồi', 5000)
         return service_response(FeedbackService.admin_reply_comment(comment_id, reply))
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Bình luận hoặc nội dung phản hồi không hợp lệ'), 400
 
 
 @admin_bp.route('/admin/contact_messages')
@@ -68,8 +68,8 @@ def admin_update_message_status_json():
         return service_response(
             MainService.update_contact_message_status(request.form.get('message_id'), request.form.get('status'))
         )
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Tin nhắn hoặc trạng thái không hợp lệ'), 400
 
 
 @admin_bp.route('/admin/reply_contact_message', methods=['POST'])
@@ -79,8 +79,8 @@ def admin_reply_contact_message():
     try:
         message_id = positive_int(request.form.get('message_id'), 'Tin nhắn', max_value=2147483647)
         reply = required_text(request.form.get('reply'), 'Phản hồi', 5000)
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Tin nhắn hoặc nội dung phản hồi không hợp lệ'), 400
     message = MainService.get_contact_message(message_id)
     if not message:
         return jsonify({'success': False, 'message': 'Tin nhắn không tồn tại'}), 404
@@ -141,5 +141,5 @@ def admin_toggle_comment_visibility():
         return service_response(
             FeedbackService.toggle_comment_visibility(request.form.get('comment_id'), request.form.get('visible'))
         )
-    except ValidationError as exc:
-        return jsonify({'success': False, 'message': str(exc)}), 400
+    except ValidationError:
+        return jsonify(success=False, message='Bình luận hoặc trạng thái hiển thị không hợp lệ'), 400

@@ -41,10 +41,10 @@ def products():
         search_term = ProductService.optional_text(args.get('search', ''), 'Tìm kiếm', 200)
         stock_filter = args.get('in_stock', '0')
         if stock_filter not in ('0', '1'):
-            raise ValidationError('Bộ lọc tồn kho không hợp lệ')
+            return 'Bộ lọc tồn kho không hợp lệ', 400
         in_stock_only = int(stock_filter)
-    except ValidationError as exc:
-        return str(exc), 400
+    except ValidationError:
+        return 'Danh mục, màu sắc, kích thước hoặc từ khóa tìm kiếm không hợp lệ', 400
     try:
         page = positive_int(args.get('page', '1'), 'Trang', ProductService.MAX_INTEGER)
     except ValidationError:
