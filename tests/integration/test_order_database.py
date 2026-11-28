@@ -353,9 +353,7 @@ def test_admin_stock_adjustment_applies_to_stock_after_concurrent_checkout(db_co
         monkeypatch.setattr(BaseService, 'get_connection', lambda: adjustment)
 
         with ThreadPoolExecutor(max_workers=1) as worker:
-            future = worker.submit(
-                ProductService.adjust_variant_stock, 1, 1, '-3', actor_id=2, reason='Damaged items'
-            )
+            future = worker.submit(ProductService.adjust_variant_stock, 1, 1, '-3', actor_id=2, reason='Damaged items')
             try:
                 deadline = monotonic() + 4
                 while not _scalar(
