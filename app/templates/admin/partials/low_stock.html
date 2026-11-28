@@ -1,0 +1,35 @@
+<section class="table-card mb-4" id="low-stock" aria-labelledby="low-stock-title">
+    <div class="table-header">
+        <h5 class="mb-1" id="low-stock-title">Biến thể tồn thấp</h5>
+        <p class="small text-body-secondary mb-0">{{ low_stock.total_records }} biến thể dưới ngưỡng, tính theo tồn hiện tại.</p>
+    </div>
+    {% if low_stock.rows %}
+    <div class="table-responsive" tabindex="0" role="region" aria-label="Bảng biến thể tồn thấp">
+        <table class="table custom-table mb-0">
+            <thead><tr><th scope="col">Sản phẩm</th><th scope="col">Màu và size</th><th scope="col">Tồn</th><th scope="col">Ngưỡng</th></tr></thead>
+            <tbody>
+                {% for row in low_stock.rows %}
+                <tr>
+                    <th scope="row"><a href="{{ url_for('admin.admin_edit_product', product_id=row.ProductID, _anchor='variant-' ~ row.VariantID) }}">{{ row.ProductName }}</a></th>
+                    <td>{{ row.ColorName }}, {{ row.SizeName }}</td>
+                    <td>{{ row.Quantity }}</td><td>{{ row.low_stock_threshold }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if low_stock.total_pages > 1 %}
+    <nav class="d-flex flex-wrap gap-2 align-items-center justify-content-end px-3 py-2" aria-label="Phân trang tồn thấp">
+        <span class="small text-body-secondary">Trang {{ low_stock.current_page }} / {{ low_stock.total_pages }}</span>
+        {% for delta, label in [(-1, 'Trang trước'), (1, 'Trang sau')] %}
+            {% set target = low_stock.current_page + delta %}
+            {% if 1 <= target <= low_stock.total_pages %}
+            <a class="btn btn-outline-secondary" href="{{ url_for('admin.admin_reports', stock_page=target, start_date=start_date, end_date=end_date, group_by=group_by, _anchor='low-stock') }}">{{ label }}</a>
+            {% endif %}
+        {% endfor %}
+    </nav>
+    {% endif %}
+    {% else %}
+    <p class="text-body-secondary px-3 py-3 mb-0">Không có biến thể nào dưới ngưỡng.</p>
+    {% endif %}
+</section>

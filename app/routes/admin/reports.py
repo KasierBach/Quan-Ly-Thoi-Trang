@@ -10,7 +10,7 @@ from app.services.report_service import ReportService
 from app.utils import send_email
 from app.validation import ValidationError, email_address, required_text
 
-from .blueprint import admin_bp, admin_required, service_response
+from .blueprint import admin_bp, admin_required, paging_args, service_response
 
 
 @admin_bp.route('/admin')
@@ -42,6 +42,10 @@ def admin_reports():
         )
     except ValidationError as exc:
         abort(400, description=str(exc))
+    low_stock = None
+    if current_app.config.get('DB_CONNECT_ENABLED', True):
+        stock_page, _ = paging_args({'page': args.get('stock_page', '1')}, allowed=(20,))
+        low_stock = ReportService.get_low_stock(stock_page)
     daily, categories = data['daily_revenue'], data['category_revenue']
     group = data['group_by']
     formats = {'month': '%m/%Y', 'year': '%Y'}
@@ -67,6 +71,7 @@ def admin_reports():
         now=datetime.now(),
         report_names=ReportService.REPORT_NAMES,
         period_labels=labels,
+        low_stock=low_stock,
         email_enabled=not current_app.testing
         and not current_app.config.get('MAIL_SUPPRESS_SEND')
         and bool(current_app.config.get('MAIL_SERVER') and current_app.config.get('MAIL_DEFAULT_SENDER')),

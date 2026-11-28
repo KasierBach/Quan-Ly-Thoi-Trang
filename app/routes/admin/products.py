@@ -1,11 +1,12 @@
 from uuid import uuid4
 
-from flask import abort, flash, redirect, render_template, request, session, url_for
+from flask import abort, current_app, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import handle_db_errors
 from app.services.attribute_service import AttributeService
 from app.services.category_service import CategoryService
 from app.services.media_service import MediaService
+from app.services.product_content_service import ProductContentService
 from app.services.product_service import ProductService
 from app.validation import ValidationError, money, positive_int, required_text
 
@@ -98,9 +99,14 @@ def admin_edit_product(product_id):
             flash(str(exc), 'error')
         return redirect(url_for('admin.admin_edit_product', product_id=product_id))
     history_page, history_size = paging_args(request.args, allowed=(20,))
+    gallery, measurements = ([], [])
+    if current_app.config.get('DB_CONNECT_ENABLED', True):
+        gallery, measurements = ProductContentService.read(product_id, product.CategoryID)
     return render_template(
         'admin/edit_product.html',
         product=product,
+        gallery=gallery,
+        measurements=measurements,
         inventory_history=ProductService.get_inventory_history(product_id, history_page, history_size),
         categories=CategoryService.get_all_categories(),
         variants=ProductService.get_product_variants(product_id),
@@ -109,6 +115,65 @@ def admin_edit_product(product_id):
         pixabay_enabled=MediaService.pixabay_enabled(),
         stock_operation_key=lambda: uuid4().hex,
     )
+
+
+@admin_bp.route('/admin/products/<int:product_id>/gallery', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_add_gallery_image(product_id):
+    try:
+        if not ProductContentService.add_image(product_id, request.files.get('photo'), request.form.get('caption')):
+            abort(404)
+        flash('Đã thêm góc ảnh', 'success')
+    except ValidationError as exc:
+        flash(str(exc), 'error')
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id, _anchor='product-gallery-admin'))
+
+
+@admin_bp.route('/admin/products/<int:product_id>/gallery/<int:image_id>/delete', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_delete_gallery_image(product_id, image_id):
+    if not ProductContentService.delete_image(product_id, image_id):
+        abort(404)
+    flash('Đã gỡ góc ảnh', 'success')
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id, _anchor='product-gallery-admin'))
+
+
+@admin_bp.route('/admin/products/<int:product_id>/size-guide', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_save_size_guide(product_id):
+    product = ProductService.get_product_by_id(product_id)
+    if not product:
+        abort(404)
+    size = request.form.get('size_id')
+    try:
+        if request.form.get('action') == 'delete':
+            if not ProductContentService.delete_measurements(product.CategoryID, size):
+                abort(404)
+            flash('Đã gỡ dòng số đo', 'success')
+        else:
+            ProductContentService.save_measurements(
+                product.CategoryID, size, request.form.get('chest'), request.form.get('waist'), request.form.get('hips')
+            )
+            flash('Đã lưu bảng số đo danh mục', 'success')
+    except ValidationError as exc:
+        flash(str(exc), 'error')
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id, _anchor='category-size-guide'))
+
+
+@admin_bp.route('/admin/products/<int:product_id>/variants/<int:variant_id>/threshold', methods=['POST'])
+@admin_required
+@handle_db_errors
+def admin_save_low_stock_threshold(product_id, variant_id):
+    try:
+        if not ProductService.update_low_stock_threshold(product_id, variant_id, request.form.get('threshold')):
+            abort(404)
+        flash('Đã cập nhật ngưỡng tồn kho', 'success')
+    except ValidationError as exc:
+        flash(str(exc), 'error')
+    return redirect(url_for('admin.admin_edit_product', product_id=product_id, _anchor=f'variant-{variant_id}'))
 
 
 @admin_bp.route('/admin/products/add_variant', methods=['POST'])

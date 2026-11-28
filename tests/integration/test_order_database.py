@@ -673,20 +673,139 @@ def test_expired_product_upload_cleanup_keeps_saved_images(db_app, db_connection
         directory.mkdir(parents=True)
         saved = directory / f'pixabay-1-{uuid4().hex}.jpg'
         abandoned = directory / f'pixabay-2-{uuid4().hex}.jpg'
+        gallery = directory / f'gallery-1-{uuid4().hex}.jpg'
         recent = directory / f'pixabay-3-{uuid4().hex}.jpg'
-        for path in (saved, abandoned, recent):
+        for path in (saved, abandoned, gallery, recent):
             path.write_bytes(b'synthetic image')
         timestamp = time.time() - 25 * 60 * 60
-        for path in (saved, abandoned):
+        for path in (saved, abandoned, gallery):
             os.utime(path, (timestamp, timestamp))
         assert ProductService.update_product(1, 'Saved image', '', 100_000, 1, 120_000, f'images/{saved.name}')[
             'success'
         ]
         with db_connection.cursor() as cursor:
+            cursor.execute(
+                "INSERT INTO ProductGallery (product_id, image_url, caption) VALUES (1, %s, 'Mặt sau')",
+                (f'images/{gallery.name}',),
+            )
             remove_unused_product_uploads(cursor, expired_product_uploads())
         db_connection.commit()
-        assert saved.exists() and recent.exists()
+        assert saved.exists() and gallery.exists() and recent.exists()
         assert not abandoned.exists()
         assert not ProductService.update_product(1, 'Expired', '', 100_000, 1, 120_000, f'images/{abandoned.name}')[
             'success'
         ]
+
+
+def test_customer_history_pages_preserve_totals_and_stable_order(db_app, db_connection):
+    from app.services.order_service import OrderService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            'INSERT INTO Orders (CustomerID, OrderDate, Status) '
+            "SELECT 1, TIMESTAMP '2026-04-15 12:00:00', 'Pending' FROM generate_series(1, 14)"
+        )
+        cursor.execute('SELECT COUNT(*) FROM Orders WHERE CustomerID = 1')
+        expected = cursor.fetchone()[0]
+    db_connection.commit()
+    with db_app.app_context():
+        first = OrderService.get_customer_orders(1, 1)
+        last = OrderService.get_customer_orders(1, 99)
+        other = OrderService.get_customer_orders(3, 1)
+    ids = [row.OrderID for row in first['orders']]
+    assert len(ids) == 12 and ids == sorted(ids, reverse=True)
+    assert not (set(ids) & {row.OrderID for row in last['orders']})
+    assert first['total_orders'] == last['total_orders'] == expected
+    assert first['total_spent'] == last['total_spent'] > 0
+    assert last['current_page'] == last['total_pages'] == 2
+    assert other['total_orders'] < len(ids)
+
+
+@pytest.mark.parametrize('delivered', [True, False])
+def test_contact_reply_is_reserved_once_and_tracks_email_separately(db_app, db_connection, delivered):
+    from app.services.main_service import MainService
+
+    contact_id = _scalar(
+        db_connection,
+        "INSERT INTO ContactMessages (Name, Email, Message) VALUES ('Synthetic', 'reply@example.test', 'Hello') "
+        'RETURNING MessageID',
+    )
+    db_connection.commit()
+    barrier = threading.Barrier(2)
+
+    def reserve():
+        with db_app.app_context():
+            barrier.wait(timeout=5)
+            return MainService.reserve_contact_reply(contact_id, 'Synthetic reply')
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        deliveries = list(executor.map(lambda _: reserve(), range(2)))
+    assert sum(attempt[0] for attempt in deliveries) == 1
+    assert deliveries[0][1:] == deliveries[1][1:]
+    delivery_id = deliveries[0][1]
+    with db_app.app_context():
+        MainService.finish_contact_reply(delivery_id, delivered)
+        expected = 'Sent' if delivered else 'Failed'
+        assert MainService.reserve_contact_reply(contact_id, 'Synthetic reply') == (False, delivery_id, expected)
+        row = MainService.get_contact_messages()['messages'][0]
+        assert row.delivery_reference == delivery_id and row.delivery_status == expected
+        assert row.Status == ('Answered' if delivered else 'New')
+
+
+def test_order_history_tracks_actor_and_skips_replays(db_app):
+    from app.services.order_service import OrderService
+
+    with db_app.app_context():
+        assert OrderService.update_order_status(2, 'Processing', 2)['success']
+        assert OrderService.update_order_status(2, 'Processing', 2)['success']
+        detail = OrderService.get_order_detail(2)
+        assert detail and detail['order'].Status == 'Processing'
+        timeline = detail['status_history']
+        assert [event.status for event in timeline] == ['Processing', 'Pending']
+        newest, oldest = timeline
+        assert newest.actor_name == 'Test Admin' and newest.actor_role == 'staff'
+        assert oldest.actor_role == 'customer'
+        assert newest.occurred_at.tzinfo is not None and newest.occurred_at >= oldest.occurred_at
+        assert OrderService.get_user_order_detail(2, 3) is None
+
+    client = db_app.test_client()
+    with client.session_transaction() as session:
+        session.update(user_id=1, user_name='Test Customer', role='customer', auth_version=1)
+    response = client.get('/order/2')
+    assert response.status_code == 200
+    timeline = BeautifulSoup(response.text, 'html.parser').select_one('[aria-labelledby="order-history-title"]')
+    assert timeline.select_one('time[datetime]') is not None
+    assert 'Cửa hàng' in timeline.text and 'Test Admin' not in timeline.text
+
+
+def test_low_stock_is_paged_and_respects_each_variant_threshold(db_app, db_connection):
+    import csv
+    from io import StringIO
+
+    from app.services.product_service import ProductService
+    from app.services.report_service import ReportService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            "INSERT INTO Colors (ColorName) SELECT 'Synthetic stock color ' || n FROM generate_series(1, 24) n"
+        )
+        cursor.execute(
+            'INSERT INTO ProductVariants (ProductID, SizeID, ColorID, Quantity, low_stock_threshold) '
+            "SELECT 1, 1, ColorID, 0, 1 FROM Colors WHERE strpos(ColorName, 'Synthetic stock color ') = 1"
+        )
+        cursor.execute('UPDATE ProductVariants SET Quantity = 10 WHERE VariantID = 1')
+    db_connection.commit()
+    with db_app.app_context():
+        assert ProductService.update_low_stock_threshold(1, 2, '0') is False
+        assert ProductService.update_low_stock_threshold(2, 2, '0')
+        assert ProductService.update_low_stock_threshold(1, 1, '10')
+        first = ReportService.get_low_stock(1)
+        second = ReportService.get_low_stock(300)
+        assert first['total_records'] == second['total_records'] == 24
+        assert len(first['rows']) == 20 and len(second['rows']) == 4 and second['current_page'] == 2
+        assert first['rows'][-1].VariantID < second['rows'][0].VariantID
+        assert ProductService.update_low_stock_threshold(1, 1, '11')
+        output = ReportService.generate_csv_report('low_stock', '2026-04-01', '2026-04-01')
+        rows = list(csv.reader(StringIO(output.decode('utf-8-sig'))))
+        assert len(rows) == 26 and rows[-1][3:] == ['10', '11']
+        assert ProductService.get_variant_quantity(1) == 10

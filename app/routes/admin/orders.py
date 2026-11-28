@@ -1,4 +1,4 @@
-from flask import abort, flash, redirect, render_template, request, url_for
+from flask import abort, flash, redirect, render_template, request, session, url_for
 
 from app.decorators import handle_db_errors
 from app.services.order_service import OrderService
@@ -52,6 +52,7 @@ def admin_order_detail(order_id):
         'admin/order_detail.html',
         order=order,
         order_details=detail['items'],
+        status_history=detail.get('status_history', []),
         status_options=ORDER_TRANSITIONS.get(order.Status, ()),
         status_labels=ORDER_LABELS,
     )
@@ -69,7 +70,7 @@ def admin_update_order_status():
     except ValidationError as exc:
         flash(str(exc), 'error')
         return redirect(url_for('admin.admin_orders'))
-    result = OrderService.update_order_status(order_id, status)
+    result = OrderService.update_order_status(order_id, status, session['user_id'])
     flash(
         'Cập nhật trạng thái thành công!'
         if result['success']

@@ -6,7 +6,7 @@ import re
 import os
 import requests
 from flask_mail import Message
-from flask import current_app
+from flask import current_app, g
 
 
 # Hàm chuyển đổi decimal sang float cho JSON
@@ -43,7 +43,7 @@ def send_email(to_email, subject, html_content, attachments=None):
                 current_app.config.get(key) for key in ('MAIL_USERNAME', 'MAIL_PASSWORD', 'MAIL_DEFAULT_SENDER')
             )
         ):
-            current_app.logger.warning('Email delivery is not configured')
+            current_app.logger.warning('Email delivery is not configured request_id=%s', g.get('request_id', '-'))
             return False
         message = Message(subject=subject, recipients=[recipient], html=html_content)
         for filename, content_type, data in attachments or []:
@@ -56,7 +56,9 @@ def send_email(to_email, subject, html_content, attachments=None):
         mail.send(message)
         return True
     except (ValueError, OSError, RuntimeError, requests.RequestException) as exc:
-        current_app.logger.warning('Email delivery failed (%s)', type(exc).__name__)
+        current_app.logger.warning(
+            'Email delivery failed (%s) request_id=%s', type(exc).__name__, g.get('request_id', '-')
+        )
         return False
 
 
@@ -81,7 +83,9 @@ def send_email_via_brevo(recipient, subject, html_content, attachments, api_key)
         timeout=current_app.config.get('EMAIL_HTTP_TIMEOUT', 10),
     )
     if response.status_code >= 300:
-        current_app.logger.warning('Brevo email rejected (%s): %s', response.status_code, response.text[:200])
+        current_app.logger.warning(
+            'Brevo email rejected (%s) request_id=%s', response.status_code, g.get('request_id', '-')
+        )
         return False
     return True
 

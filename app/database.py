@@ -4,12 +4,8 @@ from typing import Any, Protocol, cast
 
 import psycopg2
 from flask import current_app
-from flask_sqlalchemy import SQLAlchemy
 from psycopg2.extensions import TRANSACTION_STATUS_IDLE, cursor
 from psycopg2.pool import PoolError, ThreadedConnectionPool
-
-
-db = SQLAlchemy()
 
 
 class DatabaseCursor(Protocol):

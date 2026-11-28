@@ -73,7 +73,7 @@ def test_order_detail_only_shows_recorded_status_and_recipient(app):
     assert BeautifulSoup(html, 'html.parser').select_one('#cancel-order-btn') is None
 
 
-def test_account_statistics_are_delivered_only_and_no_fake_membership(app):
+def test_account_renders_order_summary_for_history_beyond_current_page(app):
     customer = CaseInsensitiveRecord(
         FullName='Test',
         Email='user@example.test',
@@ -94,8 +94,18 @@ def test_account_statistics_are_delivered_only_and_no_fake_membership(app):
         ),
     ]
     with app.test_request_context('/my_account'):
-        html = render_template('my_account.html', customer=customer, orders=orders)
-    assert '200,000đ' in html
+        html = render_template(
+            'my_account.html',
+            customer=customer,
+            orders=orders,
+            total_orders=15,
+            total_spent=Decimal('900000'),
+            current_page=1,
+            total_pages=2,
+        )
+    assert '900,000đ' in html and '200,000đ' not in html
+    soup = BeautifulSoup(html, 'html.parser')
+    assert soup.select_one('a[href="/my_account?orders_page=2#orders"]') is not None
     assert 'Diamond' not in html and 'Tháng này: +' not in html
     assert 'Đã hoàn thành</small>' not in html
     assert 'avatar-upload' in html

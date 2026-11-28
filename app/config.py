@@ -28,7 +28,6 @@ def database_urls(value):
 
 class Config:
     TESTING = False
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = 'Lax'
     SESSION_REFRESH_EACH_REQUEST = False
@@ -81,12 +80,11 @@ class Config:
         environment = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development'))
         if environment not in {'development', 'production', 'testing'}:
             raise ValueError('APP_ENV must be development, production or testing')
-        raw_url, sqlalchemy_url = database_urls(os.environ.get('DATABASE_URL'))
+        raw_url, _ = database_urls(os.environ.get('DATABASE_URL'))
         return {
             'APP_ENV': environment,
             'SECRET_KEY': os.environ.get('SECRET_KEY'),
             'DATABASE_URL': raw_url,
-            'SQLALCHEMY_DATABASE_URI': sqlalchemy_url,
             'SESSION_COOKIE_SECURE': environment == 'production',
             'TRUSTED_PROXY_COUNT': int(os.environ.get('TRUSTED_PROXY_COUNT', '0')),
             'TRUSTED_HOSTS': [

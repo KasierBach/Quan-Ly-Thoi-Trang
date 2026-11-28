@@ -177,3 +177,13 @@ def test_private_upload_download_is_no_store_and_never_public(app, monkeypatch, 
             assert browser.get(path).status_code == 404
     finally:
         chat.close()
+
+
+def test_request_id_is_generated_and_available_on_error_response(client):
+    supplied = 'synthetic-client-id'
+    error = client.get('/missing-for-request-id-test', headers={'X-Request-ID': supplied})
+    healthy = client.get('/health/live')
+    request_id = error.headers['X-Request-ID']
+    assert error.status_code == 404
+    assert len(request_id) == 32 and int(request_id, 16) > 0
+    assert request_id != supplied and request_id != healthy.headers['X-Request-ID']

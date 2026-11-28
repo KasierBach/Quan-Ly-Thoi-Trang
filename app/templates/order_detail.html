@@ -20,13 +20,7 @@
     <div class="card shadow-sm border-0 mb-4"><div class="card-body p-4">
         <h5>Trạng thái đơn hàng <span id="order-status" class="badge bg-{{ colors.get(order.Status, 'secondary') }}">{{ labels.get(order.Status, order.Status) }}</span></h5>
         <p class="text-muted mb-0">Ngày đặt: {{ order.OrderDate.strftime('%d/%m/%Y %H:%M') }}</p>
-        {% if order.Status != 'Cancelled' %}
-        <ol class="d-flex flex-wrap justify-content-between gap-3 list-unstyled mt-4 mb-0">
-            {% for status in ['Pending', 'Processing', 'Shipped', 'Delivered'] %}
-            <li class="badge bg-{{ 'primary' if status == order.Status else 'light text-dark border' }} p-3">{{ loop.index }}. {{ labels[status] }}</li>
-            {% endfor %}
-        </ol>
-        {% endif %}
+        {% include 'partials/order_status_history.html' %}
     </div></div>
     <div class="row g-4">
         <div class="col-lg-8">

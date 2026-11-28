@@ -386,7 +386,12 @@ def order_detail(order_id):
     data = OrderService.get_user_order_detail(order_id, session['user_id'])
     if not data:
         abort(404)
-    return render_template('order_detail.html', order=data['order'], order_details=data['items'])
+    return render_template(
+        'order_detail.html',
+        order=data['order'],
+        order_details=data['items'],
+        status_history=data.get('status_history', []),
+    )
 
 
 @cart_bp.route('/cancel_order/<int:order_id>', methods=['POST'])

@@ -1,7 +1,9 @@
+from io import BytesIO
 from pathlib import Path
 import re
 
 import pytest
+from PIL import Image
 from playwright.sync_api import expect
 
 
@@ -44,7 +46,8 @@ def test_customer_cart_checkout_order(gui_page, db_connection):
     observe(page, 'selected-variant')
     page.get_by_label('Số lượng:', exact=True).fill('2')
     page.get_by_role('button', name=re.compile('Thêm vào giỏ hàng')).click()
-    page.get_by_role('link', name='Giỏ hàng', exact=True).click()
+    expect(page.locator('.flash-messages')).to_contain_text('Đã thêm sản phẩm vào giỏ hàng')
+    page.locator('#navbarNav').get_by_role('link', name='Giỏ hàng', exact=True).click()
     expect(page.get_by_role('heading', name='Giỏ hàng của bạn')).to_be_visible()
     expect(page.locator('#stock-warning-1')).to_be_hidden()
     quantity = page.get_by_role('spinbutton', name='Số lượng Test Cotton Shirt')
@@ -139,12 +142,15 @@ def test_admin_order_transition_and_csv(gui_page, db_connection):
     page.set_viewport_size({'width': 1280, 'height': 900})
     page.goto('/admin/orders/2')
     expect(page.get_by_role('heading', name=re.compile('Chi tiết đơn hàng'))).to_be_visible()
-    page.get_by_label(re.compile('trạng thái', re.IGNORECASE)).select_option('Processing')
+    page.get_by_role('combobox', name='Cập nhật trạng thái:', exact=True).select_option('Processing')
     page.get_by_role('button', name=re.compile('Cập nhật')).click()
-    expect(page.get_by_label(re.compile('trạng thái', re.IGNORECASE))).to_have_value('Processing')
+    expect(page.get_by_role('combobox', name='Cập nhật trạng thái:', exact=True)).to_have_value('Processing')
     with db_connection.cursor() as cursor:
         cursor.execute('SELECT Status FROM Orders WHERE OrderID=2')
         assert cursor.fetchone().Status == 'Processing'
+    history = page.get_by_role('region', name='Lịch sử trạng thái')
+    expect(history).to_contain_text('Test Admin')
+    expect(history.locator('time')).to_have_count(2)
     observe(page, 'admin-order-processing')
     page.goto('/admin/reports?start_date=2026-04-01&end_date=2026-04-30')
     observe(page, 'admin-report')
@@ -162,3 +168,58 @@ def test_mobile_catalog_has_no_horizontal_document_overflow(gui_page):
     expect(page.locator('#navbarNav').get_by_role('link', name=re.compile('Đăng nhập'))).to_be_visible()
     assert page.evaluate('document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1')
     observe(page, 'mobile-catalog')
+
+
+def test_admin_product_gallery_size_guide_and_threshold_are_visible(gui_page):
+    page = gui_page
+    page.set_viewport_size({'width': 390, 'height': 844})
+    login(page, 'admin@example.test')
+    page.goto('/admin/products/edit/1')
+    gallery = page.locator('#product-gallery-admin')
+    with BytesIO() as image:
+        Image.new('RGB', (64, 48), '#27696a').save(image, 'PNG')
+        gallery.get_by_label('Ảnh bổ sung').set_input_files(
+            {'name': 'synthetic-back.png', 'mimeType': 'image/png', 'buffer': image.getvalue()}
+        )
+    gallery.get_by_label('Tên góc ảnh').fill('Mặt sau')
+    gallery.get_by_role('button', name='Thêm ảnh', exact=True).click()
+    expect(gallery.get_by_role('img', name='Mặt sau')).to_be_visible()
+
+    guide = page.locator('#category-size-guide')
+    guide.get_by_label('Size', exact=True).select_option('1')
+    guide.get_by_label('Vòng ngực (cm)').fill('98')
+    guide.get_by_label('Vòng eo (cm)').fill('82')
+    guide.get_by_role('button', name='Lưu số đo').click()
+    expect(guide.get_by_role('cell', name='98', exact=True)).to_be_visible()
+    guide.get_by_label('Size', exact=True).select_option('1')
+    expect(guide.get_by_label('Vòng ngực (cm)')).to_have_value('98')
+
+    variant = page.locator('#variant-1')
+    variant.get_by_label(re.compile('Ngưỡng tồn thấp')).fill('99')
+    variant.get_by_role('button', name='Lưu ngưỡng').click()
+    expect(variant.get_by_label(re.compile('Ngưỡng tồn thấp'))).to_have_value('99')
+    page.goto('/admin/reports#low-stock')
+    expect(page.locator('#low-stock').get_by_role('link', name='Test Cotton Shirt')).to_have_attribute(
+        'href', '/admin/products/edit/1#variant-1'
+    )
+
+    page.goto('/product/1')
+    page.get_by_text('Bảng số đo (cm)', exact=True).click()
+    expect(page.get_by_role('cell', name='98', exact=True)).to_be_visible()
+    observe(page, 'mobile-product-size-guide')
+    page.evaluate('window.scrollTo(0, 0)')
+    back = page.get_by_role('link', name='Mặt sau', exact=True)
+    back.focus()
+    page.keyboard.press('Enter')
+    expect(back).to_have_attribute('aria-current', 'true')
+    expect(back).to_be_focused()
+    expect(back).to_be_in_viewport()
+    expect(page.locator('#mainImage')).to_have_attribute('alt', 'Test Cotton Shirt – Mặt sau')
+    page.wait_for_function(
+        "document.querySelector('#mainImage').complete && document.querySelector('#mainImage').naturalWidth === 64"
+    )
+    assert page.evaluate('document.documentElement.scrollWidth === innerWidth')
+    observe(page, 'mobile-product-gallery')
+
+    page.goto('/product/2')
+    expect(page.get_by_text('Bảng số đo (cm)', exact=True)).to_have_count(0)

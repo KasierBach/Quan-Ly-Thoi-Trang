@@ -464,14 +464,19 @@ def test_missing_comment_returns_404_not_fake_success(admin_client, fake_db):
 def test_contact_reply_ignores_form_recipient_and_failed_send_keeps_status(admin_client, monkeypatch):
     mock_admin_reads(monkeypatch)
     monkeypatch.setattr(MainService, 'get_contact_message', Mock(return_value=record(Email='stored@example.test')))
-    status = Mock(return_value={'success': True})
-    monkeypatch.setattr(MainService, 'update_contact_message_status', status)
+    delivery = Mock()
+    monkeypatch.setattr(MainService, 'reserve_contact_reply', Mock(return_value=(True, 'test-delivery', 'Sending')))
+    monkeypatch.setattr(MainService, 'finish_contact_reply', delivery)
     mail = Mock(return_value=False)
     monkeypatch.setattr('app.routes.admin.feedback.send_email', mail)
     app = admin_client.application
     app.testing = False
     app.config.update(
-        MAIL_SUPPRESS_SEND=False, MAIL_SERVER='unused.example.test', MAIL_DEFAULT_SENDER='shop@example.test'
+        MAIL_SUPPRESS_SEND=False,
+        MAIL_SERVER='unused.example.test',
+        MAIL_DEFAULT_SENDER='shop@example.test',
+        MAIL_USERNAME='synthetic',
+        MAIL_PASSWORD='synthetic-test-only',
     )
     response = admin_client.post(
         '/admin/reply_contact_message',
@@ -480,7 +485,7 @@ def test_contact_reply_ignores_form_recipient_and_failed_send_keeps_status(admin
     assert response.status_code == 502
     assert mail.call_args.args[0] == 'stored@example.test'
     assert '&lt;script&gt;' in mail.call_args.args[2]
-    status.assert_not_called()
+    delivery.assert_called_once_with('test-delivery', False)
 
 
 def test_delivered_order_has_no_status_mutation_form(admin_client, monkeypatch):
@@ -513,3 +518,29 @@ def test_safe_error_hides_database_detail(admin_client, monkeypatch):
     assert response.status_code == 503
     assert not response.json['success']
     assert 'secret-db-password' not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize('delivery_status, expected', [('Sent', 200), ('Sending', 409), ('Failed', 409)])
+def test_contact_reply_replays_delivery_state_without_sending_again(
+    admin_client, monkeypatch, delivery_status, expected
+):
+    monkeypatch.setattr(MainService, 'get_contact_message', Mock(return_value=record(Email='stored@example.test')))
+    monkeypatch.setattr(
+        MainService, 'reserve_contact_reply', Mock(return_value=(False, 'test-delivery', delivery_status))
+    )
+    sender = Mock()
+    monkeypatch.setattr('app.routes.admin.feedback.send_email', sender)
+    app = admin_client.application
+    app.testing = False
+    app.config.update(
+        MAIL_SUPPRESS_SEND=False,
+        MAIL_SERVER='unused.example.test',
+        MAIL_DEFAULT_SENDER='shop@example.test',
+        MAIL_USERNAME='synthetic',
+        MAIL_PASSWORD='synthetic-test-only',
+    )
+    response = admin_client.post('/admin/reply_contact_message', data={'message_id': 1, 'reply': 'Test reply'})
+    assert response.status_code == expected
+    assert response.json['delivery_status'] == delivery_status
+    assert response.json['delivery_id'] == 'test-delivery'
+    sender.assert_not_called()

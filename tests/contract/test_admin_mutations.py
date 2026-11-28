@@ -95,7 +95,7 @@ def test_admin_status_update_validates_before_service(admin_client, monkeypatch,
     response = admin_client.post('/admin/orders/update_status', data={'order_id': '2', 'status': status})
     assert response.status_code == 302
     if status == 'Processing':
-        update.assert_called_once_with(2, 'Processing')
+        update.assert_called_once_with(2, 'Processing', 2)
     else:
         update.assert_not_called()
 

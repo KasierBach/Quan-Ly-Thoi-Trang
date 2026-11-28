@@ -1,0 +1,87 @@
+<section class="form-section" id="product-gallery-admin" aria-labelledby="product-gallery-title">
+    <h4 id="product-gallery-title">Góc ảnh sản phẩm</h4>
+    {% if gallery %}
+    <ul class="list-unstyled d-flex flex-wrap gap-3">
+        {% for image in gallery %}
+        <li class="border rounded p-2" style="width: 9rem">
+            <img src="{{ image|image_url }}" alt="{{ image.caption }}" width="128" height="96"
+                 class="img-fluid rounded mb-2" loading="lazy" decoding="async"
+                 style="width: 100%; aspect-ratio: 4 / 3; object-fit: contain;">
+            <form method="post" action="{{ url_for('admin.admin_delete_gallery_image', product_id=product.ProductID, image_id=image.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-danger" type="submit" aria-label="Gỡ ảnh {{ image.caption }}">Gỡ ảnh</button>
+            </form>
+        </li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+    {% if gallery|length < 5 %}
+    <form method="post" enctype="multipart/form-data" class="row g-3 align-items-end"
+          action="{{ url_for('admin.admin_add_gallery_image', product_id=product.ProductID) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-md-5">
+            <label for="gallery-photo" class="form-label">Ảnh bổ sung</label>
+            <input class="form-control" id="gallery-photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp,image/gif"
+                   aria-describedby="gallery-help" required>
+            <small id="gallery-help" class="form-text">Tối đa 5 ảnh bổ sung, mỗi ảnh dưới 5 MB.</small>
+        </div>
+        <div class="col-md-4">
+            <label for="gallery-caption" class="form-label">Tên góc ảnh</label>
+            <input class="form-control" id="gallery-caption" type="text" name="caption" maxlength="80" placeholder="Ví dụ: Mặt sau" required>
+        </div>
+        <div class="col-md-auto"><button class="btn btn-primary" type="submit">Thêm ảnh</button></div>
+    </form>
+    {% else %}
+    <p class="text-body-secondary mb-0">Đã đủ 5 ảnh bổ sung.</p>
+    {% endif %}
+</section>
+
+<section class="form-section" id="category-size-guide" aria-labelledby="category-size-guide-title">
+    <h4 id="category-size-guide-title">Bảng số đo danh mục {{ product.CategoryName }}</h4>
+    <p class="text-body-secondary">Các sản phẩm cùng danh mục dùng chung bảng này. Điền số đo theo cm cho từng size.</p>
+    {% if measurements %}
+    <div class="table-responsive">
+        <table class="table align-middle">
+            <thead><tr><th scope="col">Size</th><th scope="col">Ngực</th><th scope="col">Eo</th><th scope="col">Mông</th><th scope="col">Thao tác</th></tr></thead>
+            <tbody>
+                {% for item in measurements %}
+                <tr>
+                    <th scope="row">{{ item.SizeName }}</th>
+                    <td>{{ item.chest or '—' }}</td><td>{{ item.waist or '—' }}</td><td>{{ item.hips or '—' }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('admin.admin_save_size_guide', product_id=product.ProductID) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <input type="hidden" name="size_id" value="{{ item.SizeID }}">
+                            <button name="action" value="delete" type="submit" class="btn btn-sm btn-outline-danger" aria-label="Gỡ số đo size {{ item.SizeName }}">Gỡ</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+    {% if sizes %}
+    <form method="post" class="row g-3 align-items-end" action="{{ url_for('admin.admin_save_size_guide', product_id=product.ProductID) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="col-6 col-md-3">
+            <label for="guide-size" class="form-label">Size</label>
+            <select class="form-select" id="guide-size" name="size_id" required>
+                <option value="">Chọn size</option>
+                {% for size in sizes %}<option value="{{ size.SizeID }}">{{ size.SizeName }}</option>{% endfor %}
+            </select>
+        </div>
+        {% for field, label in [('chest', 'Vòng ngực'), ('waist', 'Vòng eo'), ('hips', 'Vòng mông')] %}
+        <div class="col-6 col-md-3">
+            <label for="guide-{{ field }}" class="form-label">{{ label }} (cm)</label>
+            <input class="form-control" type="number" min="1" max="999" step="1" id="guide-{{ field }}" name="{{ field }}">
+        </div>
+        {% endfor %}
+        <div class="col-12"><button class="btn btn-primary" type="submit">Lưu số đo</button></div>
+    </form>
+    <script type="application/json" id="size-guide-values">{{ measurements|tojson }}</script>
+    <script defer src="{{ url_for('static', filename='js/admin-size-guide.js') }}"></script>
+    {% else %}
+    <a href="{{ url_for('admin.admin_attributes') }}">Thêm kích thước trong danh mục thuộc tính</a>
+    {% endif %}
+</section>
