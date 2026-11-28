@@ -1,15 +1,16 @@
 import decimal
 import re
+from uuid import uuid4
 
 import psycopg2
-from flask import Flask, abort, jsonify, render_template, request, send_from_directory, session, url_for
+from flask import Flask, abort, g, jsonify, render_template, request, send_from_directory, session, url_for
 from flask.json.provider import DefaultJSONProvider
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from .config import Config, database_urls, validate_config
-from .database import db, init_db_pool
+from .database import init_db_pool
 from .extensions import csrf, limiter, mail, socketio
 from .formatting import format_money
 from .uploads import upload_root
@@ -33,9 +34,8 @@ def create_app(config_class=None):
     else:
         app.config.from_object(config_class)
     if not app.config.get('DATABASE_URL'):
-        raw_url, orm_url = database_urls(app.config.get('SQLALCHEMY_DATABASE_URI'))
+        raw_url, _ = database_urls(app.config.get('SQLALCHEMY_DATABASE_URI'))
         app.config['DATABASE_URL'] = raw_url
-        app.config['SQLALCHEMY_DATABASE_URI'] = orm_url
     validate_config(app.config)
     app.json = CustomJSONProvider(app)
 
@@ -47,7 +47,11 @@ def create_app(config_class=None):
     proxy_count = app.config.get('TRUSTED_PROXY_COUNT', 0)
     if proxy_count:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=proxy_count, x_proto=proxy_count, x_host=proxy_count)
-    db.init_app(app)
+
+    @app.before_request
+    def identify_request():
+        g.request_id = uuid4().hex
+
     limiter.init_app(app)
     mail.init_app(app)
     csrf.init_app(app)
@@ -173,6 +177,8 @@ def create_app(config_class=None):
 
     @app.after_request
     def add_security_headers(response):
+        if g.get('request_id'):
+            response.headers['X-Request-ID'] = g.request_id
         response.headers['X-Frame-Options'] = 'DENY'
         response.headers['X-Content-Type-Options'] = 'nosniff'
         response.headers.setdefault('Referrer-Policy', 'same-origin')

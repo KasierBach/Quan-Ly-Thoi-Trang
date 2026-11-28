@@ -18,6 +18,18 @@ Migration `0007` adds server-side carts and an idempotency key for manual invent
 
 When a new Pixabay image is downloaded, the app removes up to 64 unreferenced managed downloads older than 24 hours. Uploaded images saved to a product are retained. Replacing an avatar invalidates the old URL after the current reference is saved.
 
+Migration `0009` makes catalog searches literal and stores new order timestamps in Vietnam business time. The timestamp column keeps its existing type and existing rows retain their stored calendar dates. Verify the source time zone before converting any historical timestamps.
+
+Migration `0010` adds a delivery record for each distinct contact reply. The app role needs `SELECT`, `INSERT` and `UPDATE` on `public.contactreplydeliveries`. The admin sees a delivery reference separately from the contact status. An incomplete or failed delivery requires checking the email provider before making a new attempt. The app keeps the same reference when it receives the same reply again.
+
+## Verify an isolated restore
+
+Pause writes to the backup source. Capture a PostgreSQL custom-format dump and a copy of the complete upload root at the same point. Restore the dump to an empty disposable database and the uploads to a separate temporary directory. Compare an order and its status with the source. Choose a private attachment, resolve its `storage_name` under `UPLOAD_ROOT/chat`, and compare its length and hash with the source copy. Start the app only with isolated settings if browser verification is needed.
+
+Use the `X-Request-ID` response header to locate failed checkout and mail requests in app logs. Keep the migration `run_id` alongside deployment logs to identify the migration invocation.
+
+CI supports a manual compatibility run with Python 3.14 and PostgreSQL 18 selected together. The standard checks use Python 3.11 and PostgreSQL 15.
+
 ## Provenance
 
 Reconstruction uses only the **ignored January 2026 files**, read from the original folder, and SQL contracts in the approved main worktree at `aa0f131e60d4489eea1b16b753d220cd87d34ce3` (2026-04-17). Neither ignored file has Git history for its path; filesystem timestamps are not commit provenance.

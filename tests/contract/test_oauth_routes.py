@@ -130,13 +130,11 @@ def test_unconfigured_provider_is_explicit_503_no_fake_login(client, provider, a
         assert 'user_id' not in browser_session and FLOW_KEY not in browser_session
 
 
-def test_login_buttons_disabled_without_keys_or_database(client):
+def test_unavailable_login_providers_are_hidden(client):
     response = client.get('/login')
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, 'html.parser')
-    buttons = soup.select('#oauth-login-heading + div button')
-    assert len(buttons) == 2
-    assert all(button.has_attr('disabled') and button['aria-disabled'] == 'true' for button in buttons)
+    assert soup.select_one('#oauth-login-heading') is None
     assert not soup.select('form[action^="/oauth/"]')
 
 
@@ -468,7 +466,9 @@ def test_account_partial_scoped_and_password_form_preserved(client, oauth, monke
             DarkModeEnabled=False,
         ),
     )
-    monkeypatch.setattr(OrderService, 'get_customer_orders', lambda _: [])
+    monkeypatch.setattr(
+        OrderService, 'get_customer_orders', lambda *_: {'orders': [], 'total_orders': 0, 'total_spent': 0}
+    )
     response = client.get('/my_account')
     assert response.status_code == 200
     soup = BeautifulSoup(response.text, 'html.parser')

@@ -1,3 +1,5 @@
+from hashlib import sha256
+
 from app.validation import ValidationError, email_address, positive_int, required_text
 
 from .base_service import BaseService
@@ -93,8 +95,14 @@ class MainService(BaseService):
                 offset = (page - 1) * per_page
                 cursor.execute(
                     f"""
-                    SELECT MessageID, Name, Email, Subject, Message, SubmitDate, Status
-                    FROM ContactMessages{where}
+                    SELECT MessageID, Name, Email, Subject, Message, SubmitDate, Status,
+                           delivery.delivery_status, delivery.delivery_reference
+                    FROM ContactMessages
+                    LEFT JOIN LATERAL (
+                        SELECT delivery_status, delivery_id::text AS delivery_reference
+                        FROM ContactReplyDeliveries WHERE contact_id = ContactMessages.MessageID
+                        ORDER BY started_at DESC, delivery_id DESC LIMIT 1
+                    ) delivery ON TRUE{where}
                     ORDER BY SubmitDate DESC, MessageID DESC LIMIT %s OFFSET %s
                 """,
                     params + [per_page, offset],
@@ -155,6 +163,53 @@ class MainService(BaseService):
             conn.close()
 
     @staticmethod
+    def reserve_contact_reply(message_id, reply):
+        digest = sha256(reply.encode('utf-8')).hexdigest()
+        conn = MainService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO ContactReplyDeliveries (contact_id, reply_digest)
+                    VALUES (%s, %s) ON CONFLICT (contact_id, reply_digest) DO NOTHING
+                    RETURNING delivery_id::text, delivery_status
+                    """,
+                    (message_id, digest),
+                )
+                delivery = cursor.fetchone()
+                claimed = delivery is not None
+                if not claimed:
+                    cursor.execute(
+                        """SELECT delivery_id::text, delivery_status FROM ContactReplyDeliveries
+                           WHERE contact_id = %s AND reply_digest = %s""",
+                        (message_id, digest),
+                    )
+                    delivery = cursor.fetchone()
+                conn.commit()
+                return claimed, delivery[0], delivery[1]
+        finally:
+            conn.close()
+
+    @staticmethod
+    def finish_contact_reply(delivery_id, sent):
+        conn = MainService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """UPDATE ContactReplyDeliveries SET delivery_status = %s, finished_at = CURRENT_TIMESTAMP
+                       WHERE delivery_id = %s AND delivery_status = 'Sending' RETURNING contact_id""",
+                    ('Sent' if sent else 'Failed', delivery_id),
+                )
+                delivery = cursor.fetchone()
+                if delivery is not None and sent:
+                    cursor.execute(
+                        "UPDATE ContactMessages SET Status = 'Answered' WHERE MessageID = %s", (delivery[0],)
+                    )
+                conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
     def check_health():
         """Report readiness only once the database has the required schema."""
         conn = None
@@ -164,6 +219,11 @@ class MainService(BaseService):
                 cursor.execute("""SELECT
                     NOT EXISTS (
                         SELECT 1 FROM (VALUES
+                            ('contactmessages', 'SELECT'),
+                            ('contactmessages', 'UPDATE'),
+                            ('contactreplydeliveries', 'SELECT'),
+                            ('contactreplydeliveries', 'INSERT'),
+                            ('contactreplydeliveries', 'UPDATE'),
                             ('customers', 'SELECT'),
                             ('customers', 'INSERT'),
                             ('customers', 'UPDATE'),

@@ -21,6 +21,7 @@ from app.decorators import handle_db_errors, login_required
 from app.extensions import limiter
 from app.services.auth_service import AuthService
 from app.services.order_service import OrderService
+from app.services.product_service import ProductService
 from app.uploads import save_image, upload_root
 from app.utils import send_email
 from app.validation import ValidationError, email_address, local_redirect, password_value, required_text
@@ -122,9 +123,10 @@ def my_account():
     if customer is None:
         session.clear()
         return redirect(url_for('auth.login'))
-    return render_template(
-        'my_account.html', customer=customer, orders=OrderService.get_customer_orders(session['user_id'])
-    )
+    page = request.args.get('orders_page', 1, type=int)
+    page = min(max(1, page), ProductService.MAX_INTEGER)
+    history = OrderService.get_customer_orders(session['user_id'], page)
+    return render_template('my_account.html', customer=customer, **history)
 
 
 @auth_bp.route('/api/profile/avatar', methods=['POST'])

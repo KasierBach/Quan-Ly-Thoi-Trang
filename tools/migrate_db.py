@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 import psycopg2
 
@@ -49,6 +50,8 @@ def apply_migrations(connection):
 
 
 def main():
+    run_id = uuid4().hex
+    print(f'Migration run_id={run_id}', flush=True)
     try:
         dsn, _ = database_urls(os.environ.get('MIGRATION_DATABASE_URL') or os.environ.get('DATABASE_URL'))
         if not dsn or urlsplit(dsn).scheme != 'postgresql':

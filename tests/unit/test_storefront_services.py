@@ -82,24 +82,22 @@ def test_missing_cart_variant_is_not_silently_ordered(monkeypatch):
 @pytest.mark.parametrize(
     'sort,order_sql',
     [
-        ('newest', 'p.CreatedAt DESC, sp.ProductID DESC'),
+        ('newest', 'sp.CreatedAt DESC, sp.ProductID DESC'),
         ('price_asc', 'sp.Price ASC, sp.ProductID ASC'),
         ('price_desc', 'sp.Price DESC, sp.ProductID ASC'),
         ('name_asc', 'sp.ProductName ASC, sp.ProductID ASC'),
-        ('price; DROP TABLE Products', 'p.CreatedAt DESC, sp.ProductID DESC'),
+        ('price; DROP TABLE Products', 'sp.CreatedAt DESC, sp.ProductID DESC'),
     ],
 )
 def test_search_uses_same_filters_decimal_bounds_and_stable_sort(fake_db, sort, order_sql):
-    fake_db.cursor.fetchone.return_value = (25,)
-    fake_db.cursor.fetchall.return_value = []
+    fake_db.cursor.fetchall.return_value = [record(ProductID=None, total_records=25, current_page=2)]
     result = ProductService.search_products('shirt', 1, '0.10', '10.20', 2, 3, 1, 100, 24, sort)
     assert result['current_page'] == 2 and result['offset'] == 24
-    count_call, list_call = fake_db.cursor.execute.call_args_list
+    (list_call,) = fake_db.cursor.execute.call_args_list
     filters = ('shirt', 1, Decimal('0.10'), Decimal('10.20'), 2, 3, True)
-    assert count_call.args[1] == filters
-    assert list_call.args[1] == filters + (24, 24)
+    assert list_call.args[1] == filters + (100, 24, 24, 24, 24)
     assert f'ORDER BY {order_sql}' in list_call.args[0]
-    assert 'JOIN Products p ON p.ProductID = sp.ProductID' in list_call.args[0]
+    assert list_call.args[0].count('sp_SearchProducts(') == 1
     assert 'DROP TABLE' not in list_call.args[0]
     fake_db.connection.close.assert_called_once()
 
@@ -642,10 +640,10 @@ def test_order_status_db_failure_rolls_back_and_hides_error(app, fake_db, method
 
 
 def test_customer_orders_are_scoped_by_customer(fake_db):
-    fake_db.cursor.fetchall.return_value = []
-    assert OrderService.get_customer_orders(2) == []
-    assert fake_db.cursor.execute.call_args.args[1] == (2,)
-    assert 'WHERE CustomerID = %s' in fake_db.cursor.execute.call_args.args[0]
+    fake_db.cursor.fetchall.return_value = [record(OrderID=None, total_orders=0, total_spent=0, current_page=1)]
+    assert OrderService.get_customer_orders(2)['orders'] == []
+    assert fake_db.cursor.execute.call_args.args[1] == (1, 12, 12, 2, 2, 12, 12)
+    assert fake_db.cursor.execute.call_args.args[0].count('WHERE CustomerID = %s') == 2
 
 
 def test_wishlist_read_includes_original_price_and_is_owner_scoped(fake_db):

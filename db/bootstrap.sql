@@ -117,7 +117,7 @@ CREATE TABLE IF NOT EXISTS ShoppingCarts (
 CREATE TABLE IF NOT EXISTS Orders (
     OrderID SERIAL PRIMARY KEY,
     CustomerID INT NOT NULL REFERENCES Customers(CustomerID),
-    OrderDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    OrderDate TIMESTAMP DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh'),
     TotalAmount DECIMAL(18,2) NOT NULL DEFAULT 0,
     Status VARCHAR(50) NOT NULL DEFAULT 'Pending',
     PaymentMethod VARCHAR(100),
@@ -161,6 +161,18 @@ CREATE TABLE IF NOT EXISTS ContactMessages (
     SubmitDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     Status VARCHAR(50) DEFAULT 'New'
 );
+CREATE TABLE IF NOT EXISTS ContactReplyDeliveries (
+    delivery_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    contact_id INTEGER NOT NULL REFERENCES ContactMessages(MessageID) ON DELETE CASCADE,
+    reply_digest VARCHAR(64) NOT NULL,
+    delivery_status VARCHAR(10) NOT NULL DEFAULT 'Sending' CHECK (delivery_status IN ('Sending', 'Sent', 'Failed')),
+    started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMPTZ,
+    UNIQUE (contact_id, reply_digest),
+    CHECK ((delivery_status = 'Sending') = (finished_at IS NULL))
+);
+CREATE INDEX IF NOT EXISTS idx_contact_deliveries_latest
+    ON ContactReplyDeliveries (contact_id, started_at DESC, delivery_id DESC);
 CREATE TABLE IF NOT EXISTS NewsletterSubscribers (
     SubscriberID SERIAL PRIMARY KEY,
     Email VARCHAR(255) NOT NULL UNIQUE,
@@ -307,6 +319,8 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON Products(CategoryID);
 CREATE INDEX IF NOT EXISTS idx_products_name ON Products(ProductName);
 CREATE INDEX IF NOT EXISTS idx_products_price ON Products(Price);
 CREATE INDEX IF NOT EXISTS idx_orders_customer ON Orders(CustomerID);
+ALTER TABLE Orders ALTER COLUMN OrderDate SET DEFAULT (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh');
+CREATE INDEX IF NOT EXISTS idx_orders_customer_date ON Orders(CustomerID, OrderDate DESC, OrderID DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_date ON Orders(OrderDate DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON Orders(Status);
 CREATE INDEX IF NOT EXISTS idx_orderdetails_order ON OrderDetails(OrderID);
@@ -484,8 +498,8 @@ BEGIN
     RETURN QUERY SELECT p.ProductID, p.ProductName, p.Description, p.Price,
                         p.OriginalPrice, c.CategoryID, c.CategoryName, p.ImageURL
     FROM Products p JOIN Categories c ON p.CategoryID = c.CategoryID
-    WHERE (p_SearchTerm IS NULL OR p.ProductName ILIKE '%' || p_SearchTerm || '%'
-           OR p.Description ILIKE '%' || p_SearchTerm || '%')
+    WHERE (p_SearchTerm IS NULL OR strpos(lower(p.ProductName), lower(p_SearchTerm)) > 0
+           OR strpos(lower(p.Description), lower(p_SearchTerm)) > 0)
       AND (p_CategoryID IS NULL OR p.CategoryID = p_CategoryID)
       AND (p_MinPrice IS NULL OR p.Price >= p_MinPrice)
       AND (p_MaxPrice IS NULL OR p.Price <= p_MaxPrice)

@@ -1,11 +1,15 @@
 import csv
 import io
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from types import SimpleNamespace
 
 from app.services.base_service import BaseService
 from app.validation import ValidationError, date_value
+
+
+# Vietnam observes UTC+07 year-round. This also works on hosts without an IANA database.
+VIETNAM_TIME = timezone(timedelta(hours=7), 'Asia/Ho_Chi_Minh')
 
 
 class ReportService(BaseService):
@@ -25,7 +29,7 @@ class ReportService(BaseService):
     def validate_dates(start_date, end_date):
         """Validate calendar dates before opening a connection."""
         start = date_value(start_date, 'Ngày bắt đầu') if start_date else None
-        end = date_value(end_date, 'Ngày kết thúc') if end_date else date.today()
+        end = date_value(end_date, 'Ngày kết thúc') if end_date else datetime.now(VIETNAM_TIME).date()
         if end == date.max or (start is not None and start > end):
             raise ValidationError('Khoảng ngày không hợp lệ')
         return start, end
@@ -140,7 +144,7 @@ class ReportService(BaseService):
     @staticmethod
     def get_dashboard_stats():
         """Dashboard history ends today; monthly cards refer to this month only."""
-        today = date.today()
+        today = datetime.now(VIETNAM_TIME).date()
         conn = ReportService.get_connection()
         try:
             with conn.cursor() as cursor:

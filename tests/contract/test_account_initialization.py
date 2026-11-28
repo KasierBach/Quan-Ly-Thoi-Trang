@@ -13,7 +13,9 @@ def test_account_uses_unique_address_id_and_deferred_bootstrap_init(auth_client,
         'get_customer_profile',
         lambda uid: CaseInsensitiveRecord(CustomerID=uid, FullName='Synthetic Customer', DarkModeEnabled=False),
     )
-    monkeypatch.setattr(OrderService, 'get_customer_orders', lambda uid: [])
+    monkeypatch.setattr(
+        OrderService, 'get_customer_orders', lambda *_: {'orders': [], 'total_orders': 0, 'total_spent': 0}
+    )
     response = auth_client.get('/my_account')
     assert response.status_code == 200
     soup = BeautifulSoup(response.data, 'html.parser')

@@ -690,3 +690,58 @@ def test_expired_product_upload_cleanup_keeps_saved_images(db_app, db_connection
         assert not ProductService.update_product(1, 'Expired', '', 100_000, 1, 120_000, f'images/{abandoned.name}')[
             'success'
         ]
+
+
+def test_customer_history_pages_preserve_totals_and_stable_order(db_app, db_connection):
+    from app.services.order_service import OrderService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute(
+            'INSERT INTO Orders (CustomerID, OrderDate, Status) '
+            "SELECT 1, TIMESTAMP '2026-04-15 12:00:00', 'Pending' FROM generate_series(1, 14)"
+        )
+        cursor.execute('SELECT COUNT(*) FROM Orders WHERE CustomerID = 1')
+        expected = cursor.fetchone()[0]
+    db_connection.commit()
+    with db_app.app_context():
+        first = OrderService.get_customer_orders(1, 1)
+        last = OrderService.get_customer_orders(1, 99)
+        other = OrderService.get_customer_orders(3, 1)
+    ids = [row.OrderID for row in first['orders']]
+    assert len(ids) == 12 and ids == sorted(ids, reverse=True)
+    assert not (set(ids) & {row.OrderID for row in last['orders']})
+    assert first['total_orders'] == last['total_orders'] == expected
+    assert first['total_spent'] == last['total_spent'] > 0
+    assert last['current_page'] == last['total_pages'] == 2
+    assert other['total_orders'] < len(ids)
+
+
+@pytest.mark.parametrize('delivered', [True, False])
+def test_contact_reply_is_reserved_once_and_tracks_email_separately(db_app, db_connection, delivered):
+    from app.services.main_service import MainService
+
+    contact_id = _scalar(
+        db_connection,
+        "INSERT INTO ContactMessages (Name, Email, Message) VALUES ('Synthetic', 'reply@example.test', 'Hello') "
+        'RETURNING MessageID',
+    )
+    db_connection.commit()
+    barrier = threading.Barrier(2)
+
+    def reserve():
+        with db_app.app_context():
+            barrier.wait(timeout=5)
+            return MainService.reserve_contact_reply(contact_id, 'Synthetic reply')
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        deliveries = list(executor.map(lambda _: reserve(), range(2)))
+    assert sum(attempt[0] for attempt in deliveries) == 1
+    assert deliveries[0][1:] == deliveries[1][1:]
+    delivery_id = deliveries[0][1]
+    with db_app.app_context():
+        MainService.finish_contact_reply(delivery_id, delivered)
+        expected = 'Sent' if delivered else 'Failed'
+        assert MainService.reserve_contact_reply(contact_id, 'Synthetic reply') == (False, delivery_id, expected)
+        row = MainService.get_contact_messages()['messages'][0]
+        assert row.delivery_reference == delivery_id and row.delivery_status == expected
+        assert row.Status == ('Answered' if delivered else 'New')

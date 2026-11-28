@@ -306,7 +306,6 @@
     <!-- Bootstrap JS -->
     <script src="{{ url_for('static', filename='vendor/bootstrap/bootstrap.bundle.min.js') }}"></script>
     <!-- jQuery -->
-    <script src="{{ url_for('static', filename='vendor/jquery/jquery.min.js') }}"></script>
     <!-- Custom JS -->
     <script type="application/json" id="base-data">{{ {'isLoggedIn': session.get('user_id') is not none, 'subscribeUrl': url_for('main.subscribe_newsletter'), 'themeUrl': url_for('auth.toggle_dark_mode'), 'searchUrl': url_for('product.search_autocomplete')}|tojson }}</script>
     <script src="{{ url_for('static', filename='js/site.js') }}"></script>

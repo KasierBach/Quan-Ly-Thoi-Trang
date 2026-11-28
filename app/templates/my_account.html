@@ -64,7 +64,7 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="mb-0 text-white-50">Đơn hàng</h6>
-                                            <h4 class="mb-0">{{ orders|length }}</h4>
+                                            <h4 class="mb-0">{{ total_orders }}</h4>
                                         </div>
                                         <i class="fas fa-shopping-bag fa-2x text-white-50"></i>
                                     </div>
@@ -78,13 +78,7 @@
                                     <div class="d-flex justify-content-between align-items-center">
                                         <div>
                                             <h6 class="mb-0 text-white-50">Tổng chi tiêu</h6>
-                                            {% set total_spent = namespace(value=0) %}
-                                            {% for order in orders %}
-                                            {% if order.Status == 'Delivered' %}
-                                            {% set total_spent.value = total_spent.value + order.TotalAmount %}
-                                            {% endif %}
-                                            {% endfor %}
-                                            <h4 class="mb-0">{{ "{:,.0f}".format(total_spent.value) }}đ</h4>
+                                            <h4 class="mb-0">{{ "{:,.0f}".format(total_spent) }}đ</h4>
                                         </div>
                                         <i class="fas fa-wallet fa-2x text-white-50"></i>
                                     </div>
@@ -98,7 +92,7 @@
                         <div
                             class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Thông tin cá nhân</h5>
-                            <button class="btn btn-sm btn-outline-primary" onclick="window.print()">
+                            <button class="btn btn-sm btn-outline-primary" id="printProfile">
                                 <i class="fas fa-print me-1"></i>In hồ sơ
                             </button>
                         </div>
@@ -230,6 +224,18 @@
                                     </tbody>
                                 </table>
                             </div>
+                            {% if total_pages > 1 %}
+                            <nav class="d-flex flex-wrap gap-2 align-items-center justify-content-end mt-3"
+                                 aria-label="Phân trang đơn hàng">
+                                <span class="small text-body-secondary">Trang {{ current_page }} / {{ total_pages }}</span>
+                                {% if current_page > 1 %}
+                                <a class="btn btn-outline-secondary" href="{{ url_for('auth.my_account', orders_page=current_page-1, _anchor='orders') }}">Trang trước</a>
+                                {% endif %}
+                                {% if current_page < total_pages %}
+                                <a class="btn btn-outline-primary" href="{{ url_for('auth.my_account', orders_page=current_page+1, _anchor='orders') }}">Trang sau</a>
+                                {% endif %}
+                            </nav>
+                            {% endif %}
                             {% else %}
                             <div class="text-center py-4">
                                 <i class="fas fa-shopping-bag fa-3x mb-3 text-muted"></i>
@@ -355,6 +361,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const config = JSON.parse(document.getElementById('account-config').textContent);
     const token = document.querySelector('meta[name="csrf-token"]').content;
+    document.getElementById('printProfile').addEventListener('click', () => window.print());
     const hash = location.hash;
     const target = document.querySelector(`.list-group a[href="${['#profile', '#orders', '#address', '#password', '#appearance'].includes(hash) ? hash : '#profile'}"]`);
     if (target) bootstrap.Tab.getOrCreateInstance(target).show();

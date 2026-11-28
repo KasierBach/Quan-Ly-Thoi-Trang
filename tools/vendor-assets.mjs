@@ -10,7 +10,6 @@ if (process.argv.includes('--leaflet-only')) {
 const files = [
     ['bootstrap/dist/css/bootstrap.min.css', 'bootstrap/bootstrap.min.css'],
     ['bootstrap/dist/js/bootstrap.bundle.min.js', 'bootstrap/bootstrap.bundle.min.js'],
-    ['jquery/dist/jquery.min.js', 'jquery/jquery.min.js'],
     ['chart.js/dist/chart.umd.js', 'chart/chart.umd.js'],
     ['socket.io-client/dist/socket.io.min.js', 'socketio/socket.io.min.js'],
     ['@fortawesome/fontawesome-free/css/all.min.css', 'fontawesome/css/all.min.css'],

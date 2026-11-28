@@ -15,7 +15,7 @@ from app.validation import ValidationError, money, positive_int, required_text
 class ProductService(BaseService):
     MAX_INTEGER = 2_147_483_647
     SORTS = {
-        'newest': 'p.CreatedAt DESC, sp.ProductID DESC',
+        'newest': 'sp.CreatedAt DESC, sp.ProductID DESC',
         'price_asc': 'sp.Price ASC, sp.ProductID ASC',
         'price_desc': 'sp.Price DESC, sp.ProductID ASC',
         'name_asc': 'sp.ProductName ASC, sp.ProductID ASC',
@@ -240,28 +240,39 @@ class ProductService(BaseService):
         conn = BaseService.get_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute('SELECT COUNT(*) FROM sp_SearchProducts(%s, %s, %s, %s, %s, %s, %s)', filters)
-                total_records = cursor.fetchone()[0]
-                total_pages = max(1, (total_records + per_page - 1) // per_page)
-                page = min(page, total_pages)
-                offset = (page - 1) * per_page
                 cursor.execute(
                     f"""
-                    SELECT sp.*,
-                    COALESCE((SELECT AVG(Rating) FROM Reviews WHERE ProductID = sp.ProductID), 0) AS AverageRating,
-                    (SELECT COUNT(*) FROM Reviews WHERE ProductID = sp.ProductID) AS ReviewCount
-                    FROM sp_SearchProducts(%s, %s, %s, %s, %s, %s, %s) sp
-                    JOIN Products p ON p.ProductID = sp.ProductID
-                    ORDER BY {sort_query} LIMIT %s OFFSET %s
-                """,
-                    filters + (per_page, offset),
+                    WITH matches AS MATERIALIZED (
+                        SELECT sp.*, p.CreatedAt
+                        FROM sp_SearchProducts(%s, %s, %s, %s, %s, %s, %s) sp
+                        JOIN Products p ON p.ProductID = sp.ProductID
+                    ), page AS (
+                        SELECT COUNT(*) AS total_records,
+                               LEAST(%s, GREATEST(1, (COUNT(*) + %s - 1) / %s)) AS current_page
+                        FROM matches
+                    )
+                    SELECT sp.*, page.total_records, page.current_page, ratings.AverageRating, ratings.ReviewCount
+                    FROM page
+                    LEFT JOIN LATERAL (
+                        SELECT sp.* FROM matches sp
+                        ORDER BY {sort_query} LIMIT %s OFFSET ((page.current_page - 1) * %s)
+                    ) sp ON TRUE
+                    LEFT JOIN LATERAL (
+                        SELECT COALESCE(AVG(Rating), 0) AS AverageRating, COUNT(*) AS ReviewCount
+                        FROM Reviews WHERE ProductID = sp.ProductID
+                    ) ratings ON TRUE
+                    ORDER BY {sort_query}
+                    """,
+                    filters + (page, per_page, per_page, per_page, per_page),
                 )
+                rows = cursor.fetchall()
+                total_records, page = rows[0].total_records, rows[0].current_page
                 return {
-                    'products': cursor.fetchall(),
+                    'products': [row for row in rows if row.ProductID is not None],
                     'total_records': total_records,
-                    'total_pages': total_pages,
+                    'total_pages': max(1, (total_records + per_page - 1) // per_page),
                     'current_page': page,
-                    'offset': offset,
+                    'offset': (page - 1) * per_page,
                 }
         finally:
             conn.close()
@@ -299,10 +310,10 @@ class ProductService(BaseService):
                     """
                     SELECT p.ProductID, p.ProductName, p.Price, p.ImageURL, p.CategoryID, c.CategoryName
                     FROM Products p JOIN Categories c ON p.CategoryID = c.CategoryID
-                    WHERE LOWER(p.ProductName) LIKE LOWER(%s)
+                    WHERE strpos(lower(p.ProductName), lower(%s)) > 0
                     ORDER BY p.ProductName, p.ProductID LIMIT %s
                 """,
-                    (f'%{query}%', limit),
+                    (query, limit),
                 )
                 return [
                     {

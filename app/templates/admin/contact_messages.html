@@ -178,6 +178,7 @@
                 <div class="mb-3"><strong>Tiêu đề:</strong> <span id="messageSubject"></span></div>
                 <div class="mb-3"><strong>Ngày gửi:</strong> <span id="messageDate"></span></div>
                 <div class="mb-3"><strong>Trạng thái:</strong> <span class="badge" id="currentStatus"></span></div>
+                <p class="small text-body-secondary text-break mb-3" id="replyDeliveryStatus" role="status"></p>
                 <div class="mb-3"><strong>Nội dung:</strong><div class="card mt-2"><div class="card-body" id="messageContent" style="white-space: pre-wrap;"></div></div></div>
                 <div class="mb-3"><label for="statusSelect" class="form-label"><strong>Cập nhật trạng thái:</strong></label><select class="form-select" id="statusSelect"><option value="New">Mới</option><option value="Processing">Đang xử lý</option><option value="Answered">Đã trả lời</option></select></div>
                 <div class="mb-3"><label for="replyText" class="form-label"><strong>Gửi email trả lời:</strong></label><textarea class="form-control" id="replyText" rows="5" maxlength="5000" placeholder="Nhập nội dung email trả lời..."></textarea></div>
@@ -187,6 +188,7 @@
             document.getElementById('messageSubject').textContent = message.subject;
             document.getElementById('messageDate').textContent = message.date;
             document.getElementById('messageContent').textContent = message.message;
+            showReplyDelivery(message.deliveryStatus, message.deliveryId);
             const statusBadge = document.getElementById('currentStatus');
             statusBadge.textContent = message.status;
             statusBadge.className = `badge ${getBadgeClass(message.status)}`;
@@ -255,6 +257,11 @@
                 });
         }
 
+        function showReplyDelivery(status, id) {
+            const label = { Sending: 'Đang gửi hoặc chờ xác nhận', Sent: 'Đã gửi', Failed: 'Gửi lỗi hoặc chưa xác nhận' }[status];
+            document.getElementById('replyDeliveryStatus').textContent = label ? 'Email gần nhất · ' + label + ' · Mã ' + id : '';
+        }
+
         function sendReply() {
             const replyText = document.getElementById('replyText').value.trim();
             const currentMessage = messages[currentMessageId];
@@ -280,6 +287,11 @@
             })
                 .then(response => response.json())
                 .then(data => {
+                    if (data.delivery_id) {
+                        currentMessage.deliveryStatus = data.delivery_status;
+                        currentMessage.deliveryId = data.delivery_id;
+                        showReplyDelivery(data.delivery_status, data.delivery_id);
+                    }
                     if (data.success) {
                         updateMessageStatus(currentMessageId, 'Answered');
                         document.getElementById('statusSelect').value = 'Answered';

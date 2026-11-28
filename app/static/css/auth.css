@@ -483,3 +483,9 @@
 
     .auth-main-inner { padding: 1.75rem 1.4rem 1.6rem; }
 }
+
+@media (max-width: 767.98px) {
+    .login-page .auth-aside { display: none; }
+    .login-page .auth-main-inner { padding: 1.25rem; }
+    .login-page .login-help { min-height: 44px; }
+}

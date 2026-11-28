@@ -16,6 +16,14 @@ pytestmark = pytest.mark.integration
 ROOT = Path(__file__).resolve().parents[2]
 
 EXPECTED_COLUMNS = {
+    'contactreplydeliveries': {
+        'delivery_id',
+        'contact_id',
+        'reply_digest',
+        'delivery_status',
+        'started_at',
+        'finished_at',
+    },
     'categories': {'categoryid', 'categoryname', 'description'},
     'customers': {
         'customerid',
@@ -533,3 +541,28 @@ def test_readiness_detects_missing_write_sequence_and_function_privileges(db_con
         )
         cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
         assert MainService.check_health()
+
+
+def test_catalog_search_matches_literal_special_characters(db_app, db_connection):
+    from app.services.product_service import ProductService
+
+    with db_connection.cursor() as cursor:
+        cursor.execute('UPDATE Products SET ProductName = %s WHERE ProductID = 1', (r'Giảm 50%_test\áo',))
+    db_connection.commit()
+    with db_app.test_request_context():
+        for query in ('%', '_', chr(92)):
+            result = ProductService.search_products(query, None, None, None, None, None, 0, 20, 12, 'newest')
+            assert [row.ProductID for row in result['products']] == [1]
+            assert result['total_records'] == 1 and result['current_page'] == 1
+            assert [row['id'] for row in ProductService.search_autocomplete(query)] == [1]
+        empty = ProductService.search_products('no match', None, None, None, None, None, 0, 1, 12, 'newest')
+        assert empty['products'] == [] and empty['total_pages'] == 1 and empty['total_records'] == 0
+
+
+def test_new_order_default_is_vietnam_local_in_a_utc_database_session(db_connection):
+    with db_connection.cursor() as cursor:
+        cursor.execute("SET LOCAL TIME ZONE 'UTC'")
+        cursor.execute('INSERT INTO Orders (CustomerID) VALUES (1) RETURNING OrderDate')
+        order_date = cursor.fetchone()[0]
+        cursor.execute("SELECT CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh'")
+        assert cursor.fetchone()[0] == order_date

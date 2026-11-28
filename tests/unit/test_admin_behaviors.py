@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
 import pytest
@@ -9,7 +9,7 @@ from app.services.base_service import BaseService
 from app.services.customer_service import CustomerService
 from app.services.feedback_service import FeedbackService
 from app.services.main_service import MainService
-from app.services.report_service import ReportService
+from app.services.report_service import ReportService, VIETNAM_TIME
 
 
 def row(**values):
@@ -179,7 +179,7 @@ def test_base_success_preserves_contract():
 
 
 def test_report_dashboard_query_outputs(fake_db):
-    today = date.today()
+    today = datetime.now(VIETNAM_TIME).date()
     fake_db.cursor.fetchone.side_effect = [[today.replace(day=1)], [3], [2]]
     fake_db.cursor.fetchall.side_effect = [[row(OrderDate=today, DailyRevenue=Decimal('100.10'), OrderCount=1)], [], []]
     result = ReportService.get_dashboard_stats()
@@ -196,3 +196,15 @@ def test_all_csv_queries_format_real_fields(fake_db, report_type):
     query = fake_db.cursor.execute.call_args.args[0]
     if report_type != 'low_stock':
         assert "Status = 'Delivered'" in query
+
+
+def test_report_default_day_crosses_midnight_in_vietnam(monkeypatch):
+    instant = datetime(2026, 4, 30, 17, 1, tzinfo=timezone.utc)
+
+    class Clock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return instant.astimezone(tz)
+
+    monkeypatch.setattr('app.services.report_service.datetime', Clock)
+    assert ReportService.validate_dates(None, None) == (None, date(2026, 5, 1))

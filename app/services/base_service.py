@@ -11,10 +11,15 @@ class BaseService:
     @staticmethod
     def handle_error(e: Exception, message: str = 'Đã xảy ra lỗi hệ thống. Vui lọc thử lại sau.') -> Dict[str, Any]:
         """Generic secure error handler for services."""
-        from flask import current_app
+        from flask import current_app, g, has_request_context, request
 
         # Log detailed trace for admins but hide from clients
-        current_app.logger.error('Service operation failed (%s)', type(e).__name__)
+        current_app.logger.error(
+            'Service operation failed (%s) endpoint=%s request_id=%s',
+            type(e).__name__,
+            request.endpoint if has_request_context() else '-',
+            g.get('request_id', '-'),
+        )
         return {'success': False, 'message': message}
 
     @staticmethod

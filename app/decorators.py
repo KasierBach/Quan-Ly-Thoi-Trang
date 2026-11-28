@@ -1,7 +1,7 @@
 from functools import wraps
 
 import psycopg2
-from flask import current_app, flash, jsonify, redirect, request, session, url_for
+from flask import current_app, flash, g, jsonify, redirect, request, session, url_for
 from werkzeug.exceptions import HTTPException
 
 from app.validation import ValidationError
@@ -81,10 +81,11 @@ def handle_db_errors(func):
             return redirect(url_for('main.home'))
         except psycopg2.Error as exc:
             current_app.logger.error(
-                'Database operation failed in %s [%s, SQLSTATE=%s]',
+                'Database operation failed in %s [%s, SQLSTATE=%s] request_id=%s',
                 func.__name__,
                 type(exc).__name__,
                 exc.pgcode or 'unavailable',
+                g.get('request_id', '-'),
             )
             if api_request():
                 return jsonify(success=False, message='Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.'), 503

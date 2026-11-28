@@ -209,22 +209,42 @@ class OrderService(BaseService):
             conn.close()
 
     @staticmethod
-    def get_customer_orders(user_id):
-        """Return a customer's orders for the account page."""
+    def get_customer_orders(user_id, page=1):
         user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
+        page = positive_int(page, 'Trang', ProductService.MAX_INTEGER)
+        page_size = 12
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT OrderID, OrderDate, TotalAmount, Status, PaymentMethod
-                    FROM Orders
-                    WHERE CustomerID = %s
-                    ORDER BY OrderDate DESC
-                """,
-                    (user_id,),
+                    WITH history AS (
+                        SELECT COUNT(*) AS total_orders,
+                               COALESCE(SUM(TotalAmount) FILTER (WHERE Status = 'Delivered'), 0) AS total_spent,
+                               LEAST(%s, GREATEST(1, (COUNT(*) + %s - 1) / %s)) AS current_page
+                        FROM Orders WHERE CustomerID = %s
+                    )
+                    SELECT history.*, orders.*
+                    FROM history
+                    LEFT JOIN LATERAL (
+                        SELECT OrderID, OrderDate, TotalAmount, Status, PaymentMethod
+                        FROM Orders WHERE CustomerID = %s
+                        ORDER BY OrderDate DESC, OrderID DESC
+                        LIMIT %s OFFSET ((history.current_page - 1) * %s)
+                    ) orders ON TRUE
+                    ORDER BY orders.OrderDate DESC, orders.OrderID DESC
+                    """,
+                    (page, page_size, page_size, user_id, user_id, page_size, page_size),
                 )
-                return cursor.fetchall()
+                rows = cursor.fetchall()
+                totals = rows[0]
+                return {
+                    'orders': [row for row in rows if row.OrderID is not None],
+                    'total_orders': totals.total_orders,
+                    'total_spent': totals.total_spent,
+                    'current_page': totals.current_page,
+                    'total_pages': max(1, (totals.total_orders + page_size - 1) // page_size),
+                }
         finally:
             conn.close()
 
