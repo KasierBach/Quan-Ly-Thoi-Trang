@@ -131,6 +131,7 @@ def test_admin_order_transition_and_csv(gui_page, db_connection):
     menu.click()
     drawer = page.get_by_role('dialog', name='Danh mục quản trị')
     expect(drawer.get_by_role('link', name='Tổng quan')).to_have_attribute('aria-current', 'page')
+    expect(drawer).to_be_focused()
     observe(page, 'mobile-admin-menu')
     page.keyboard.press('Escape')
     expect(drawer).to_be_hidden()
