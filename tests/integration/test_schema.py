@@ -55,7 +55,19 @@ EXPECTED_COLUMNS = {
     },
     'colors': {'colorid', 'colorname'},
     'sizes': {'sizeid', 'sizename'},
-    'productvariants': {'variantid', 'productid', 'colorid', 'sizeid', 'quantity'},
+    'productvariants': {'variantid', 'productid', 'colorid', 'sizeid', 'quantity', 'low_stock_threshold'},
+    'productgallery': {'id', 'product_id', 'image_url', 'caption'},
+    'categorysizemeasurements': {'category_id', 'size_id', 'chest', 'waist', 'hips'},
+    'orderstatusevents': {
+        'id',
+        'order_id',
+        'previous_status',
+        'status',
+        'occurred_at',
+        'actor_id',
+        'actor_name',
+        'actor_role',
+    },
     'inventoryadjustments': {
         'id',
         'product_id',
@@ -222,7 +234,7 @@ def test_bootstrap_installs_every_main_sql_column_on_empty_schema(db_connection,
                           AND tgrelid IN (%s::regclass, %s::regclass, %s::regclass)""",
             (f'{schema_sandbox}.customers', f'{schema_sandbox}.orders', f'{schema_sandbox}.orderdetails'),
         )
-        assert cursor.fetchone()[0] == 4
+        assert cursor.fetchone()[0] == 5
 
 
 def test_bootstrap_adds_missing_january_customer_fields_without_changing_rows(db_connection, schema_sandbox):
@@ -309,7 +321,7 @@ def test_bootstrap_replay_preserves_seeded_data_and_trigger_count(db_connection)
         cursor.execute("""SELECT COUNT(*) FROM pg_trigger WHERE NOT tgisinternal
                           AND tgrelid IN ('public.customers'::regclass, 'public.orders'::regclass,
                                           'public.orderdetails'::regclass)""")
-        assert cursor.fetchone()[0] == 4
+        assert cursor.fetchone()[0] == 5
 
 
 def test_seed_replay_neither_replenishes_stock_nor_creates_duplicate_chat(db_connection):
@@ -518,7 +530,9 @@ def test_readiness_detects_missing_write_sequence_and_function_privileges(db_con
     with db_connection.cursor() as cursor:
         cursor.execute(sql.SQL('CREATE ROLE {}').format(role))
         cursor.execute(sql.SQL('GRANT USAGE ON SCHEMA public TO {}').format(role))
-        cursor.execute(sql.SQL('GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {}').format(role))
+        cursor.execute(
+            sql.SQL('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {}').format(role)
+        )
         cursor.execute(sql.SQL('GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {}').format(role))
         cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
         assert MainService.check_health()
@@ -566,3 +580,22 @@ def test_new_order_default_is_vietnam_local_in_a_utc_database_session(db_connect
         order_date = cursor.fetchone()[0]
         cursor.execute("SELECT CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Ho_Chi_Minh'")
         assert cursor.fetchone()[0] == order_date
+
+
+def test_order_history_migration_keeps_legacy_events_unrecorded(db_connection, schema_sandbox):
+    _install(db_connection, schema_sandbox)
+    migration = ROOT / 'db/migrations/0011_product_guides_order_events_low_stock.sql'
+    with db_connection.cursor() as cursor:
+        cursor.execute('DROP TRIGGER trg_RecordOrderStatus ON Orders')
+        cursor.execute('DROP TABLE OrderStatusEvents')
+        cursor.execute(
+            "INSERT INTO Customers (FullName, Email, Password) VALUES ('Synthetic', 'old-order@example.test', 'synthetic')"
+        )
+        cursor.execute("INSERT INTO Orders (CustomerID, OrderDate) VALUES (1, TIMESTAMP '2026-04-01 10:00:00')")
+        cursor.execute(_transactional_sql(migration, schema_sandbox))
+        cursor.execute(_transactional_sql(migration, schema_sandbox))
+        cursor.execute('SELECT COUNT(*) FROM OrderStatusEvents')
+        assert cursor.fetchone()[0] == 0
+        cursor.execute("UPDATE Orders SET Status = 'Cancelled' WHERE OrderID = 1")
+        cursor.execute('SELECT previous_status, status, actor_role FROM OrderStatusEvents')
+        assert tuple(cursor.fetchone().values()) == ('Pending', 'Cancelled', 'system')

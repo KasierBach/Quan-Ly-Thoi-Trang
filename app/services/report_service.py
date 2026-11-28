@@ -5,7 +5,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 
 from app.services.base_service import BaseService
-from app.validation import ValidationError, date_value
+from app.validation import ValidationError, date_value, positive_int
 
 
 # Vietnam observes UTC+07 year-round. This also works on hosts without an IANA database.
@@ -24,6 +24,13 @@ class ReportService(BaseService):
         'order_details': 'Chi tiết đơn đã giao',
     }
     GROUPS = {'day', 'week', 'month', 'year'}
+    LOW_STOCK_ROWS = """
+        SELECT p.ProductID, p.ProductName, pv.VariantID, c.ColorName, s.SizeName,
+               pv.Quantity, pv.low_stock_threshold
+        FROM ProductVariants pv JOIN Products p ON p.ProductID = pv.ProductID
+        JOIN Colors c ON c.ColorID = pv.ColorID JOIN Sizes s ON s.SizeID = pv.SizeID
+        WHERE pv.Quantity < pv.low_stock_threshold
+    """
 
     @staticmethod
     def validate_dates(start_date, end_date):
@@ -231,6 +238,40 @@ class ReportService(BaseService):
             conn.close()
 
     @staticmethod
+    def get_low_stock(page):
+        page = positive_int(page, 'Trang tồn kho', 1000000)
+        page_size = 20
+        conn = ReportService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    f"""
+                    WITH low_stock AS MATERIALIZED ({ReportService.LOW_STOCK_ROWS}), paging AS (
+                        SELECT COUNT(*) AS total_records,
+                               LEAST(%s, GREATEST(1, (COUNT(*) + %s - 1) / %s)) AS current_page
+                        FROM low_stock
+                    )
+                    SELECT paging.*, stock.*
+                    FROM paging LEFT JOIN LATERAL (
+                        SELECT * FROM low_stock ORDER BY Quantity, VariantID
+                        LIMIT %s OFFSET ((paging.current_page - 1) * %s)
+                    ) stock ON TRUE
+                    ORDER BY stock.Quantity, stock.VariantID
+                    """,
+                    (page, page_size, page_size, page_size, page_size),
+                )
+                rows = cursor.fetchall()
+                total = rows[0].total_records
+                return {
+                    'rows': [row for row in rows if row.VariantID is not None],
+                    'total_records': total,
+                    'current_page': rows[0].current_page,
+                    'total_pages': max(1, (total + page_size - 1) // page_size),
+                }
+        finally:
+            conn.close()
+
+    @staticmethod
     def _csv_cell(value):
         if isinstance(value, str):
             candidate = value.lstrip(' \t\r\n\v\f\ufeff')
@@ -285,16 +326,10 @@ class ReportService(BaseService):
                     for row in cursor.fetchall():
                         write_row([row.FullName, row.Email, row.OrderCount, row.TotalSpent or 0])
                 elif report_type == 'low_stock':
-                    # Stock is a current inventory snapshot, not a sales/date report.
-                    cursor.execute("""
-                        SELECT p.ProductName, c.ColorName, s.SizeName, pv.Quantity
-                        FROM ProductVariants pv JOIN Products p ON p.ProductID = pv.ProductID
-                        JOIN Colors c ON c.ColorID = pv.ColorID JOIN Sizes s ON s.SizeID = pv.SizeID
-                        WHERE pv.Quantity < 20 ORDER BY pv.Quantity, pv.VariantID LIMIT 50
-                    """)
-                    write_row(['Tồn kho hiện tại (top 50, không lọc ngày)', 'Màu', 'Size', 'Số lượng còn'])
+                    cursor.execute(ReportService.LOW_STOCK_ROWS + ' ORDER BY pv.Quantity, pv.VariantID')
+                    write_row(['Tồn kho hiện tại (không lọc ngày)', 'Màu', 'Size', 'Số lượng còn', 'Ngưỡng báo thấp'])
                     for row in cursor.fetchall():
-                        write_row([row.ProductName, row.ColorName, row.SizeName, row.Quantity])
+                        write_row([row.ProductName, row.ColorName, row.SizeName, row.Quantity, row.low_stock_threshold])
                 else:
                     cursor.execute(
                         """

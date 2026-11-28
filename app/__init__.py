@@ -8,6 +8,7 @@ from flask.json.provider import DefaultJSONProvider
 from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import HTTPException
 from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 
 from .config import Config, database_urls, validate_config
 from .database import init_db_pool
@@ -115,10 +116,10 @@ def create_app(config_class=None):
             filename = (request.view_args or {}).get('filename', '').replace('\\', '/')
             if filename.startswith('uploads/chat/'):
                 abort(404)
-            if re.fullmatch(r'images/pixabay-[1-9][0-9]*-[0-9a-f]{32}\.jpg', filename):
+            if re.fullmatch(r'images/(?:pixabay|gallery)-[1-9][0-9]*-[0-9a-f]{32}\.jpg', filename):
                 # Keep URLs already stored on products and fall back to legacy static files.
                 directory = upload_root() / 'products'
-                image = directory / filename.removeprefix('images/')
+                image = directory / secure_filename(filename.removeprefix('images/'))
                 if image.is_file() and not directory.is_symlink() and not image.is_symlink():
                     return send_from_directory(directory, image.name, mimetype='image/jpeg')
         return None

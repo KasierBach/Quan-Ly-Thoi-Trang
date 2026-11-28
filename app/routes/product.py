@@ -1,8 +1,9 @@
-from flask import Blueprint, abort, jsonify, render_template, request, session
+from flask import current_app, Blueprint, abort, jsonify, render_template, request, session
 
 from app.decorators import handle_db_errors, login_required
 from app.seo import catalog_metadata, product_metadata
 from app.services.feedback_service import FeedbackService
+from app.services.product_content_service import ProductContentService
 from app.services.product_service import ProductService
 from app.services.wishlist_service import WishlistService
 from app.validation import ValidationError, money, positive_int, required_text
@@ -159,12 +160,17 @@ def product_detail(product_id):
             'quantity': variant.Quantity,
         }
     seo, structured_data = product_metadata(product, variant_rows)
+    gallery, measurements = ([], [])
+    if current_app.config.get('DB_CONNECT_ENABLED', True):
+        gallery, measurements = ProductContentService.read(product_id, product.CategoryID, selected_sizes=sizes)
     return render_template(
         'product_detail.html',
         product=product,
         colors=list(colors.values()),
         sizes=list(sizes.values()),
         variants=variants_map,
+        gallery=gallery,
+        measurements=measurements,
         seo=seo,
         structured_data=structured_data,
     )

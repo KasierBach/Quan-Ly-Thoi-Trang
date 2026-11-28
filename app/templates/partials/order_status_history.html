@@ -1,0 +1,23 @@
+<section class="mt-3" aria-labelledby="order-history-title">
+    <h6 id="order-history-title" class="fw-semibold">Lịch sử trạng thái</h6>
+    {% if status_history %}
+    <ol class="list-group list-group-flush mb-0">
+        {% for event in status_history %}
+        <li class="list-group-item px-0">
+            <div class="d-flex flex-wrap align-items-baseline gap-2">
+                <strong>{{ labels.get(event.status, event.status) }}</strong>
+                <time class="small text-body-secondary" datetime="{{ event.occurred_at.isoformat() }}">{{ event.local_time.strftime('%d/%m/%Y %H:%M') }}</time>
+            </div>
+            <small class="text-body-secondary">
+                {% if show_history_actor and event.actor_name %}{{ event.actor_name }}
+                {% elif event.actor_role == 'customer' %}Khách đặt hàng
+                {% elif event.actor_role == 'staff' %}Cửa hàng
+                {% else %}Hệ thống{% endif %}
+            </small>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="small text-body-secondary mb-0">Chưa có mốc thay đổi trạng thái được ghi nhận.</p>
+    {% endif %}
+</section>

@@ -16,11 +16,17 @@ Migration `0006` starts recording manual stock changes made in the product edito
 
 Migration `0007` adds server-side carts and an idempotency key for manual inventory adjustments. The app role needs `SELECT`, `INSERT` and `UPDATE` on `public.shoppingcarts`. Readiness also checks the order, customer, variant and password-reset write privileges, their serial-sequence usage, and the stored functions used by checkout, order status changes and restocking. Migration `0008` indexes references to current avatars.
 
-When a new Pixabay image is downloaded, the app removes up to 64 unreferenced managed downloads older than 24 hours. Uploaded images saved to a product are retained. Replacing an avatar invalidates the old URL after the current reference is saved.
+When a new product image is uploaded or downloaded from Pixabay, the app removes up to 64 unreferenced managed images older than 24 hours. The cleanup checks both cover and gallery references. Replacing an avatar invalidates the old URL after the current reference is saved.
 
 Migration `0009` makes catalog searches literal and stores new order timestamps in Vietnam business time. The timestamp column keeps its existing type and existing rows retain their stored calendar dates. Verify the source time zone before converting any historical timestamps.
 
 Migration `0010` adds a delivery record for each distinct contact reply. The app role needs `SELECT`, `INSERT` and `UPDATE` on `public.contactreplydeliveries`. The admin sees a delivery reference separately from the contact status. An incomplete or failed delivery requires checking the email provider before making a new attempt. The app keeps the same reference when it receives the same reply again.
+
+Migration `0011` adds category size guides, product galleries, order status events and low-stock thresholds. The product editor provides controls for all three catalog settings. Each variant starts with a threshold of 20. The report lists stock strictly below the saved threshold. A threshold of 0 disables its alert.
+
+Order history begins when the event trigger is installed. Existing status and order dates remain available, and historical transitions are not inferred. Status events store UTC-aware timestamps and are displayed in Vietnam time. The customer sees who acted by role. The admin view includes the recorded name.
+
+A separate app role needs `SELECT` and `INSERT` on `orderstatusevents`, `SELECT`, `INSERT`, and `DELETE` on `productgallery`, and `SELECT`, `INSERT`, `UPDATE`, and `DELETE` on `categorysizemeasurements`. The upload backup must include the product gallery files in `UPLOAD_ROOT/products`.
 
 ## Verify an isolated restore
 

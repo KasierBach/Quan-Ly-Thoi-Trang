@@ -1405,3 +1405,21 @@ footer a:hover {
         max-height: calc(100dvh - var(--checkout-bar-space) - 4rem);
     }
 }
+
+.product-gallery-options { justify-content: center; }
+.product-gallery-options a {
+    min-height: 44px;
+    overflow-wrap: anywhere;
+    scroll-margin-block-start: 8rem;
+}
+.product-gallery-options a[aria-current="true"] {
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    box-shadow: inset 0 0 0 1px var(--primary-color);
+}
+.product-size-summary {
+    align-content: center;
+    min-height: 44px;
+    cursor: pointer;
+    color: var(--primary-color);
+}

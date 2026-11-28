@@ -182,7 +182,8 @@ class ProductService(BaseService):
             with conn.cursor() as cursor:
                 cursor.execute(
                     """
-                    SELECT pv.VariantID, c.ColorID, c.ColorName, s.SizeID, s.SizeName, pv.Quantity
+                    SELECT pv.VariantID, c.ColorID, c.ColorName, s.SizeID, s.SizeName,
+                           pv.Quantity, pv.low_stock_threshold
                     FROM ProductVariants pv
                     JOIN Colors c ON pv.ColorID = c.ColorID
                     JOIN Sizes s ON pv.SizeID = s.SizeID
@@ -210,6 +211,25 @@ class ProductService(BaseService):
                     (product_id, color_id, size_id),
                 )
                 return cursor.fetchone()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def update_low_stock_threshold(product_id, variant_id, threshold):
+        product_id = positive_int(product_id, 'Sản phẩm', ProductService.MAX_INTEGER)
+        variant_id = positive_int(variant_id, 'Biến thể', ProductService.MAX_INTEGER)
+        threshold = 0 if threshold == '0' else positive_int(threshold, 'Ngưỡng tồn kho', ProductService.MAX_INTEGER)
+        conn = ProductService.get_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    'UPDATE ProductVariants SET low_stock_threshold = %s WHERE ProductID = %s AND VariantID = %s',
+                    (threshold, product_id, variant_id),
+                )
+                if not cursor.rowcount:
+                    return False
+                conn.commit()
+                return True
         finally:
             conn.close()
 

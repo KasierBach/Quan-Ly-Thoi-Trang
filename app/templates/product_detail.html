@@ -18,10 +18,20 @@
     </nav>
 
     <div class="row g-4" style="min-height: 450px;">
-        <div class="col-md-6 d-flex justify-content-center align-items-center" style="min-height: 100%;">
+        <div class="col-md-6 d-flex flex-column justify-content-center align-items-center" style="min-height: 100%;">
             <img id="mainImage" src="{{ product|image_url }}" class="img-fluid rounded"
                 alt="{{ product.ProductName }}" loading="eager" decoding="async" fetchpriority="high"
                 style="width: 100%; aspect-ratio: 1 / 1; max-height: 100%; max-width: 100%; object-fit: contain;">
+            {% if gallery %}
+            <nav class="product-gallery-options d-flex flex-wrap gap-2 mt-2" aria-label="Góc ảnh sản phẩm">
+                <a class="btn btn-outline-secondary d-inline-flex align-items-center" href="{{ product|image_url }}" data-gallery-image
+                    data-alt="{{ product.ProductName }}" aria-current="true">Ảnh chính</a>
+                {% for image in gallery %}
+                <a class="btn btn-outline-secondary d-inline-flex align-items-center" href="{{ image|image_url }}" data-gallery-image
+                    data-alt="{{ product.ProductName }} – {{ image.caption }}">{{ image.caption }}</a>
+                {% endfor %}
+            </nav>
+            {% endif %}
         </div>
         <div class="col-md-6 d-flex flex-column justify-content-center">
             <div>
@@ -59,6 +69,22 @@
                             {% endfor %}
                         </div>
                         <input type="hidden" name="size_id" id="selectedSize">
+                        {% if measurements %}
+                        <details class="mt-3">
+                            <summary class="product-size-summary fw-semibold">Bảng số đo (cm)</summary>
+                            <div class="table-responsive mt-2">
+                                <table class="table table-sm mb-0">
+                                    <caption class="visually-hidden">Bảng số đo theo kích thước, đơn vị cm</caption>
+                                    <thead><tr><th scope="col">Size</th><th scope="col">Ngực</th><th scope="col">Eo</th><th scope="col">Mông</th></tr></thead>
+                                    <tbody>
+                                        {% for item in measurements %}
+                                        <tr><th scope="row">{{ item.SizeName }}</th><td>{{ item.chest or '—' }}</td><td>{{ item.waist or '—' }}</td><td>{{ item.hips or '—' }}</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </details>
+                        {% endif %}
                     </fieldset>
                     <input type="hidden" name="variant_id" id="variantId">
                     <div class="mb-4">
@@ -235,6 +261,18 @@
     (() => {
         const variants = JSON.parse(document.getElementById('variants-data').textContent);
         const productId = {{ product.ProductID|tojson }};
+        const mainImage = document.getElementById('mainImage');
+        const galleryLinks = document.querySelectorAll('[data-gallery-image]');
+        for (const link of galleryLinks) {
+            link.addEventListener('click', event => {
+                if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+                event.preventDefault();
+                mainImage.src = link.href;
+                mainImage.alt = link.dataset.alt;
+                for (const other of galleryLinks) other.removeAttribute('aria-current');
+                link.setAttribute('aria-current', 'true');
+            });
+        }
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
         const quantityInput = document.getElementById('quantity');
         let selectedColor = null;

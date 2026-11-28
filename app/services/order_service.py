@@ -197,6 +197,7 @@ class OrderService(BaseService):
                         'message': 'Chỉ hủy được đơn ở trạng thái Chờ xử lý',
                         'status_code': 409,
                     }
+                OrderService._record_actor(cursor, user_id)
                 cursor.execute('SELECT sp_UpdateOrderStatus(%s, %s)', (order_id, 'Cancelled'))
                 conn.commit()
                 return {'success': True, 'message': 'Đã hủy đơn hàng'}
@@ -281,7 +282,12 @@ class OrderService(BaseService):
                 """,
                     (order_id,),
                 )
-                return {'order': order, 'items': cursor.fetchall()}
+                items = cursor.fetchall()
+                return {
+                    'order': order,
+                    'items': items,
+                    'status_history': OrderService._status_history(cursor, order_id),
+                }
         finally:
             conn.close()
 
@@ -363,15 +369,36 @@ class OrderService(BaseService):
                 """,
                     (order_id,),
                 )
-                return {'order': order, 'items': cursor.fetchall()}
+                items = cursor.fetchall()
+                return {
+                    'order': order,
+                    'items': items,
+                    'status_history': OrderService._status_history(cursor, order_id),
+                }
         finally:
             conn.close()
 
     @staticmethod
-    def update_order_status(order_id, new_status) -> dict[str, Any]:
+    def _status_history(cursor, order_id):
+        cursor.execute(
+            """SELECT status, occurred_at, occurred_at AT TIME ZONE 'Asia/Ho_Chi_Minh' AS local_time,
+                      actor_name, actor_role
+               FROM OrderStatusEvents WHERE order_id = %s ORDER BY id DESC""",
+            (order_id,),
+        )
+        return cursor.fetchall()
+
+    @staticmethod
+    def _record_actor(cursor, actor_id):
+        cursor.execute("SELECT set_config('thua2.order_actor_id', %s, true)", (str(actor_id),))
+
+    @staticmethod
+    def update_order_status(order_id, new_status, actor_id=None) -> dict[str, Any]:
         """Permit only idempotent or forward state transitions under the order lock."""
         try:
             order_id = positive_int(order_id, 'Đơn hàng', ProductService.MAX_INTEGER)
+            if actor_id is not None:
+                actor_id = positive_int(actor_id, 'Người cập nhật', ProductService.MAX_INTEGER)
             if not isinstance(new_status, str) or new_status not in OrderService.STATUS_TRANSITIONS:
                 raise ValidationError('Trạng thái đơn hàng không hợp lệ')
         except ValidationError as exc:
@@ -387,6 +414,8 @@ class OrderService(BaseService):
                     return {'success': True}
                 if new_status not in OrderService.STATUS_TRANSITIONS.get(order.Status, set()):
                     return {'success': False, 'message': 'Không thể chuyển về trạng thái này', 'status_code': 409}
+                if actor_id is not None:
+                    OrderService._record_actor(cursor, actor_id)
                 cursor.execute('SELECT sp_UpdateOrderStatus(%s, %s)', (order_id, new_status))
                 conn.commit()
                 return {'success': True}

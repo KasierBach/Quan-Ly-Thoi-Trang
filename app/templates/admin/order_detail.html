@@ -113,6 +113,9 @@
                             <p class="mb-2">{{ status_labels.get(order.Status, order.Status) }}</p>
                             <p class="text-muted small mb-0">Đơn đã giao hoặc đã hủy là trạng thái cuối, không thể thay đổi.</p>
                             {% endif %}
+                            {% with labels=status_labels, show_history_actor=true %}
+                                {% include 'partials/order_status_history.html' %}
+                            {% endwith %}
                         </div>
                     </div>
                 </div>

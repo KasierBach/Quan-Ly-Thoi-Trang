@@ -83,6 +83,7 @@
                 Nhập số âm để giảm, số dương để tăng. Mỗi điều chỉnh cần lý do.
                 <a href="#inventory-history">Xem lịch sử điều chỉnh</a>
             </p>
+            <p id="threshold-help" class="small text-body-secondary">Cảnh báo khi số lượng thấp hơn ngưỡng. Đặt 0 để tắt.</p>
             <div class="table-responsive">
                 <table class="table table-bordered variants-table">
                     <thead class="table-light">
@@ -90,12 +91,13 @@
                             <th>Màu sắc</th>
                             <th>Kích thước</th>
                             <th>Số lượng</th>
+                            <th>Ngưỡng báo thấp</th>
                             <th class="text-end" style="width: 100px;">Thao tác</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for variant in variants %}
-                        <tr>
+                        <tr id="variant-{{ variant.VariantID }}">
                             <td>{{ variant.ColorName }}</td>
                             <td>{{ variant.SizeName }}</td>
                             <td>
@@ -117,6 +119,17 @@
                                         class="form-control form-control-sm" style="width: 12rem; max-width: 100%;"
                                         maxlength="300" placeholder="Lý do điều chỉnh" required>
                                     <button type="submit" class="btn btn-sm btn-outline-primary">Điều chỉnh</button>
+                                </form>
+                            </td>
+                            <td>
+                                <form method="post" class="d-flex flex-wrap gap-2"
+                                      action="{{ url_for('admin.admin_save_low_stock_threshold', product_id=product.ProductID, variant_id=variant.VariantID) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <label class="visually-hidden" for="threshold-{{ variant.VariantID }}">Ngưỡng tồn thấp {{ variant.ColorName }}, {{ variant.SizeName }}</label>
+                                    <input type="number" min="0" max="2147483647" step="1" required
+                                           name="threshold" id="threshold-{{ variant.VariantID }}" class="form-control" style="width: 6rem"
+                                           value="{{ variant.low_stock_threshold|default(20) }}" aria-describedby="threshold-help">
+                                    <button type="submit" class="btn btn-outline-primary">Lưu ngưỡng</button>
                                 </form>
                             </td>
                             <td class="text-end">
@@ -233,6 +246,7 @@
             </nav>
             {% endif %}
         </section>
+        {% include 'admin/partials/product_content.html' %}
     </div>
 </div>
 

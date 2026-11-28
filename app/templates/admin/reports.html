@@ -251,6 +251,8 @@
                     </div>
                 </div>
 
+                {% if low_stock %}{% include 'admin/partials/low_stock.html' %}{% endif %}
+
                 <!-- Detailed Tables -->
                 <div class="row">
                     <!-- Best Selling Products -->

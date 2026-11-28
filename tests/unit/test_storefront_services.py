@@ -264,9 +264,10 @@ def test_order_failure_rolls_back_all_items_and_hides_error(app, fake_db):
 def test_cancel_order_scopes_owner_and_locks_pending(fake_db):
     fake_db.cursor.fetchone.return_value = record(Status='Pending')
     assert OrderService.cancel_order(10, 2)['success'] is True
-    first, second = fake_db.cursor.execute.call_args_list
+    first, actor, update = fake_db.cursor.execute.call_args_list
     assert 'CustomerID = %s FOR UPDATE' in first.args[0] and first.args[1] == (10, 2)
-    assert second.args[1] == (10, 'Cancelled')
+    assert 'set_config' in actor.args[0] and actor.args[1] == ('2',)
+    assert update.args[1] == (10, 'Cancelled')
     fake_db.connection.commit.assert_called_once()
 
 
@@ -330,7 +331,7 @@ def test_order_details_expose_canonical_price_and_compatibility_aliases(fake_db,
         record(Price=Decimal('0.10'), UnitPrice=Decimal('0.10'), Subtotal=Decimal('0.20'))
     ]
     result = method(*args)
-    sql = fake_db.cursor.execute.call_args.args[0]
+    sql = fake_db.cursor.execute.call_args_list[1].args[0]
     assert 'od.Price, od.Price AS UnitPrice' in sql and 'od.Price * od.Quantity AS Subtotal' in sql
     assert result['items'][0].Price == Decimal('0.10')
     if len(args) == 2:

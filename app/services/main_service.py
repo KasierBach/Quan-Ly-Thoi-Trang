@@ -228,6 +228,15 @@ class MainService(BaseService):
                             ('customers', 'INSERT'),
                             ('customers', 'UPDATE'),
                             ('products', 'SELECT'),
+                            ('productgallery', 'SELECT'),
+                            ('productgallery', 'INSERT'),
+                            ('productgallery', 'DELETE'),
+                            ('categorysizemeasurements', 'SELECT'),
+                            ('categorysizemeasurements', 'INSERT'),
+                            ('categorysizemeasurements', 'UPDATE'),
+                            ('categorysizemeasurements', 'DELETE'),
+                            ('orderstatusevents', 'SELECT'),
+                            ('orderstatusevents', 'INSERT'),
                             ('productvariants', 'SELECT'),
                             ('productvariants', 'INSERT'),
                             ('productvariants', 'UPDATE'),
@@ -269,6 +278,16 @@ class MainService(BaseService):
                         WHERE has_function_privilege(to_regprocedure(signature), 'EXECUTE') IS NOT TRUE
                     )
                     AND to_regclass('uq_inventory_adjustments_operation') IS NOT NULL
+                    AND EXISTS (
+                        SELECT 1 FROM pg_trigger
+                        WHERE tgrelid = to_regclass('orders') AND tgname = 'trg_recordorderstatus'
+                          AND tgenabled IN ('O', 'A')
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM pg_attribute
+                        WHERE attrelid = to_regclass('productvariants') AND attname = 'low_stock_threshold'
+                          AND attnotnull AND NOT attisdropped
+                    )
                     AND EXISTS (
                         SELECT 1 FROM pg_index AS checkout_index
                         JOIN pg_attribute AS checkout_key
