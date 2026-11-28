@@ -1,11 +1,13 @@
 from decimal import Decimal
 from typing import Any
+from uuid import UUID
 
 import psycopg2
 from flask import url_for
 
 from app.services.base_service import BaseService
 from app.cache import cached, invalidate_cache
+from app.uploads import PRODUCT_IMAGE_LOCK, managed_product_image, product_image_file_exists
 from app.utils import resolve_image
 from app.validation import ValidationError, money, positive_int, required_text
 
@@ -420,6 +422,11 @@ class ProductService(BaseService):
         conn = BaseService.get_connection()
         try:
             with conn.cursor() as cursor:
+                upload_name = managed_product_image(image_url)
+                if upload_name:
+                    cursor.execute(PRODUCT_IMAGE_LOCK)
+                    if not product_image_file_exists(upload_name):
+                        return {'success': False, 'message': 'Ảnh tải lên đã hết hạn. Vui lòng chọn lại ảnh.'}
                 cursor.execute(
                     """
                     UPDATE Products SET ProductName=%s, Description=%s, Price=%s, OriginalPrice=%s,
@@ -439,7 +446,7 @@ class ProductService(BaseService):
             conn.close()
 
     @staticmethod
-    def add_variant(product_id, color_id, size_id, quantity, *, actor_id, reason) -> dict[str, Any]:
+    def add_variant(product_id, color_id, size_id, quantity, *, actor_id, reason, operation_key=None) -> dict[str, Any]:
         try:
             product_id = positive_int(product_id, 'Sản phẩm', ProductService.MAX_INTEGER)
             color_id = positive_int(color_id, 'Màu sắc', ProductService.MAX_INTEGER)
@@ -452,11 +459,18 @@ class ProductService(BaseService):
             if quantity:
                 actor_id = positive_int(actor_id, 'Người điều chỉnh', ProductService.MAX_INTEGER)
                 reason = required_text(reason, 'Lý do điều chỉnh', 300)
+                operation_key = ProductService._stock_operation_key(operation_key)
         except ValidationError as exc:
             return {'success': False, 'message': str(exc), 'status_code': 400}
         conn = BaseService.get_connection()
         try:
             with conn.cursor() as cursor:
+                if (
+                    quantity
+                    and operation_key
+                    and ProductService._stock_operation_recorded(cursor, actor_id, operation_key)
+                ):
+                    return {'success': True, 'replayed': True}
                 cursor.execute(
                     'SELECT sp_AddProductVariant(%s, %s, %s, %s) AS VariantID',
                     (product_id, color_id, size_id, quantity),
@@ -464,7 +478,7 @@ class ProductService(BaseService):
                 if quantity:
                     variant_id = cursor.fetchone().VariantID
                     if not ProductService._record_inventory_adjustment(
-                        cursor, product_id, variant_id, quantity, actor_id, reason
+                        cursor, product_id, variant_id, quantity, actor_id, reason, operation_key
                     ):
                         conn.rollback()
                         return {'success': False, 'message': 'Người điều chỉnh không tồn tại', 'status_code': 403}
@@ -478,13 +492,14 @@ class ProductService(BaseService):
             conn.close()
 
     @staticmethod
-    def adjust_variant_stock(product_id, variant_id, delta, *, actor_id, reason) -> dict[str, Any]:
+    def adjust_variant_stock(product_id, variant_id, delta, *, actor_id, reason, operation_key=None) -> dict[str, Any]:
         maximum = ProductService.MAX_INTEGER
         try:
             product_id = positive_int(product_id, 'Sản phẩm', maximum)
             variant_id = positive_int(variant_id, 'Biến thể', maximum)
             actor_id = positive_int(actor_id, 'Người điều chỉnh', maximum)
             reason = required_text(reason, 'Lý do điều chỉnh', 300)
+            operation_key = ProductService._stock_operation_key(operation_key)
             adjustment = str(delta).strip()
             magnitude = adjustment[1:] if adjustment.startswith(('+', '-')) else adjustment
             delta = positive_int(magnitude, 'Mức điều chỉnh tồn kho', maximum)
@@ -495,6 +510,8 @@ class ProductService(BaseService):
         conn = BaseService.get_connection()
         try:
             with conn.cursor() as cursor:
+                if operation_key and ProductService._stock_operation_recorded(cursor, actor_id, operation_key):
+                    return {'success': True, 'replayed': True}
                 cursor.execute(
                     """
                     SELECT Quantity FROM ProductVariants
@@ -517,7 +534,7 @@ class ProductService(BaseService):
                     (quantity, product_id, variant_id),
                 )
                 if not ProductService._record_inventory_adjustment(
-                    cursor, product_id, variant_id, delta, actor_id, reason
+                    cursor, product_id, variant_id, delta, actor_id, reason, operation_key
                 ):
                     conn.rollback()
                     return {'success': False, 'message': 'Người điều chỉnh không tồn tại', 'status_code': 403}
@@ -531,22 +548,44 @@ class ProductService(BaseService):
             conn.close()
 
     @staticmethod
-    def _record_inventory_adjustment(cursor, product_id, variant_id, delta, actor_id, reason):
+    def _stock_operation_key(value):
+        if value is None:
+            return None
+        try:
+            return UUID(value).hex
+        except (TypeError, ValueError, AttributeError) as exc:
+            raise ValidationError('Mã thao tác không hợp lệ. Vui lòng tải lại trang để tiếp tục.') from exc
+
+    @staticmethod
+    def _stock_operation_recorded(cursor, actor_id, operation_key):
+        # Serialize retries even when they arrive on different workers.
+        cursor.execute(
+            'SELECT pg_advisory_xact_lock(hashtextextended(%s, 0))',
+            (f'inventory:{actor_id}:{operation_key}',),
+        )
+        cursor.execute(
+            'SELECT 1 FROM InventoryAdjustments WHERE actor_id = %s AND operation_key = %s',
+            (actor_id, operation_key),
+        )
+        return cursor.fetchone() is not None
+
+    @staticmethod
+    def _record_inventory_adjustment(cursor, product_id, variant_id, delta, actor_id, reason, operation_key):
         # Both stock mutations hold the variant lock through this insert and commit.
         cursor.execute(
             """
             INSERT INTO InventoryAdjustments
                 (product_id, variant_id, color_name, size_name, actor_id, actor_name,
-                 reason, quantity_before, quantity_after)
+                 reason, quantity_before, quantity_after, operation_key)
             SELECT pv.ProductID, pv.VariantID, c.ColorName, s.SizeName, a.CustomerID, a.FullName,
-                   %s, pv.Quantity - %s, pv.Quantity
+                   %s, pv.Quantity - %s, pv.Quantity, %s
             FROM ProductVariants pv
             JOIN Colors c ON c.ColorID = pv.ColorID
             JOIN Sizes s ON s.SizeID = pv.SizeID
             JOIN Customers a ON a.CustomerID = %s
             WHERE pv.ProductID = %s AND pv.VariantID = %s
             """,
-            (reason, delta, actor_id, product_id, variant_id),
+            (reason, delta, operation_key, actor_id, product_id, variant_id),
         )
         return cursor.rowcount == 1
 

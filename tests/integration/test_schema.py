@@ -2,11 +2,14 @@
 
 import hashlib
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import psycopg2
 from psycopg2 import sql
 import pytest
+
+from app.services.main_service import MainService
 
 
 pytestmark = pytest.mark.integration
@@ -57,7 +60,9 @@ EXPECTED_COLUMNS = {
         'quantity_before',
         'quantity_after',
         'created_at',
+        'operation_key',
     },
+    'shoppingcarts': {'cart_id', 'revision', 'items', 'updated_at'},
     'orders': {
         'orderid',
         'customerid',
@@ -495,3 +500,36 @@ def test_chat_uniqueness_and_private_attachment_storage_contract(db_connection):
         'INSERT INTO PinnedMessages (conversation_id, message_id, pinned_by) VALUES (1, 1, 1)',
         code='23505',
     )
+
+
+def test_readiness_detects_missing_write_sequence_and_function_privileges(db_connection, monkeypatch):
+    role = sql.Identifier('test_readiness_' + uuid4().hex)
+    monkeypatch.setattr(
+        MainService, 'get_connection', lambda: SimpleNamespace(cursor=db_connection.cursor, close=lambda: None)
+    )
+    with db_connection.cursor() as cursor:
+        cursor.execute(sql.SQL('CREATE ROLE {}').format(role))
+        cursor.execute(sql.SQL('GRANT USAGE ON SCHEMA public TO {}').format(role))
+        cursor.execute(sql.SQL('GRANT SELECT, INSERT, UPDATE ON ALL TABLES IN SCHEMA public TO {}').format(role))
+        cursor.execute(sql.SQL('GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO {}').format(role))
+        cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
+        assert MainService.check_health()
+        cursor.execute('RESET ROLE')
+        for revoke, grant in (
+            ('REVOKE INSERT ON orderdetails FROM {}', 'GRANT INSERT ON orderdetails TO {}'),
+            ('REVOKE USAGE ON orders_orderid_seq FROM {}', 'GRANT USAGE ON orders_orderid_seq TO {}'),
+        ):
+            cursor.execute(sql.SQL(revoke).format(role))
+            cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
+            assert not MainService.check_health()
+            cursor.execute('RESET ROLE')
+            cursor.execute(sql.SQL(grant).format(role))
+        cursor.execute('REVOKE EXECUTE ON FUNCTION sp_addorderdetail(integer, integer, integer) FROM PUBLIC')
+        cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
+        assert not MainService.check_health()
+        cursor.execute('RESET ROLE')
+        cursor.execute(
+            sql.SQL('GRANT EXECUTE ON FUNCTION sp_addorderdetail(integer, integer, integer) TO {}').format(role)
+        )
+        cursor.execute(sql.SQL('SET LOCAL ROLE {}').format(role))
+        assert MainService.check_health()

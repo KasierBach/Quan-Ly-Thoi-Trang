@@ -574,6 +574,62 @@ def test_separate_checkout_pages_and_concurrent_submits_share_one_order(db_app, 
     assert _stock(db_connection) == 0
 
 
+def test_parallel_adds_from_one_guest_cookie_keep_both_items(db_app, db_client, monkeypatch):
+    from app.services.cart_service import CartService
+
+    assert db_client.get('/cart').status_code == 200
+    second = db_app.test_client()
+    second.set_cookie('session', db_client.get_cookie('session').value)
+    original_load = CartService.load
+    first_reads = threading.Barrier(2)
+
+    def load(cart_id):
+        saved = original_load(cart_id)
+        if saved is None:
+            first_reads.wait(timeout=5)
+        return saved
+
+    monkeypatch.setattr(CartService, 'load', load)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        one = workers.submit(db_client.post, '/add_to_cart', json={'variant_id': 1})
+        two = workers.submit(second.post, '/add_to_cart', json={'variant_id': 2})
+        assert [request.result(timeout=15).status_code for request in (one, two)] == [200, 200]
+    with db_client.session_transaction() as session:
+        assert 'cart' not in session
+        cart_id = session['cart_id']
+    with db_app.app_context():
+        assert CartService.load(cart_id)[1] == [{'variant_id': 1, 'quantity': 1}, {'variant_id': 2, 'quantity': 1}]
+    assert (
+        db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'}).status_code == 302
+    )
+    with db_client.session_transaction() as session:
+        assert session['cart_id'] == cart_id
+
+
+@pytest.mark.parametrize(
+    'path,fields',
+    [
+        ('/admin/products/1/variants/1/stock', {'delta': '1'}),
+        ('/admin/products/add_variant', {'product_id': '1', 'color_id': '1', 'size_id': '1', 'quantity': '1'}),
+    ],
+)
+def test_replayed_admin_stock_form_records_one_change(db_app, db_client, db_connection, path, fields):
+    assert db_client.post('/login', data={'email': 'admin@example.test', 'password': 'TestUser123!'}).status_code == 302
+    second = db_app.test_client()
+    second.set_cookie('session', db_client.get_cookie('session').value)
+    key = uuid4().hex
+    data = {**fields, 'reason': 'Audit restock', 'operation_key': key}
+    before = _stock(db_connection)
+    with ThreadPoolExecutor(max_workers=2) as workers:
+        one = workers.submit(db_client.post, path, data=data)
+        two = workers.submit(second.post, path, data=data)
+        assert [request.result(timeout=15).status_code for request in (one, two)] == [302, 302]
+    assert _stock(db_connection) == before + 1
+    assert _scalar(db_connection, 'SELECT count(*) FROM InventoryAdjustments WHERE operation_key = %s', (key,)) == 1
+    assert db_client.post(path, data={**data, 'operation_key': uuid4().hex}).status_code == 302
+    assert _stock(db_connection) == before + 2
+
+
 def test_checkout_transaction_rechecks_reviewed_price_and_keeps_retry_available(db_app, db_connection):
     from app.services.order_service import OrderService
 
@@ -602,3 +658,35 @@ def test_checkout_transaction_rechecks_reviewed_price_and_keeps_retry_available(
 
     assert _total(db_connection, refreshed['order_id']) == Decimal('299000.00')
     assert _stock(db_connection) == before - 1
+
+
+def test_expired_product_upload_cleanup_keeps_saved_images(db_app, db_connection):
+    import os
+    import time
+    from uuid import uuid4
+
+    from app.services.product_service import ProductService
+    from app.uploads import expired_product_uploads, remove_unused_product_uploads, upload_root
+
+    with db_app.app_context():
+        directory = upload_root() / 'products'
+        directory.mkdir(parents=True)
+        saved = directory / f'pixabay-1-{uuid4().hex}.jpg'
+        abandoned = directory / f'pixabay-2-{uuid4().hex}.jpg'
+        recent = directory / f'pixabay-3-{uuid4().hex}.jpg'
+        for path in (saved, abandoned, recent):
+            path.write_bytes(b'synthetic image')
+        timestamp = time.time() - 25 * 60 * 60
+        for path in (saved, abandoned):
+            os.utime(path, (timestamp, timestamp))
+        assert ProductService.update_product(1, 'Saved image', '', 100_000, 1, 120_000, f'images/{saved.name}')[
+            'success'
+        ]
+        with db_connection.cursor() as cursor:
+            remove_unused_product_uploads(cursor, expired_product_uploads())
+        db_connection.commit()
+        assert saved.exists() and recent.exists()
+        assert not abandoned.exists()
+        assert not ProductService.update_product(1, 'Expired', '', 100_000, 1, 120_000, f'images/{abandoned.name}')[
+            'success'
+        ]

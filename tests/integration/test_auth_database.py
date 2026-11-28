@@ -1,9 +1,11 @@
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
+from io import BytesIO
 from threading import Barrier
 
 import pytest
 from bs4 import BeautifulSoup
+from PIL import Image
 
 from app.services.auth_service import AuthService
 
@@ -21,6 +23,28 @@ def test_login_reads_actual_hashed_password_and_role(db_client):
         assert not session['is_admin']
     assert db_client.get('/my_account').status_code == 200
     assert db_client.get('/admin').status_code == 302
+
+
+def test_replacing_avatar_removes_the_old_public_file(db_app, db_client):
+    from pathlib import Path
+
+    assert (
+        db_client.post('/login', data={'email': 'customer@example.test', 'password': 'TestUser123!'}).status_code == 302
+    )
+    urls = []
+    for color in ('blue', 'red'):
+        raw = BytesIO()
+        Image.new('RGB', (8, 8), color).save(raw, 'PNG')
+        raw.seek(0)
+        response = db_client.post('/api/profile/avatar', data={'avatar': (raw, 'avatar.png')})
+        assert response.status_code == 200
+        urls.append(response.json['avatar_url'])
+    guest = db_app.test_client()
+    assert guest.get(urls[0]).status_code == 404
+    with guest.get(urls[1]) as current:
+        assert current.status_code == 200
+        assert current.headers['Cache-Control'] == 'no-store'
+    assert len(list((Path(db_app.config['UPLOAD_ROOT']) / 'avatars').iterdir())) == 1
 
 
 def test_register_normalizes_duplicates_and_password_hash(db_app, db_connection):

@@ -7,41 +7,7 @@
     <div class="row admin-layout">
         <!-- Sidebar -->
         <div class="col-md-3 col-lg-2">
-            <div class="list-group admin-sidebar mb-4">
-                <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-                </a>
-                <a href="{{ url_for('chat.admin_messages_page') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-comments me-2"></i>Hỗ trợ trực tuyến
-                </a>
-                <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-box me-2"></i>Sản phẩm
-                </a>
-                <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action active">
-                    <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
-                </a>
-                <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-comments me-2"></i>Bình luận
-                </a>
-                <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-chart-bar me-2"></i>Báo cáo
-                </a>
-                <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
-                </a>
-                <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-users me-2"></i>Quản lý khách hàng
-                </a>
-                <a href="{{ url_for('admin.admin_manage_products') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-box me-2"></i>Quản lý sản phẩm
-                </a>
-                <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
-                </a>
-                <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
-                    <i class="fas fa-store me-2"></i>Xem cửa hàng
-                </a>
-            </div>
+            {% include 'admin/partials/sidebar.html' %}
         </div>
 
         <!-- Main Content -->
@@ -163,11 +129,13 @@
                             <div class="d-flex flex-wrap justify-content-md-end align-items-center gap-3">
                                 <div class="d-flex align-items-center gap-2">
                                     <label class="mb-0 small text-muted">Tới trang:</label>
+                                    <label for="pageJump" class="visually-hidden">Đi đến trang</label>
                                     <input type="number" id="pageJump" class="form-control form-control-sm text-center"
                                         style="width: 60px;" value="{{ paging.current_page }}" min="1"
                                         max="{{ paging.total_pages }}">
                                 </div>
                                 <div class="d-flex align-items-center gap-2">
+                                    <label for="perPageSelect" class="visually-hidden">Số mục mỗi trang</label>
                                     <select id="perPageSelect" class="form-select form-select-sm" style="width: auto;">
                                         {% for val in [10, 20, 50, 100] %}
                                         <option value="{{ val }}" {% if paging.per_page==val %}selected{% endif %}>{{

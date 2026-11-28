@@ -443,7 +443,7 @@ def test_product_zero_quantity_and_money_supported(admin_client, monkeypatch):
         '/admin/products/add_variant', data={'product_id': 1, 'color_id': 1, 'size_id': 1, 'quantity': 0}
     )
     assert response.status_code == 302
-    mutation.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None)
+    mutation.assert_called_once_with(1, 1, 1, 0, actor_id=2, reason=None, operation_key='')
     add = Mock(return_value={'success': True, 'product_id': 1})
     monkeypatch.setattr(ProductService, 'add_product', add)
     response = admin_client.post(

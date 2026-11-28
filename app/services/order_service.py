@@ -40,30 +40,30 @@ class OrderService(BaseService):
         reviewed_prices=None,
     ) -> dict[str, Any]:
         """Validate before writing and leave authoritative prices/stock to SQL atomics."""
-        validation_message = 'Khách hàng không hợp lệ'
+        validation_message, validation_field = 'Khách hàng không hợp lệ', None
         try:
             user_id = positive_int(user_id, 'Khách hàng', ProductService.MAX_INTEGER)
-            validation_message = 'Địa chỉ giao hàng không hợp lệ'
+            validation_message, validation_field = 'Địa chỉ giao hàng không hợp lệ', 'shipping_address'
             shipping_address = required_text(shipping_address, 'Địa chỉ giao hàng', 500)
-            validation_message = 'Phương thức thanh toán chưa được hỗ trợ'
+            validation_message, validation_field = 'Phương thức thanh toán chưa được hỗ trợ', 'cod'
             payment_method = required_text(payment_method, 'Phương thức thanh toán', 100)
             if payment_method != OrderService.PAYMENT_METHOD:
                 raise ValidationError(validation_message)
-            validation_message = 'Giỏ hàng không hợp lệ'
+            validation_message, validation_field = 'Giỏ hàng không hợp lệ', None
             items = ProductService.normalize_cart_items(cart_items)
             if not items:
                 return {'success': False, 'message': 'Giỏ hàng trống', 'status_code': 400}
             if any(value is not None for value in (recipient_name, recipient_phone, recipient_email)):
-                validation_message = 'Họ và tên không hợp lệ'
+                validation_message, validation_field = 'Họ và tên không hợp lệ', 'full_name'
                 recipient_name = required_text(recipient_name, 'Họ và tên', 255)
-                validation_message = PHONE_NUMBER_FORMAT_MESSAGE
+                validation_message, validation_field = PHONE_NUMBER_FORMAT_MESSAGE, 'phone'
                 recipient_phone = phone_number(recipient_phone)
-                validation_message = 'Email không hợp lệ'
+                validation_message, validation_field = 'Email không hợp lệ', 'email'
                 recipient_email = email_address(recipient_email)
-            validation_message = 'Ghi chú không hợp lệ'
+            validation_message, validation_field = 'Ghi chú không hợp lệ', 'order_notes'
             notes = ProductService.optional_text(notes, 'Ghi chú', 2000)
         except ValidationError:
-            return {'success': False, 'message': validation_message, 'status_code': 400}
+            return {'success': False, 'message': validation_message, 'status_code': 400, 'field': validation_field}
         conn = OrderService.get_connection()
         try:
             with conn.cursor() as cursor:

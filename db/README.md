@@ -14,6 +14,10 @@ When switching to the persistent mount, copy the existing upload directories int
 
 Migration `0006` starts recording manual stock changes made in the product editor after rollout. A separate app role needs `SELECT` and `INSERT` on `public.inventoryadjustments` for readiness and stock changes.
 
+Migration `0007` adds server-side carts and an idempotency key for manual inventory adjustments. The app role needs `SELECT`, `INSERT` and `UPDATE` on `public.shoppingcarts`. Readiness also checks the order, customer, variant and password-reset write privileges, their serial-sequence usage, and the stored functions used by checkout, order status changes and restocking. Migration `0008` indexes references to current avatars.
+
+When a new Pixabay image is downloaded, the app removes up to 64 unreferenced managed downloads older than 24 hours. Uploaded images saved to a product are retained. Replacing an avatar invalidates the old URL after the current reference is saved.
+
 ## Provenance
 
 Reconstruction uses only the **ignored January 2026 files**, read from the original folder, and SQL contracts in the approved main worktree at `aa0f131e60d4489eea1b16b753d220cd87d34ce3` (2026-04-17). Neither ignored file has Git history for its path; filesystem timestamps are not commit provenance.

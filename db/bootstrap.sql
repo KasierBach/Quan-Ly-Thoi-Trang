@@ -104,6 +104,16 @@ CREATE TABLE IF NOT EXISTS InventoryAdjustments (
 );
 CREATE INDEX IF NOT EXISTS idx_inventory_adjustments_product
     ON InventoryAdjustments (product_id, id DESC);
+ALTER TABLE InventoryAdjustments ADD COLUMN IF NOT EXISTS operation_key UUID;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_inventory_adjustments_operation
+    ON InventoryAdjustments (actor_id, operation_key) WHERE operation_key IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS ShoppingCarts (
+    cart_id UUID PRIMARY KEY,
+    revision UUID NOT NULL,
+    items JSONB NOT NULL CHECK (jsonb_typeof(items) = 'array'),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 CREATE TABLE IF NOT EXISTS Orders (
     OrderID SERIAL PRIMARY KEY,
     CustomerID INT NOT NULL REFERENCES Customers(CustomerID),
@@ -289,6 +299,7 @@ END;
 $$;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email_lower ON Customers (lower(Email));
+CREATE INDEX IF NOT EXISTS idx_customers_avatar_url ON Customers (avatar_url) WHERE avatar_url IS NOT NULL;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_newsletter_email_lower ON NewsletterSubscribers (lower(Email));
 CREATE UNIQUE INDEX IF NOT EXISTS idx_passwordreset_token ON PasswordResetTokens(Token);
 CREATE INDEX IF NOT EXISTS idx_passwordreset_customer ON PasswordResetTokens(CustomerID);

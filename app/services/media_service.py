@@ -7,7 +7,7 @@ from urllib.parse import urlsplit, urlunsplit
 import requests
 from flask import current_app
 
-from app.uploads import image_bytes, upload_root
+from app.uploads import expired_product_uploads, image_bytes, remove_unused_product_uploads, upload_root
 from app.validation import ValidationError, positive_int, required_text
 
 from .base_service import BaseService
@@ -124,6 +124,9 @@ class MediaService(BaseService):
                 cursor.execute('SELECT ProductID FROM Products WHERE ProductID = %s', (product_id,))
                 if not cursor.fetchone():
                     return {'success': False, 'message': 'Sản phẩm không tồn tại', 'status_code': 404}
+                expired = expired_product_uploads()
+                if expired:
+                    remove_unused_product_uploads(cursor, expired)
         finally:
             conn.close()
         response = None

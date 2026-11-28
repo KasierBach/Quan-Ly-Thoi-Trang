@@ -39,7 +39,22 @@ class TestConfig:
 
 
 @pytest.fixture
-def app(tmp_path):
+def app(tmp_path, monkeypatch):
+    from uuid import uuid4
+
+    from app.services.cart_service import CartService
+
+    carts = {}
+
+    def replace(cart_id, expected_revision, items):
+        old = carts.get(cart_id)
+        if (old[0] if old else None) != expected_revision:
+            return False
+        carts[cart_id] = (uuid4().hex, items)
+        return True
+
+    monkeypatch.setattr(CartService, 'load', staticmethod(carts.get))
+    monkeypatch.setattr(CartService, 'replace', staticmethod(replace))
     application = create_app(TestConfig)
     application.config['UPLOAD_ROOT'] = str(tmp_path / 'uploads')
     yield application
@@ -106,7 +121,7 @@ def db_connection(database_url):
         with connection.cursor() as cursor:
             cursor.execute((ROOT / 'db' / 'bootstrap.sql').read_text(encoding='utf-8'))
             cursor.execute("""
-                TRUNCATE Attachments, Reactions, PinnedMessages, Messages, Participants, Conversations,
+                TRUNCATE ShoppingCarts, Attachments, Reactions, PinnedMessages, Messages, Participants, Conversations,
                          PasswordResetTokens, ProductComments, Reviews, Wishlist, ContactMessages,
                          NewsletterSubscribers, OrderDetails, Orders, InventoryAdjustments, ProductVariants, Products,
                          Sizes, Colors, Categories, Customers RESTART IDENTITY CASCADE

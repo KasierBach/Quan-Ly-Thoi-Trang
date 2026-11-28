@@ -1,76 +1,88 @@
 {% extends 'base.html' %}
 {% block title %}Thanh toán - Fashion Store{% endblock %}
 
+{% block body_class %}{{ super() }} checkout-page{% endblock %}
+{% macro field_state(id, hint='') -%}
+    {% if error_field == id %}aria-invalid="true" aria-describedby="{{ id }}-error{% if hint %} {{ hint }}{% endif %}"
+    {% elif hint %}aria-describedby="{{ hint }}"{% endif %}
+{%- endmacro %}
+{% macro field_feedback(id) -%}
+    {% if error_field == id %}<p id="{{ id }}-error" class="text-danger small mt-1 mb-0">{{ checkout_error }}</p>{% endif %}
+{%- endmacro %}
+
 {% block content %}
 <div class="container py-4">
-    <nav aria-label="breadcrumb" class="mb-4">
+    <nav aria-label="breadcrumb" class="mb-2 mb-lg-4">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Trang chủ</a></li>
             <li class="breadcrumb-item"><a href="{{ url_for('cart.view_cart') }}">Giỏ hàng</a></li>
             <li class="breadcrumb-item active" aria-current="page">Thanh toán</li>
         </ol>
     </nav>
-    <h1 class="h2 mb-4 fw-bold"><i class="fas fa-credit-card me-2 text-primary"></i>Thanh toán</h1>
+    <h1 class="h2 mb-3 mb-lg-4 fw-bold"><i class="fas fa-credit-card me-2 text-primary"></i>Thanh toán</h1>
     {% if not cart %}
     <div class="card border-0 shadow-sm"><div class="card-body text-center py-5">
         <h4>Giỏ hàng trống</h4>
         <a href="{{ url_for('product.products') }}" class="btn btn-primary">Tiếp tục mua sắm</a>
     </div></div>
     {% else %}
+    {% if checkout_error and not error_field %}
+    <div class="alert alert-danger" role="alert" id="checkoutError" tabindex="-1">{{ checkout_error }}</div>
+    {% endif %}
     <form action="{{ checkout_url }}" method="post" id="checkoutForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <input type="hidden" name="buy_now" value="{{ '1' if is_buy_now else '0' }}">
         <input type="hidden" name="checkout_review" value="{{ checkout_review }}">
         <input type="hidden" name="shipping_method" value="standard">
-        <div class="row g-4">
+        <div class="row g-3 g-lg-4">
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm mb-4">
+                <div class="card border-0 shadow-sm mb-3">
                     <div class="card-header border-bottom"><h5 class="mb-0 fw-bold"><i class="fas fa-shipping-fast me-2 text-primary"></i>Thông tin giao hàng</h5></div>
                     <div class="card-body"><div class="row g-3">
                         <div class="col-md-6">
                             <label for="full_name" class="form-label fw-semibold">Họ và tên <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="full_name" name="full_name" value="{{ full_name or '' }}" maxlength="255" autocomplete="name" required>
+                            <input type="text" class="form-control" id="full_name" name="full_name" value="{{ full_name or '' }}" maxlength="255" autocomplete="name" required {{ field_state('full_name') }}>
+                            {{ field_feedback('full_name') }}
                         </div>
                         <div class="col-md-6">
                             <label for="phone" class="form-label fw-semibold">Số điện thoại <span class="text-danger">*</span></label>
-                            <input type="tel" class="form-control" id="phone" name="phone" value="{{ phone or '' }}" maxlength="20" autocomplete="tel" required>
+                            <input type="tel" class="form-control" id="phone" name="phone" value="{{ phone or '' }}" maxlength="20" autocomplete="tel" required {{ field_state('phone', 'phone-hint') }}>
+                            <p id="phone-hint" class="form-text mb-0">8–15 chữ số, có thể bắt đầu bằng +.</p>
+                            {{ field_feedback('phone') }}
                         </div>
                         <div class="col-12">
                             <label for="email" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
-                            <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" maxlength="254" autocomplete="email" required>
+                            <input type="email" class="form-control" id="email" name="email" value="{{ email or '' }}" maxlength="254" autocomplete="email" required {{ field_state('email') }}>
+                            {{ field_feedback('email') }}
                         </div>
                         <div class="col-12">
                             <label for="shipping_address" class="form-label fw-semibold">Địa chỉ giao hàng <span class="text-danger">*</span></label>
-                            <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3" maxlength="500" autocomplete="street-address" required>{{ address or '' }}</textarea>
+                            <textarea class="form-control" id="shipping_address" name="shipping_address" rows="3" maxlength="500" autocomplete="street-address" required {{ field_state('shipping_address') }}>{{ address or '' }}</textarea>
+                            {{ field_feedback('shipping_address') }}
                         </div>
                     </div></div>
                 </div>
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-truck me-2 text-primary"></i>Phương thức giao hàng</h5></div>
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-header"><h2 class="h5 mb-0 fw-bold">Giao hàng và thanh toán</h2></div>
                     <div class="card-body">
-                        <div class="d-flex justify-content-between"><span>Giao hàng tiêu chuẩn</span><span class="text-success fw-bold">0 ₫</span></div>
-                        <p class="small text-muted mt-2 mb-0">Ứng dụng chưa tích hợp hãng vận chuyển hoặc tính phí giao hàng.</p>
-                    </div>
-                </div>
-                <div class="card border-0 shadow-sm mb-4">
-                    <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-money-bill-wave me-2 text-success"></i>Phương thức thanh toán</h5></div>
-                    <div class="card-body">
-                        <div class="form-check payment-option p-3 border rounded">
-                            <input class="form-check-input" type="radio" name="payment_method" id="cod" value="Thanh toán khi nhận hàng" checked required>
+                        <div class="d-flex flex-wrap justify-content-between gap-1 mb-2"><span>Giao hàng tiêu chuẩn</span><strong>0 ₫</strong></div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment_method" id="cod" value="Thanh toán khi nhận hàng" checked required {{ field_state('cod') }}>
                             <label class="form-check-label" for="cod">Thanh toán khi nhận hàng (COD)</label>
                         </div>
-                        <p class="small text-muted mt-2 mb-0">Đặt hàng ghi nhận đơn trong ứng dụng; không phát sinh giao dịch thanh toán trực tuyến.</p>
+                        {{ field_feedback('cod') }}
                     </div>
                 </div>
                 <div class="card border-0 shadow-sm">
                     <div class="card-header"><h5 class="mb-0 fw-bold"><i class="fas fa-sticky-note me-2 text-primary"></i>Ghi chú đơn hàng</h5></div>
                     <div class="card-body">
                         <label for="order_notes" class="form-label">Ghi chú cho đơn hàng</label>
-                        <textarea class="form-control" id="order_notes" name="order_notes" rows="3" maxlength="2000">{{ order_notes or '' }}</textarea>
+                        <textarea class="form-control" id="order_notes" name="order_notes" rows="2" maxlength="2000" {{ field_state('order_notes') }}>{{ order_notes or '' }}</textarea>
+                        {{ field_feedback('order_notes') }}
                     </div>
                 </div>
             </div>
-            <div class="col-lg-4">
+            <div class="col-lg-4" id="checkout-summary" tabindex="-1">
                 <div class="card border-0 shadow-sm">
                     <div class="card-header bg-primary text-white"><h5 class="mb-0 fw-bold"><i class="fas fa-receipt me-2"></i>Đơn hàng của bạn</h5></div>
                     <div class="card-body">
@@ -88,9 +100,13 @@
                         <div class="d-flex justify-content-between mb-2"><span>Phí vận chuyển:</span><span>0 ₫</span></div>
                         <hr>
                         <div class="d-flex justify-content-between mb-3"><span class="fw-bold fs-5">Tổng cộng:</span><span id="total-amount" class="fw-bold fs-5 text-danger">{{ total|money }} ₫</span></div>
-                        <div class="d-grid gap-2">
-                            <button type="submit" class="btn btn-primary btn-lg" id="placeOrderBtn"><i class="fas fa-check-circle me-2"></i>Đặt hàng</button>
-                            <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline-secondary">Quay lại giỏ hàng</a>
+                        <div class="checkout-actions">
+                            <a class="checkout-mobile-total d-lg-none" href="#checkout-summary">
+                                <span>Xem đơn hàng</span>
+                                <strong>{{ total|money }} ₫</strong>
+                            </a>
+                            <button type="submit" class="btn btn-primary btn-lg" id="placeOrderBtn"><span id="placeOrderLabel">Đặt hàng</span></button>
+                            <a href="{{ url_for('cart.view_cart') }}" class="btn btn-outline-secondary d-none d-lg-block">Quay lại giỏ hàng</a>
                         </div>
                     </div>
                 </div>
@@ -105,10 +121,19 @@
 <script>
 (() => {
     const form = document.getElementById('checkoutForm');
+    const button = document.getElementById('placeOrderBtn');
+    const label = document.getElementById('placeOrderLabel');
+    const originalLabel = label?.textContent;
+    (form?.querySelector('[aria-invalid="true"]') || document.getElementById('checkoutError'))?.focus();
     form?.addEventListener('submit', () => {
-        const button = document.getElementById('placeOrderBtn');
         button.disabled = true;
-        button.textContent = 'Đang xử lý...';
+        label.textContent = 'Đang xử lý...';
+    });
+    window.addEventListener('pageshow', () => {
+        if (button && label) {
+            button.disabled = false;
+            label.textContent = originalLabel;
+        }
     });
 })();
 </script>

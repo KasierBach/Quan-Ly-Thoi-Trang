@@ -10,42 +10,7 @@
 <div class="admin-layout d-flex">
     <!-- Sidebar -->
     <div class="col-md-3 col-lg-2 p-0">
-        <div class="list-group admin-sidebar">
-            <a href="{{ url_for('admin.admin_dashboard') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
-            </a>
-            <a href="{{ url_for('admin.admin_products') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-box me-2"></i>Sản phẩm
-            </a>
-            <a href="{{ url_for('admin.admin_orders') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-shopping-cart me-2"></i>Đơn hàng
-            </a>
-            <a href="{{ url_for('admin.admin_comments') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-comments me-2"></i>Bình luận
-            </a>
-            <a href="{{ url_for('admin.admin_reports') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-chart-bar me-2"></i>Báo cáo
-            </a>
-            <a href="{{ url_for('admin.admin_contact_messages') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-envelope me-2"></i>Tin nhắn liên hệ
-            </a>
-            <a href="{{ url_for('admin.admin_customers') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-users me-2"></i>Quản lý khách hàng
-            </a>
-            <a href="{{ url_for('admin.admin_manage_products') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-box me-2"></i>Quản lý sản phẩm
-            </a>
-            <a href="{{ url_for('admin.admin_attributes') }}" class="list-group-item list-group-item-action">
-                <i class="fas fa-tags me-2"></i>Quản lý thuộc tính
-            </a>
-            <a href="{{ url_for('admin.admin_edit_product', product_id=product.ProductID) }}"
-                class="list-group-item list-group-item-action active">
-                <i class="fas fa-edit me-2"></i>Chỉnh sửa sản phẩm
-            </a>
-            <a href="{{ url_for('main.home') }}" class="list-group-item list-group-item-action text-primary">
-                <i class="fas fa-store me-2"></i>Xem cửa hàng
-            </a>
-        </div>
+        {% include 'admin/partials/sidebar.html' %}
     </div>
 
     <!-- Main Content -->
@@ -138,6 +103,7 @@
                                 <form method="POST" class="d-flex flex-wrap gap-2"
                                     action="{{ url_for('admin.admin_adjust_variant_stock', product_id=product.ProductID, variant_id=variant.VariantID) }}">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="operation_key" value="{{ stock_operation_key() }}">
                                     <label class="visually-hidden" for="stock-delta-{{ variant.VariantID }}">
                                         Mức điều chỉnh tồn kho {{ variant.ColorName }}, {{ variant.SizeName }}
                                     </label>
@@ -177,6 +143,7 @@
             <h5>Thêm biến thể hoặc nhập thêm tồn kho</h5>
             <form method="POST" action="{{ url_for('admin.admin_add_variant') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="operation_key" value="{{ stock_operation_key() }}">
                 <input type="hidden" name="product_id" value="{{ product.ProductID }}">
                 <div class="row g-3 align-items-center mb-3">
                     <div class="col-auto">
@@ -304,6 +271,11 @@
 {{ super() }}
 <script type="application/json" id="product-config">{{ {'productId': product.ProductID}|tojson }}</script>
 <script>
+    document.querySelectorAll('input[name="operation_key"]').forEach(input => {
+        const submit = input.form.querySelector('button[type="submit"]');
+        input.form.addEventListener('submit', () => { submit.disabled = true; });
+        window.addEventListener('pageshow', () => { submit.disabled = false; });
+    });
     const productConfig = JSON.parse(document.getElementById('product-config').textContent);
     document.getElementById('editProductForm').addEventListener('submit', function (event) {
         const name = document.getElementById('product_name').value.trim();

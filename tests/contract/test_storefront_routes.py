@@ -12,6 +12,7 @@ import pytest
 
 from app.database import CaseInsensitiveRecord
 from app.services.auth_service import AuthService
+from app.services.cart_service import CartService
 from app.services.category_service import CategoryService
 from app.services.feedback_service import FeedbackService
 from app.services.order_service import OrderService
@@ -196,8 +197,8 @@ def test_cart_add_rehydrates_exact_price_and_merges_duplicate_session_rows(clien
     assert response.json['cart_count'] == 3 and response.json['item_count'] == 1
     assert response.json['items'][0]['price'] == '0.10'
     with client.session_transaction() as state:
-        assert state['cart'] == [{'variant_id': 1, 'quantity': 3}]
-        assert state['cart'][0]['quantity'] == 3
+        assert 'cart' not in state
+        assert CartService.load(state['cart_id'])[1] == [{'variant_id': 1, 'quantity': 3}]
 
 
 def test_update_cart_returns_authoritative_subtotal_after_manual_quantity(client, catalog):
@@ -208,7 +209,7 @@ def test_update_cart_returns_authoritative_subtotal_after_manual_quantity(client
     assert response.json['quantity'] == 4 and response.json['total'] == '0.40'
     assert response.json['items'][0]['subtotal'] == '0.40'
     with client.session_transaction() as state:
-        assert state['cart'][0]['quantity'] == 4
+        assert CartService.load(state['cart_id'])[1][0]['quantity'] == 4
 
 
 @pytest.mark.parametrize('path', ['/update_cart', '/remove_from_cart'])
@@ -774,6 +775,7 @@ def test_checkout_json_result_uses_only_authoritative_cart(auth_client, catalog,
     assert create.call_args.args[3][0]['price'] == '0.10'
     with auth_client.session_transaction() as state:
         assert 'cart' not in state
+        assert CartService.load(state['cart_id'])[1] == []
 
 
 def test_stock_rejected_checkout_keeps_cart(auth_client, catalog, monkeypatch):
