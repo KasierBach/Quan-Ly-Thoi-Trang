@@ -4,6 +4,9 @@ import re
 from urllib.parse import urlsplit, urlunsplit
 
 
+PHONE_NUMBER_FORMAT_MESSAGE = 'Số điện thoại cần từ 8 đến 15 chữ số, có thể bắt đầu bằng +'
+
+
 class ValidationError(ValueError):
     pass
 
@@ -65,7 +68,7 @@ def phone_number(value, optional=False):
         return None
     value = required_text(value, 'Số điện thoại', 20)
     if not re.fullmatch(r'\+?[0-9]{8,15}', value):
-        raise ValidationError('Số điện thoại cần từ 8 đến 15 chữ số, có thể bắt đầu bằng +')
+        raise ValidationError(PHONE_NUMBER_FORMAT_MESSAGE)
     return value
 
 
