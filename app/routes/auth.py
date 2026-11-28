@@ -15,6 +15,8 @@ from flask import (
     url_for,
 )
 
+from werkzeug.utils import secure_filename
+
 from app.decorators import handle_db_errors, login_required
 from app.extensions import limiter
 from app.services.auth_service import AuthService
@@ -154,6 +156,7 @@ def upload_avatar():
 def avatar_file(filename):
     if not re.fullmatch(r'[0-9a-f]{32}\.jpg', filename):
         abort(404)
+    filename = secure_filename(filename)
     if not AuthService.avatar_is_current(f'/uploads/avatars/{filename}'):
         abort(404)
     directory = upload_root() / 'avatars'
